@@ -4,52 +4,44 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  Users,
-  Clock,
-  Calendar,
-  FileText,
-  DollarSign,
-  MapPin,
-  Settings,
-  Building2,
-  Upload,
-  Briefcase,
-  Bell,
+  LayoutDashboard, Users, Clock, Calendar, FileText,
+  DollarSign, MapPin, Settings, Building2, Upload,
+  Briefcase, Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const navigation = [
-  { name: "الرئيسية", href: "/hr/dashboard", icon: LayoutDashboard },
-  { name: "الموظفون", href: "/hr/employees", icon: Users },
-  { name: "استيراد الموظفين", href: "/hr/employees/import", icon: Upload },
-  { name: "الحضور والانصراف", href: "/hr/attendance", icon: Clock },
-  { name: "الإجازات", href: "/hr/leaves", icon: Calendar },
-  { name: "الطلبات", href: "/hr/requests", icon: FileText },
-  { name: "الرواتب", href: "/hr/payroll", icon: DollarSign },
-  { name: "المهمات", href: "/hr/missions", icon: Briefcase },
-  { name: "المواقع المباشرة", href: "/hr/locations", icon: MapPin },
-  { name: "الإعلانات", href: "/hr/announcements", icon: Bell },
-    { name: "الأقسام", href: "/hr/departments", icon: Building2 },
-  { name: "الفروع", href: "/hr/branches", icon: MapPin },
-  { name: "الشيفتات", href: "/hr/shifts", icon: Clock },
-  { name: "المسميات الوظيفية", href: "/hr/job-titles", icon: Briefcase },
-  { name: "الشركة", href: "/hr/company", icon: Building2 },
-  { name: "الإعدادات", href: "/hr/settings", icon: Settings },
-];
+import { useDict } from "@/lib/stores/language";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const d = useDict();
+
+  const navigation = [
+    { key: "dashboard",        href: "/hr/dashboard",        icon: LayoutDashboard },
+    { key: "employees",        href: "/hr/employees",         icon: Users },
+    { key: "importEmployees",  href: "/hr/employees/import",  icon: Upload },
+    { key: "attendance",       href: "/hr/attendance",        icon: Clock },
+    { key: "leaves",           href: "/hr/leaves",            icon: Calendar },
+    { key: "requests",         href: "/hr/requests",          icon: FileText },
+    { key: "payroll",          href: "/hr/payroll",           icon: DollarSign },
+    { key: "missions",         href: "/hr/missions",          icon: Briefcase },
+    { key: "locations",        href: "/hr/locations",         icon: MapPin },
+    { key: "announcements",    href: "/hr/announcements",     icon: Bell },
+    { key: "departments",      href: "/hr/departments",       icon: Building2 },
+    { key: "branches",         href: "/hr/branches",          icon: MapPin },
+    { key: "shifts",           href: "/hr/shifts",            icon: Clock },
+    { key: "jobTitles",        href: "/hr/job-titles",        icon: Briefcase },
+    { key: "company",          href: "/hr/company",           icon: Building2 },
+    { key: "settings",         href: "/hr/settings",          icon: Settings },
+  ] as const;
 
   return (
-    <aside className="w-64 h-screen bg-sidebar text-sidebar-foreground flex flex-col fixed right-0 top-0 border-l border-sidebar-border">
+    <aside className="w-64 h-screen bg-sidebar text-sidebar-foreground flex flex-col fixed right-0 top-0 z-50 border-l border-sidebar-border pointer-events-auto">
       {/* Logo */}
       <div className="h-16 flex items-center gap-3 px-6 border-b border-sidebar-border">
         <Image
           src="/brand/icon/icon-white.png"
           alt="MotionHR"
-          width={32}
-          height={32}
+          width={32} height={32}
           style={{ width: "auto", height: "auto" }}
           priority
         />
@@ -70,14 +62,14 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+                "flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer select-none",
                 isActive
-                  ? "bg-sidebar-accent text-sidebar-primary-foreground"
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
                   : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
               )}
             >
               <item.icon className="w-4 h-4 flex-shrink-0" />
-              <span>{item.name}</span>
+              <span>{d[item.key]}</span>
             </Link>
           );
         })}
@@ -86,15 +78,10 @@ export function Sidebar() {
       {/* Footer */}
       <div className="p-4 border-t border-sidebar-border">
         <div className="text-[10px] text-sidebar-foreground/50 text-center leading-tight">
-          <div>Designed by</div>
-          <div className="font-semibold">Eng/John Samir | JS Solutions</div>
+          <div>{d.designedBy}</div>
+          <div className="font-semibold">{d.designedByName}</div>
         </div>
       </div>
     </aside>
   );
 }
-
-
-
-
-

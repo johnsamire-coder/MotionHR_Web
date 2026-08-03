@@ -1,403 +1,309 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import {
-  Upload,
-  FileSpreadsheet,
-  Download,
-  AlertCircle,
-  CheckCircle2,
-  Loader2,
-  X,
-  Info,
-  Users,
-  FileText,
-  Sparkles,
+  Upload, Download, FileSpreadsheet, Loader2,
+  CheckCircle2, XCircle, AlertCircle, Users, Shield, FileCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { useAuthStore } from "@/lib/stores/auth";
+import { Badge } from "@/components/ui/badge";
+import { useDict, useLangStore } from "@/lib/stores/language";
+import { STORAGE_KEYS } from "@/lib/constants/config";
 
 interface ImportResult {
   success: boolean;
-  message?: string;
-  created?: number;
-  updated?: number;
-  errors_count?: number;
-  errors?: string[];
+  message: string;
+  created: number;
+  updated: number;
+  errors: number;
+  error_details?: { row: number; errors: string[] }[];
 }
 
-export default function ImportEmployeesPage() {
-  const { token } = useAuthStore();
+export default function ImportPage() {
+  const d = useDict();
+  const lang = useLangStore((s) => s.lang);
+
   const [file, setFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<ImportResult | null>(null);
-  const [dragActive, setDragActive] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (selectedFile: File | null) => {
-    if (!selectedFile) return;
+  const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
+  const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
 
-    const validExtensions = [".xlsx", ".xls"];
-    const isValid = validExtensions.some((ext) =>
-      selectedFile.name.toLowerCase().endsWith(ext)
-    );
-
-    if (!isValid) {
-      toast.error("يجب اختيار ملف Excel (.xlsx أو .xls)");
+  const handleFile = (f: File) => {
+    const ext = f.name.split(".").pop()?.toLowerCase();
+    if (!["xlsx", "xls"].includes(ext || "")) {
+      toast.error(d.selectExcel);
       return;
     }
-
-    if (selectedFile.size > 10 * 1024 * 1024) {
-      toast.error("حجم الملف كبير جداً (الحد الأقصى 10 ميجا)");
+    if (f.size > 10 * 1024 * 1024) {
+      toast.error(d.fileTooLarge);
       return;
     }
-
-    setFile(selectedFile);
+    setFile(f);
     setResult(null);
   };
 
-  const handleDrag = (e: React.DragEvent) => {
+  const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileSelect(e.dataTransfer.files[0]);
-    }
-  };
+    setDragOver(false);
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  }, []);
 
   const downloadTemplate = async () => {
-    setIsDownloading(true);
     try {
-      const response = await fetch("/api/employees/template", {
-        headers: {
-          Authorization: `Token ${token}`,
-        },
+      const res = await fetch("/api/employees/template", {
+        headers: { Authorization: authHeader },
       });
-
-      if (!response.ok) throw new Error("فشل التحميل");
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "employee_import_template.xlsx";
-      document.body.appendChild(a);
+      a.download = "employee_template.xlsx";
       a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-
-      toast.success("تم تحميل النموذج بنجاح");
+      URL.revokeObjectURL(url);
+      toast.success(d.templateDownloaded);
     } catch {
-      toast.error("فشل تحميل النموذج");
-    } finally {
-      setIsDownloading(false);
+      toast.error(d.templateFailed);
     }
   };
 
-  const uploadFile = async () => {
-    if (!file) return;
+  const handleUpload = async () => {
+    if (!file || !token) return;
+    setUploading(true);
+    setProgress(0);
 
-    setIsUploading(true);
-    setUploadProgress(0);
-    setResult(null);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const interval = setInterval(() => {
+      setProgress(p => Math.min(p + 5, 90));
+    }, 500);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      // Progress simulation
-      const progressInterval = setInterval(() => {
-        setUploadProgress((p) => (p < 90 ? p + 5 : p));
-      }, 200);
-
-      const response = await fetch("/api/employees/import", {
+      const res = await fetch("/api/employees/import", {
         method: "POST",
-        headers: {
-          Authorization: `Token ${token}`,
-        },
+        headers: { Authorization: authHeader },
         body: formData,
+        signal: AbortSignal.timeout(300000),
       });
 
-      clearInterval(progressInterval);
-      setUploadProgress(100);
+      clearInterval(interval);
+      setProgress(100);
 
-      const data = await response.json();
+      const data = await res.json();
       setResult(data);
 
-      if (data.success) {
+      if (data.success || data.created > 0) {
         toast.success(
-          `تم بنجاح: ${data.created || 0} جديد | ${data.updated || 0} تحديث`
+          `${d.importSuccess}: ${data.created || 0} ${d.newEmployees} | ${data.updated || 0} ${d.updatedEmployees}`
         );
       } else {
-        toast.error(data.message || "فشل الاستيراد");
+        toast.error(data.message || d.importFailed);
       }
     } catch {
-      toast.error("خطأ في رفع الملف");
+      clearInterval(interval);
       setResult({
         success: false,
-        message: "خطأ في الاتصال بالسيرفر",
+        message: d.serverError,
+        created: 0,
+        updated: 0,
+        errors: 1,
       });
+      toast.error(d.serverError);
     } finally {
-      setIsUploading(false);
+      setUploading(false);
     }
-  };
-
-  const removeFile = () => {
-    setFile(null);
-    setResult(null);
-    setUploadProgress(0);
-    if (inputRef.current) inputRef.current.value = "";
   };
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6 max-w-5xl mx-auto">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">
-          استيراد الموظفين
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          ارفع ملف Excel لإضافة أو تحديث موظفين بالجملة
-        </p>
+        <h1 className="text-3xl font-bold tracking-tight">{d.importTitle}</h1>
+        <p className="text-muted-foreground mt-1">{d.importDesc}</p>
       </div>
 
       {/* Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <InfoCard
-          icon={Users}
-          title="حتى 500 موظف"
-          description="في المرة الواحدة"
-          color="text-blue-600 bg-blue-500/10"
-        />
-        <InfoCard
-          icon={FileText}
-          title="67 حقل"
-          description="بيانات شاملة لكل موظف"
-          color="text-brand-accent bg-brand-accent/10"
-        />
-        <InfoCard
-          icon={Sparkles}
-          title="تحقق تلقائي"
-          description="من صحة البيانات قبل الحفظ"
-          color="text-brand-highlight bg-brand-highlight/10"
-        />
+        <Card className="border-border/50">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+              <Users className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{d.upTo500}</p>
+              <p className="text-xs text-muted-foreground">{d.perBatch}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-border/50">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+              <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{d.fields67}</p>
+              <p className="text-xs text-muted-foreground">{d.comprehensiveData}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-border/50">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+              <Shield className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{d.autoValidation}</p>
+              <p className="text-xs text-muted-foreground">{d.validationDesc}</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Upload Zone */}
+        {/* Upload Area */}
         <div className="lg:col-span-2 space-y-4">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">رفع الملف</h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={downloadTemplate}
-                  disabled={isDownloading}
-                  className="gap-2"
-                >
-                  {isDownloading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Download className="w-4 h-4" />
-                  )}
-                  تحميل النموذج
+                <h3 className="text-lg font-semibold">{d.uploadFile}</h3>
+                <Button variant="outline" onClick={downloadTemplate} className="gap-2">
+                  <Download className="w-4 h-4" />
+                  {d.downloadTemplate}
                 </Button>
               </div>
 
-              {!file ? (
-                <div
-                  onDragEnter={handleDrag}
-                  onDragLeave={handleDrag}
-                  onDragOver={handleDrag}
-                  onDrop={handleDrop}
-                  onClick={() => inputRef.current?.click()}
-                  className={`
-                    relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all
-                    ${
-                      dragActive
-                        ? "border-brand-accent bg-brand-accent/5 scale-[1.02]"
-                        : "border-border hover:border-brand-primary hover:bg-muted/30"
-                    }
-                  `}
-                >
-                  <input
-                    ref={inputRef}
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={(e) => handleFileSelect(e.target.files?.[0] || null)}
-                    className="hidden"
-                  />
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl bg-brand-primary/10 flex items-center justify-center">
-                      <Upload className="w-8 h-8 text-brand-primary" />
-                    </div>
-                    <div>
-                      <p className="text-lg font-semibold mb-1">
-                        اسحب وأفلت الملف هنا
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        أو اضغط للاختيار من الجهاز
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <FileSpreadsheet className="w-4 h-4" />
-                      <span>.xlsx, .xls</span>
-                      <span>•</span>
-                      <span>حد أقصى 10 ميجا</span>
-                    </div>
-                  </div>
+              {/* Drop Zone */}
+              <div
+                onClick={() => fileRef.current?.click()}
+                onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                className={`
+                  border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all
+                  ${dragOver
+                    ? "border-brand-primary bg-brand-primary/5"
+                    : "border-border hover:border-brand-primary/50 hover:bg-muted/30"
+                  }
+                `}
+              >
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])}
+                />
+                <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="font-semibold mb-1">{d.dragDrop}</p>
+                <p className="text-sm text-muted-foreground mb-3">{d.orClick}</p>
+                <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+                  <span>XLSX / XLS</span>
+                  <span>{d.maxSize}</span>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* File Info */}
-                  <div className="flex items-center gap-4 p-4 border border-border rounded-xl bg-muted/30">
-                    <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-                      <FileSpreadsheet className="w-6 h-6 text-emerald-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{file.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {(file.size / 1024).toFixed(1)} كيلوبايت
+              </div>
+
+              {/* Selected File */}
+              {file && (
+                <div className="mt-4 p-4 bg-muted/50 rounded-lg flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <FileSpreadsheet className="w-8 h-8 text-emerald-600" />
+                    <div>
+                      <p className="font-medium text-sm">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(file.size / 1024).toFixed(1)} {d.kb}
                       </p>
                     </div>
-                    {!isUploading && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={removeFile}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
+                  </div>
+                  <Button
+                    onClick={handleUpload}
+                    disabled={uploading}
+                    className="gap-2 bg-brand-primary hover:bg-brand-primary/90"
+                  >
+                    {uploading ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" />{d.uploading}</>
+                    ) : (
+                      <><Upload className="w-4 h-4" />{d.startImport}</>
                     )}
+                  </Button>
+                </div>
+              )}
+
+              {/* Progress */}
+              {uploading && (
+                <div className="mt-4">
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div
+                      className="bg-brand-primary h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 text-center">{progress}%</p>
+                </div>
+              )}
+
+              {/* Results */}
+              {result && (
+                <div className="mt-6 space-y-4">
+                  <div className={`p-4 rounded-lg flex items-center gap-3 ${
+                    result.success || result.created > 0
+                      ? "bg-emerald-500/10 text-emerald-700"
+                      : "bg-red-500/10 text-red-700"
+                  }`}>
+                    {result.success || result.created > 0
+                      ? <CheckCircle2 className="w-5 h-5" />
+                      : <XCircle className="w-5 h-5" />
+                    }
+                    <span className="font-semibold">
+                      {result.success || result.created > 0 ? d.importSuccess : d.importFailed}
+                    </span>
                   </div>
 
-                  {/* Progress */}
-                  {isUploading && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">
-                          جارِ الرفع...
-                        </span>
-                        <span className="font-medium">{uploadProgress}%</span>
-                      </div>
-                      <Progress value={uploadProgress} />
-                    </div>
-                  )}
+                  <div className="grid grid-cols-3 gap-3">
+                    <Card className="border-emerald-200">
+                      <CardContent className="p-3 text-center">
+                        <p className="text-2xl font-bold text-emerald-600">{result.created}</p>
+                        <p className="text-xs text-muted-foreground">{d.newEmployees}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-blue-200">
+                      <CardContent className="p-3 text-center">
+                        <p className="text-2xl font-bold text-blue-600">{result.updated}</p>
+                        <p className="text-xs text-muted-foreground">{d.updatedEmployees}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-red-200">
+                      <CardContent className="p-3 text-center">
+                        <p className="text-2xl font-bold text-red-600">{result.errors}</p>
+                        <p className="text-xs text-muted-foreground">{d.errors}</p>
+                      </CardContent>
+                    </Card>
+                  </div>
 
-                  {/* Actions */}
-                  {!isUploading && !result && (
-                    <Button
-                      onClick={uploadFile}
-                      className="w-full h-11 gap-2"
-                      size="lg"
-                    >
-                      <Upload className="w-4 h-4" />
-                      بدء الاستيراد
-                    </Button>
-                  )}
-
-                  {/* Results */}
-                  {result && (
-                    <div
-                      className={`
-                        rounded-xl border p-4
-                        ${
-                          result.success
-                            ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/30"
-                            : "bg-red-50 border-red-200 dark:bg-red-500/10 dark:border-red-500/30"
-                        }
-                      `}
-                    >
-                      <div className="flex items-start gap-3">
-                        {result.success ? (
-                          <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                        ) : (
-                          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                        )}
-                        <div className="flex-1">
-                          <p className="font-semibold mb-2">
-                            {result.success
-                              ? "تم الاستيراد بنجاح"
-                              : "فشل الاستيراد"}
-                          </p>
-                          {result.success && (
-                            <div className="grid grid-cols-3 gap-3 mt-3">
-                              <div className="text-center p-3 bg-white/50 dark:bg-white/5 rounded-lg">
-                                <div className="text-2xl font-bold text-emerald-600">
-                                  {result.created || 0}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  موظف جديد
-                                </div>
-                              </div>
-                              <div className="text-center p-3 bg-white/50 dark:bg-white/5 rounded-lg">
-                                <div className="text-2xl font-bold text-blue-600">
-                                  {result.updated || 0}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  تحديث
-                                </div>
-                              </div>
-                              <div className="text-center p-3 bg-white/50 dark:bg-white/5 rounded-lg">
-                                <div className="text-2xl font-bold text-red-600">
-                                  {result.errors_count || 0}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  أخطاء
-                                </div>
-                              </div>
+                  {result.error_details && result.error_details.length > 0 && (
+                    <Card>
+                      <CardContent className="p-4">
+                        <h4 className="font-semibold mb-3 flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 text-red-500" />
+                          {d.errorDetails}
+                        </h4>
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {result.error_details.map((err, i) => (
+                            <div key={i} className="text-sm p-2 bg-red-500/5 rounded">
+                              <span className="font-semibold">{d.row} {err.row}:</span>{" "}
+                              {err.errors.join(" | ")}
                             </div>
-                          )}
-                          {result.message && (
-                            <p className="text-sm mt-2">{result.message}</p>
-                          )}
-                          {result.errors && result.errors.length > 0 && (
-                            <details className="mt-3">
-                              <summary className="text-sm font-medium cursor-pointer">
-                                عرض الأخطاء ({result.errors.length})
-                              </summary>
-                              <div className="mt-2 space-y-1 max-h-64 overflow-y-auto text-sm">
-                                {result.errors.map((err, i) => (
-                                  <div
-                                    key={i}
-                                    className="p-2 bg-white/50 dark:bg-white/5 rounded"
-                                  >
-                                    {err}
-                                  </div>
-                                ))}
-                              </div>
-                            </details>
-                          )}
+                          ))}
                         </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {result && (
-                    <Button
-                      variant="outline"
-                      onClick={removeFile}
-                      className="w-full gap-2"
-                    >
-                      رفع ملف آخر
-                    </Button>
+                      </CardContent>
+                    </Card>
                   )}
                 </div>
               )}
@@ -407,101 +313,59 @@ export default function ImportEmployeesPage() {
 
         {/* Instructions Sidebar */}
         <div className="space-y-4">
-          <Card className="border-brand-accent/30 bg-brand-accent/5">
-            <CardContent className="p-5">
-              <div className="flex items-start gap-3 mb-3">
-                <Info className="w-5 h-5 text-brand-accent flex-shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-sm mb-1">
-                    قبل ما تبدأ
-                  </h4>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    حمّل النموذج، املأه بالبيانات، وارجع ارفعه هنا
-                  </p>
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold mb-4">{d.importInstructions}</h3>
+              <div className="space-y-4">
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full bg-brand-primary/10 text-brand-primary flex items-center justify-center text-sm font-bold flex-shrink-0">1</div>
+                  <div>
+                    <p className="font-medium text-sm">{d.step1}</p>
+                    <p className="text-xs text-muted-foreground">{d.step1Desc}</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full bg-brand-primary/10 text-brand-primary flex items-center justify-center text-sm font-bold flex-shrink-0">2</div>
+                  <div>
+                    <p className="font-medium text-sm">{d.step2}</p>
+                    <p className="text-xs text-muted-foreground">{d.step2Desc}</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full bg-brand-primary/10 text-brand-primary flex items-center justify-center text-sm font-bold flex-shrink-0">3</div>
+                  <div>
+                    <p className="font-medium text-sm">{d.step3}</p>
+                    <p className="text-xs text-muted-foreground">{d.step3Desc}</p>
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-5">
-              <h4 className="font-semibold text-sm mb-4">خطوات الاستيراد</h4>
-              <div className="space-y-4">
-                <Step number={1} title="حمّل النموذج" description="ملف Excel جاهز بكل الأعمدة" />
-                <Step number={2} title="املأ البيانات" description="اتبع التعليمات في الشيت" />
-                <Step number={3} title="ارفع الملف" description="النظام هيتحقق ويستورد" />
-                <Step number={4} title="راجع النتائج" description="شوف اللي نجح واللي فيه أخطاء" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-5">
-              <h4 className="font-semibold text-sm mb-3">حقول إجبارية</h4>
-              <div className="space-y-2 text-xs text-muted-foreground">
-                <div>• الاسم الأول والأخير (عربي)</div>
-                <div>• الرقم القومي</div>
-                <div>• رقم الموبايل</div>
-                <div>• تاريخ الميلاد</div>
-                <div>• تاريخ التعيين</div>
-                <div>• الفرع والقسم</div>
-                <div>• المسمى الوظيفي</div>
-                <div>• تصنيف الموظف</div>
-                <div>• طريقة القبض</div>
-              </div>
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold mb-3">{d.importNotes}</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-start gap-2">
+                  <FileCheck className="w-4 h-4 mt-0.5 text-brand-primary flex-shrink-0" />
+                  {d.note1}
+                </li>
+                <li className="flex items-start gap-2">
+                  <FileCheck className="w-4 h-4 mt-0.5 text-brand-primary flex-shrink-0" />
+                  {d.note2}
+                </li>
+                <li className="flex items-start gap-2">
+                  <FileCheck className="w-4 h-4 mt-0.5 text-brand-primary flex-shrink-0" />
+                  {d.note3}
+                </li>
+                <li className="flex items-start gap-2">
+                  <FileCheck className="w-4 h-4 mt-0.5 text-brand-primary flex-shrink-0" />
+                  {d.note4}
+                </li>
+              </ul>
             </CardContent>
           </Card>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function InfoCard({
-  icon: Icon,
-  title,
-  description,
-  color,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  description: string;
-  color: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="flex items-center gap-3">
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}>
-            <Icon className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="font-semibold">{title}</div>
-            <div className="text-xs text-muted-foreground">{description}</div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function Step({
-  number,
-  title,
-  description,
-}: {
-  number: number;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="flex gap-3">
-      <div className="w-7 h-7 rounded-full bg-brand-primary text-white text-sm font-bold flex items-center justify-center flex-shrink-0">
-        {number}
-      </div>
-      <div>
-        <div className="font-medium text-sm">{title}</div>
-        <div className="text-xs text-muted-foreground mt-0.5">{description}</div>
       </div>
     </div>
   );
