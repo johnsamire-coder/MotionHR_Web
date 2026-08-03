@@ -33,6 +33,7 @@ const navigation = [
     { name: "الأقسام", href: "/hr/departments", icon: Building2 },
   { name: "الفروع", href: "/hr/branches", icon: MapPin },
   { name: "الشيفتات", href: "/hr/shifts", icon: Clock },
+  { name: "المسميات الوظيفية", href: "/hr/job-titles", icon: Briefcase },
   { name: "الشركة", href: "/hr/company", icon: Building2 },
   { name: "الإعدادات", href: "/hr/settings", icon: Settings },
 ];
@@ -92,6 +93,7 @@ export function Sidebar() {
     </aside>
   );
 }
+
 
 
 
