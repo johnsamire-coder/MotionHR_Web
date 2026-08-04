@@ -1785,3 +1785,4 @@ export function useDict() {
   const lang = useLangStore((s) => s.lang);
   return dict[lang];
 }
+

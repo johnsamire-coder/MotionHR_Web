@@ -1,175 +1,315 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Plus, Building2, Users, Loader2 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
+import {
+  Building2, Plus, Search, Loader2, Edit2, Trash2,
+  Users, ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
-  Dialog, DialogContent, DialogDescription,
-  DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
 interface Department {
   id: number;
-  name_ar: string;
-  name_en: string;
+  name: string;
+  name_en?: string;
   description?: string;
-  is_active: boolean;
   employee_count?: number;
 }
 
-interface StatCardProps {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string | number;
-  color: string;
-}
-
-function StatCard({ icon: Icon, label, value, color }: StatCardProps) {
-  return (
-    <Card className="border-border/50">
-      <CardContent className="p-4 flex items-center gap-4">
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${color}`}>
-          <Icon className="w-5 h-5" />
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-xl font-bold">{value}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+const EMPTY = { name: "", name_en: "", description: "" };
 
 export default function DepartmentsPage() {
   const d = useDict();
   const lang = useLangStore((s) => s.lang);
+  const ar = lang === "ar";
+
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [employees, setEmployees] = useState<{ department_id: number }[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [formData, setFormData] = useState({ name_ar: "", name_en: "", description: "" });
+  const [loading, setLoading]         = useState(true);
+  const [search, setSearch]           = useState("");
+  const [showCreate, setShowCreate]   = useState(false);
+  const [editItem, setEditItem]       = useState<Department | null>(null);
+  const [deleteId, setDeleteId]       = useState<number | null>(null);
+  const [form, setForm]               = useState({ ...EMPTY });
+  const [saving, setSaving]           = useState(false);
+  const [deleting, setDeleting]       = useState(false);
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
 
-  useEffect(() => {
+  // ── Load ─────────────────────────────────────────────────
+  const load = useCallback(() => {
     if (!token) return;
-    Promise.all([
-      fetch("/api/departments", { headers: { Authorization: authHeader } }).then(r => r.json()),
-      fetch("/api/employees/list", { headers: { Authorization: authHeader } }).then(r => r.json()),
-    ]).then(([depts, emps]) => {
-      setDepartments(Array.isArray(depts) ? depts : depts.departments || []);
-      setEmployees(Array.isArray(emps) ? emps : emps.employees || []);
-    }).catch(() => toast.error(d.failedLoad))
+    setLoading(true);
+    fetch("/api/departments", { headers: { Authorization: authHeader } })
+      .then(r => r.json())
+      .then(data => setDepartments(data?.departments || data || []))
+      .catch(() => toast.error(d.failedLoad))
       .finally(() => setLoading(false));
   }, []);
 
-  const getEmpCount = (deptId: number) =>
-    employees.filter((e: { department_id: number }) => e.department_id === deptId).length;
+  useEffect(() => { load(); }, []);
 
-  const filtered = departments.filter(dep =>
-    (dep.name_ar || '').includes(search) || (dep.name_en || '').toLowerCase().includes(search.toLowerCase())
-  );
-
-  const totalEmployees = departments.reduce((sum, d) => sum + getEmpCount(d.id), 0);
-
+  // ── Create ────────────────────────────────────────────────
   const handleCreate = async () => {
-    if (!formData.name_ar.trim()) { toast.error(d.nameArRequired); return; }
-    setIsSaving(true);
+    if (!form.name) {
+      toast.error(ar ? "الاسم العربي مطلوب" : "Arabic name is required");
+      return;
+    }
+    setSaving(true);
     try {
-      const res = await fetch("/api/departments", {
+      const res = await fetch("/api/hr/departments", {
         method: "POST",
         headers: { Authorization: authHeader, "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(form),
       });
-      if (!res.ok) throw new Error();
-      const newDept = await res.json();
-      setDepartments(prev => [...prev, newDept]);
-      toast.success(d.createdSuccess);
-      setDialogOpen(false);
-      setFormData({ name_ar: "", name_en: "", description: "" });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(ar ? "تم إضافة القسم" : "Department added");
+        setShowCreate(false);
+        setForm({ ...EMPTY });
+        load();
+      } else {
+        toast.error(data.message || (ar ? "فشل" : "Failed"));
+      }
     } catch {
-      toast.error(d.failedCreate);
+      toast.error(ar ? "خطأ" : "Error");
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   };
 
+  // ── Edit ─────────────────────────────────────────────────
+  const handleEdit = async () => {
+    if (!editItem || !form.name) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/hr/departments/${editItem.id}`, {
+        method: "PUT",
+        headers: { Authorization: authHeader, "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(ar ? "تم التعديل" : "Updated");
+        setEditItem(null);
+        load();
+      } else {
+        toast.error(data.message || (ar ? "فشل" : "Failed"));
+      }
+    } catch {
+      toast.error(ar ? "خطأ" : "Error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── Delete ────────────────────────────────────────────────
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/hr/departments/${deleteId}`, {
+        method: "DELETE",
+        headers: { Authorization: authHeader },
+      });
+      if (res.ok) {
+        toast.success(ar ? "تم الحذف" : "Deleted");
+        setDeleteId(null);
+        load();
+      } else {
+        const data = await res.json();
+        toast.error(data.message || (ar ? "فشل الحذف — في موظفين في القسم ده" : "Delete failed — employees exist"));
+      }
+    } catch {
+      toast.error(ar ? "خطأ" : "Error");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const openEdit = (item: Department) => {
+    setForm({ name: item.name, name_en: item.name_en || "", description: item.description || "" });
+    setEditItem(item);
+  };
+
+  const getName = (item: Department) =>
+    ar ? item.name : (item.name_en || item.name);
+
+  const filtered = departments.filter(dep =>
+    !search ||
+    dep.name.includes(search) ||
+    (dep.name_en || "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  const totalEmployees = departments.reduce((s, d) => s + (d.employee_count || 0), 0);
+
+  const FormFields = () => (
+    <div className="space-y-4">
+      <div>
+        <label className="text-sm font-medium mb-1 block">{ar ? "الاسم بالعربي *" : "Arabic Name *"}</label>
+        <Input
+          value={form.name}
+          onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+          placeholder="الهندسة المدنية"
+          dir="rtl"
+        />
+      </div>
+      <div>
+        <label className="text-sm font-medium mb-1 block">{ar ? "الاسم بالإنجليزي" : "English Name"}</label>
+        <Input
+          value={form.name_en}
+          onChange={e => setForm(p => ({ ...p, name_en: e.target.value }))}
+          placeholder="Civil Engineering"
+          dir="ltr"
+        />
+      </div>
+      <div>
+        <label className="text-sm font-medium mb-1 block">{ar ? "الوصف" : "Description"}</label>
+        <textarea
+          value={form.description}
+          onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+          rows={3}
+          placeholder={ar ? "وصف القسم..." : "Department description..."}
+          className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background resize-none"
+        />
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
+
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{d.departmentsTitle}</h1>
           <p className="text-muted-foreground mt-1">{d.departmentsDesc}</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)} className="gap-2 bg-brand-primary hover:bg-brand-primary/90">
+        <Button
+          onClick={() => { setForm({ ...EMPTY }); setShowCreate(true); }}
+          className="gap-2 bg-brand-primary hover:bg-brand-secondary"
+        >
           <Plus className="w-4 h-4" />
           {d.addDepartment}
         </Button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard icon={Building2} label={d.totalDepartments} value={departments.length} color="text-blue-600 bg-blue-500/10" />
-        <StatCard icon={Users} label={d.totalEmployees} value={totalEmployees} color="text-emerald-600 bg-emerald-500/10" />
-        <StatCard icon={Users} label={d.avgEmployeesPerDept} value={departments.length ? Math.round(totalEmployees / departments.length) : 0} color="text-purple-600 bg-purple-500/10" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <Card>
+          <CardContent className="p-5 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-brand-primary/10 flex items-center justify-center">
+              <Building2 className="w-6 h-6 text-brand-primary" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">{ar ? "الأقسام" : "Departments"}</p>
+              <p className="text-2xl font-bold">{departments.length}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+              <Users className="w-6 h-6 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">{ar ? "إجمالي الموظفين" : "Total Employees"}</p>
+              <p className="text-2xl font-bold">{totalEmployees}</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Search */}
-      <Input
-        placeholder={d.searchDepartments}
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        className="max-w-sm"
-      />
+      <Card>
+        <CardContent className="p-4">
+          <div className="relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder={ar ? "بحث في الأقسام..." : "Search departments..."}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pr-10"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* List */}
+      {/* Grid */}
       {loading ? (
-        <div className="flex items-center justify-center py-24">
+        <div className="flex justify-center py-24">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <Building2 className="w-12 h-12 text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">{search ? d.noResults : d.noDepartments}</p>
-          {!search && (
-            <Button onClick={() => setDialogOpen(true)} variant="outline" className="mt-4 gap-2">
-              <Plus className="w-4 h-4" />{d.addFirstDept}
-            </Button>
-          )}
-        </div>
+        <Card>
+          <CardContent className="py-24 text-center">
+            <Building2 className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
+            <p className="text-muted-foreground">{ar ? "لا توجد أقسام" : "No departments"}</p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(dep => (
-            <Card key={dep.id} className="border-border/50 hover:shadow-md transition-shadow">
+            <Card key={dep.id} className="hover:shadow-md transition group">
               <CardContent className="p-5">
                 <div className="flex items-start justify-between mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-brand-primary/10 flex items-center justify-center">
-                    <Building2 className="w-5 h-5 text-brand-primary" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-xl bg-brand-primary/10 flex items-center justify-center">
+                      <Building2 className="w-5 h-5 text-brand-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">{getName(dep)}</p>
+                      {dep.name_en && dep.name !== dep.name_en && (
+                        <p className="text-xs text-muted-foreground">
+                          {ar ? dep.name_en : dep.name}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-0 text-[10px]">
-                    {d.active}
-                  </Badge>
+                  {/* Actions — تظهر عند hover */}
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                    <Button
+                      size="icon" variant="ghost"
+                      onClick={() => openEdit(dep)}
+                      className="w-7 h-7 text-muted-foreground hover:text-amber-600"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      size="icon" variant="ghost"
+                      onClick={() => setDeleteId(dep.id)}
+                      className="w-7 h-7 text-muted-foreground hover:text-red-600"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                 </div>
-                <h3 className="font-semibold mb-1">{lang === "en" && dep.name_en ? dep.name_en : dep.name_ar}</h3>
-                {lang === "ar" && dep.name_en && <p className="text-xs text-muted-foreground mb-3" dir="ltr">{dep.name_en}</p>}
-                {lang === "en" && dep.name_ar && <p className="text-xs text-muted-foreground mb-3">{dep.name_ar}</p>}
-                {dep.description && <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{dep.description}</p>}
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <Users className="w-4 h-4" />
-                  <span className="font-semibold text-foreground">{getEmpCount(dep.id)}</span>
-                  <span>{d.employee_count}</span>
+
+                {dep.description && (
+                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                    {dep.description}
+                  </p>
+                )}
+
+                <div className="flex items-center justify-between pt-3 border-t">
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Users className="w-4 h-4" />
+                    <span>
+                      {dep.employee_count || 0} {ar ? "موظف" : "employees"}
+                    </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -177,43 +317,78 @@ export default function DepartmentsPage() {
         </div>
       )}
 
-      {/* Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+      {/* ── Create Dialog ── */}
+      <Dialog open={showCreate} onOpenChange={v => !v && setShowCreate(false)}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{d.addDeptTitle}</DialogTitle>
-            <DialogDescription>{d.addDeptDesc}</DialogDescription>
+            <DialogTitle>{ar ? "إضافة قسم جديد" : "Add Department"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name_ar">{d.deptNameAr}</Label>
-              <Input id="name_ar" value={formData.name_ar}
-                onChange={e => setFormData({ ...formData, name_ar: e.target.value })}
-                placeholder="مثال: الموارد البشرية" disabled={isSaving} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="name_en">{d.deptNameEn}</Label>
-              <Input id="name_en" value={formData.name_en} dir="ltr"
-                onChange={e => setFormData({ ...formData, name_en: e.target.value })}
-                placeholder="Example: Human Resources" disabled={isSaving} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">{d.deptDesc}</Label>
-              <Textarea id="description" value={formData.description}
-                onChange={e => setFormData({ ...formData, description: e.target.value })}
-                placeholder={d.deptDescPlaceholder} disabled={isSaving} />
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={isSaving}>
-                {d.cancel}
+          <div className="pt-2">
+            <FormFields />
+            <div className="flex gap-3 mt-5">
+              <Button
+                onClick={handleCreate} disabled={saving}
+                className="flex-1 bg-brand-primary hover:bg-brand-secondary gap-2"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                {ar ? "إضافة" : "Add"}
               </Button>
-              <Button onClick={handleCreate} disabled={isSaving} className="bg-brand-primary hover:bg-brand-primary/90 gap-2">
-                {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" />{d.saving}</> : <><Plus className="w-4 h-4" />{d.createDept}</>}
+              <Button variant="outline" onClick={() => setShowCreate(false)} className="flex-1">
+                {ar ? "إلغاء" : "Cancel"}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ── Edit Dialog ── */}
+      <Dialog open={!!editItem} onOpenChange={v => !v && setEditItem(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{ar ? "تعديل القسم" : "Edit Department"}</DialogTitle>
+          </DialogHeader>
+          <div className="pt-2">
+            <FormFields />
+            <div className="flex gap-3 mt-5">
+              <Button
+                onClick={handleEdit} disabled={saving}
+                className="flex-1 bg-amber-600 hover:bg-amber-700 gap-2"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Edit2 className="w-4 h-4" />}
+                {ar ? "حفظ" : "Save"}
+              </Button>
+              <Button variant="outline" onClick={() => setEditItem(null)} className="flex-1">
+                {ar ? "إلغاء" : "Cancel"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Confirm ── */}
+      <AlertDialog open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{ar ? "حذف القسم" : "Delete Department"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {ar
+                ? "لو في موظفين في القسم ده، مش هينحذف. لازم تنقل الموظفين الأول."
+                : "If there are employees in this department, deletion will fail. Move them first."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{ar ? "إلغاء" : "Cancel"}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete} disabled={deleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? <Loader2 className="w-4 h-4 animate-spin me-1" /> : null}
+              {ar ? "حذف" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }

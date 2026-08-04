@@ -1,336 +1,430 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  Users, Upload, Plus, Search, Loader2,
-  Building2, UserCheck, UserX,
+  Users, Search, Filter, Plus, Upload, Download,
+  Loader2, ChevronLeft, ChevronRight, UserCheck,
+  UserX, Building2, Briefcase, Phone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select, SelectContent, SelectItem,
-  SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
-  Table, TableBody, TableCell, TableHead,
-  TableHeader, TableRow,
-} from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import { CreateEmployeeDialog } from "@/components/hr/create-employee-dialog";
 
 interface Employee {
   id: number;
   employee_code: string;
   full_name: string;
-  job_title: string;
-  department: string;
-  department_id: number;
-  branch: string;
-  branch_id: number;
-  phone: string;
+  full_name_en?: string;
+  job_title?: string;
+  job_title_en?: string;
+  department?: string;
+  department_en?: string;
+  branch?: string;
+  branch_en?: string;
+  phone?: string;
   status: string;
   status_code: string;
+  hire_date?: string;
+  basic_salary?: number;
 }
 
-interface DeptItem { id: number; name_ar: string; name_en: string; }
-interface BranchItem { id: number; name_ar: string; name_en: string; }
-interface JobTitleItem { id: number; name_ar: string; name_en: string; }
+interface Department { id: number; name: string; name_en?: string }
+interface Branch     { id: number; name: string; name_en?: string }
+interface JobTitle   { id: number; title: string; title_en?: string }
 
-function StatCard({
-  icon: Icon, label, value, color,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string | number;
-  color: string;
-}) {
-  return (
-    <Card className="border-border/50">
-      <CardContent className="p-4 flex items-center gap-4">
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${color}`}>
-          <Icon className="w-5 h-5" />
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-xl font-bold">{value}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
+interface ListResponse {
+  results: Employee[];
+  count: number;
+  total_pages: number;
+  current_page: number;
+  stats?: {
+    total: number;
+    active: number;
+    inactive: number;
+    on_leave: number;
+  };
 }
+
+const PAGE_SIZE = 25;
 
 export default function EmployeesPage() {
   const router = useRouter();
   const d = useDict();
   const lang = useLangStore((s) => s.lang);
 
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [deptMap, setDeptMap] = useState<Record<number, DeptItem>>({});
-  const [branchMap, setBranchMap] = useState<Record<number, BranchItem>>({});
-  const [jtMap, setJtMap] = useState<Record<string, JobTitleItem>>({});
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [data, setData]           = useState<ListResponse | null>(null);
+  const [loading, setLoading]     = useState(true);
+  const [page, setPage]           = useState(1);
+  const [search, setSearch]       = useState("");
   const [deptFilter, setDeptFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [page, setPage] = useState(1);
-  const pageSize = 25;
+  const [showCreate, setShowCreate] = useState(false);
 
-  const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
+  // Lookup data
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [branches, setBranches]       = useState<Branch[]>([]);
+  const [jobTitles, setJobTitles]     = useState<JobTitle[]>([]);
+
+  const token = typeof window !== "undefined"
+    ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
 
+  // ── Load Lookup Data ───────────────────────────────────
   useEffect(() => {
     if (!token) return;
     Promise.all([
-      fetch("/api/employees/list", { headers: { Authorization: authHeader } }).then(r => r.json()),
       fetch("/api/departments", { headers: { Authorization: authHeader } }).then(r => r.json()),
-      fetch("/api/branches", { headers: { Authorization: authHeader } }).then(r => r.json()),
-      fetch("/api/job-titles", { headers: { Authorization: authHeader } }).then(r => r.json()),
-    ]).then(([empData, deptData, brData, jtData]) => {
-      const list = Array.isArray(empData) ? empData : empData.employees || [];
-      setEmployees(list);
-
-      const depts = Array.isArray(deptData) ? deptData : deptData.departments || [];
-      const dm: Record<number, DeptItem> = {};
-      depts.forEach((d: DeptItem) => { dm[d.id] = d; });
-      setDeptMap(dm);
-
-      const brs = Array.isArray(brData) ? brData : brData.branches || [];
-      const bm: Record<number, BranchItem> = {};
-      brs.forEach((b: BranchItem) => { bm[b.id] = b; });
-      setBranchMap(bm);
-
-      const jts = Array.isArray(jtData) ? jtData : jtData.job_titles || jtData.jobTitles || [];
-      const jm: Record<string, JobTitleItem> = {};
-      jts.forEach((j: JobTitleItem) => { jm[j.name_ar] = j; });
-      setJtMap(jm);
-    })
-      .catch(() => toast.error(d.failedLoadEmployees))
-      .finally(() => setLoading(false));
+      fetch("/api/branches",    { headers: { Authorization: authHeader } }).then(r => r.json()),
+      fetch("/api/job-titles",  { headers: { Authorization: authHeader } }).then(r => r.json()),
+    ]).then(([depts, brs, jts]) => {
+      setDepartments(depts?.departments || depts || []);
+      setBranches(brs?.branches || brs || []);
+      setJobTitles(jts?.job_titles || jts || []);
+    }).catch(() => {});
   }, []);
 
-  const departments = [...new Set(employees.map(e => e.department))].sort();
+  // ── Load Employees ─────────────────────────────────────
+  const loadEmployees = useCallback(() => {
+    if (!token) return;
+    setLoading(true);
 
-  const filteredEmployees = employees.filter(emp => {
-    const matchSearch = !search ||
-      emp.full_name.toLowerCase().includes(search.toLowerCase()) ||
-      emp.employee_code.toLowerCase().includes(search.toLowerCase()) ||
-      emp.phone.includes(search);
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("page_size", String(PAGE_SIZE));
+    if (search)                       params.set("search", search);
+    if (deptFilter !== "all")         params.set("department", deptFilter);
+    if (statusFilter !== "all")       params.set("status", statusFilter);
 
-    const matchDept = deptFilter === "all" || emp.department === deptFilter;
-    const matchStatus = statusFilter === "all" || emp.status_code === statusFilter;
+    fetch(`/api/employees/list?${params}`, {
+      headers: { Authorization: authHeader },
+    })
+      .then(r => r.json())
+      .then(d => setData(d))
+      .catch(() => toast.error(d.failedLoad))
+      .finally(() => setLoading(false));
+  }, [page, search, deptFilter, statusFilter]);
 
-    return matchSearch && matchDept && matchStatus;
-  });
+  useEffect(() => { loadEmployees(); }, [loadEmployees]);
 
-  const totalPages = Math.ceil(filteredEmployees.length / pageSize);
-  const paginatedEmployees = filteredEmployees.slice(
-    (page - 1) * pageSize,
-    page * pageSize
-  );
+  // reset page on filter change
+  useEffect(() => { setPage(1); }, [search, deptFilter, statusFilter]);
 
-  const activeCount = employees.filter(e => e.status_code === "active").length;
-  const inactiveCount = employees.length - activeCount;
+  // ── Helpers ────────────────────────────────────────────
+  const getName = (emp: Employee) =>
+    lang === "en" && emp.full_name_en ? emp.full_name_en : emp.full_name;
 
+  const getDept = (emp: Employee) =>
+    lang === "en" && emp.department_en ? emp.department_en : emp.department;
 
-  const getDeptName = (emp: Employee) => {
-    const item = deptMap[emp.department_id];
-    if (!item) return emp.department;
-    return lang === "en" && item.name_en ? item.name_en : item.name_ar;
+  const getJob = (emp: Employee) =>
+    lang === "en" && emp.job_title_en ? emp.job_title_en : emp.job_title;
+
+  const STATUS_COLORS: Record<string, string> = {
+    active:   "bg-emerald-500/10 text-emerald-700",
+    inactive: "bg-red-500/10 text-red-700",
+    on_leave: "bg-blue-500/10 text-blue-700",
   };
 
-  const getBranchName = (emp: Employee) => {
-    const item = branchMap[emp.branch_id];
-    if (!item) return emp.branch;
-    return lang === "en" && item.name_en ? item.name_en : item.name_ar;
-  };
-
-  const getJobTitleName = (emp: Employee) => {
-    const item = jtMap[emp.job_title];
-    if (!item) return emp.job_title;
-    return lang === "en" && item.name_en ? item.name_en : item.name_ar;
-  };
-
-  const getStatusBadge = (statusCode: string, status: string) => {
-    const colors: Record<string, string> = {
-      active: "bg-emerald-500/10 text-emerald-700",
-      inactive: "bg-red-500/10 text-red-700",
-      on_leave: "bg-amber-500/10 text-amber-700",
-      terminated: "bg-gray-500/10 text-gray-700",
-      resigned: "bg-orange-500/10 text-orange-700",
-    };
-    const statusLabels: Record<string, string> = lang === "en" ? {
-      active: "Active", inactive: "Inactive", on_leave: "On Leave",
-      terminated: "Terminated", resigned: "Resigned",
-    } : {};
-    return (
-      <Badge variant="outline" className={`${colors[statusCode] || colors.inactive} border-0 text-[10px]`}>
-        {statusLabels[statusCode] || status}
-      </Badge>
-    );
-  };
+  const stats = data?.stats;
+  const totalPages = data?.total_pages || 1;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
+
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{d.employeesTitle}</h1>
           <p className="text-muted-foreground mt-1">{d.employeesDesc}</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => router.push("/hr/employees/import")} className="gap-2">
-            <Upload className="w-4 h-4" />{d.importBtn}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline" size="sm"
+            onClick={() => router.push("/hr/employees/import")}
+            className="gap-2"
+          >
+            <Upload className="w-4 h-4" />
+            {d.importEmployees}
           </Button>
-          <Button onClick={() => router.push("/hr/employees/import")} className="gap-2 bg-brand-primary hover:bg-brand-primary/90">
-            <Plus className="w-4 h-4" />{d.addEmployee}
+          <Button
+            size="sm"
+            onClick={() => setShowCreate(true)}
+            className="gap-2 bg-brand-primary hover:bg-brand-secondary"
+          >
+            <Plus className="w-4 h-4" />
+            {d.addEmployee}
           </Button>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard icon={Users} label={d.totalEmployees} value={employees.length} color="text-blue-600 bg-blue-500/10" />
-        <StatCard icon={UserCheck} label={d.activeEmployeesCount} value={activeCount} color="text-emerald-600 bg-emerald-500/10" />
-        <StatCard icon={Building2} label={d.departments} value={departments.length} color="text-purple-600 bg-purple-500/10" />
-        <StatCard icon={UserX} label={d.inactiveEmployees} value={inactiveCount} color="text-red-600 bg-red-500/10" />
+      {/* ── Stats Cards ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          {
+            icon: Users,
+            label: d.totalEmployees,
+            value: stats?.total ?? data?.count ?? 0,
+            color: "bg-brand-primary/10 text-brand-primary",
+          },
+          {
+            icon: UserCheck,
+            label: d.activeEmployeesCount,
+            value: stats?.active ?? 0,
+            color: "bg-emerald-500/10 text-emerald-600",
+          },
+          {
+            icon: UserX,
+            label: d.inactiveEmployees,
+            value: stats?.inactive ?? 0,
+            color: "bg-red-500/10 text-red-600",
+          },
+          {
+            icon: Building2,
+            label: d.onLeave,
+            value: stats?.on_leave ?? 0,
+            color: "bg-blue-500/10 text-blue-600",
+          },
+        ].map((s, i) => (
+          <Card key={i} className="border-border/50">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3">
+                <div className={`w-11 h-11 rounded-xl ${s.color} flex items-center justify-center`}>
+                  <s.icon className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">{s.label}</p>
+                  <p className="text-2xl font-bold">
+                    {loading ? "..." : Number(s.value).toLocaleString(
+                      lang === "ar" ? "ar-EG" : "en-US"
+                    )}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[250px]">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder={d.searchEmployees}
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
-            className="pr-10"
-          />
-        </div>
+      {/* ── Filters ── */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap gap-3 items-center">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder={d.searchEmployees}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pr-10"
+              />
+            </div>
 
-        <Select value={deptFilter} onValueChange={v => { setDeptFilter(v); setPage(1); }}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder={d.deptFilter} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{d.allDepts}</SelectItem>
-            {departments.map(dep => (
-              <SelectItem key={dep} value={dep}>{dep}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+            {/* Department Filter */}
+            <Select value={deptFilter} onValueChange={setDeptFilter}>
+              <SelectTrigger className="w-44">
+                <SelectValue placeholder={d.filterDept} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{d.allDepartments}</SelectItem>
+                {departments.map(dep => (
+                  <SelectItem key={dep.id} value={String(dep.id)}>
+                    {lang === "en" && dep.name_en ? dep.name_en : dep.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-        <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); setPage(1); }}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder={d.statusFilter} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{d.allStatuses}</SelectItem>
-            <SelectItem value="active">{d.statusActive}</SelectItem>
-            <SelectItem value="inactive">{d.statusInactive}</SelectItem>
-            <SelectItem value="on_leave">{d.statusOnLeave}</SelectItem>
-            <SelectItem value="terminated">{d.statusTerminated}</SelectItem>
-            <SelectItem value="resigned">{d.statusResigned}</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+            {/* Status Filter */}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder={d.filterStatus} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{d.allStatuses}</SelectItem>
+                <SelectItem value="active">
+                  {lang === "ar" ? "نشط" : "Active"}
+                </SelectItem>
+                <SelectItem value="inactive">
+                  {lang === "ar" ? "غير نشط" : "Inactive"}
+                </SelectItem>
+                <SelectItem value="on_leave">
+                  {lang === "ar" ? "في إجازة" : "On Leave"}
+                </SelectItem>
+              </SelectContent>
+            </Select>
 
-      {/* Count */}
-      <div className="text-sm text-muted-foreground">
-        {d.showingOf} <span className="font-semibold text-foreground">{paginatedEmployees.length}</span> {d.of}{" "}
-        <span className="font-semibold text-foreground">{filteredEmployees.length}</span> {d.employee_count}
-        {filteredEmployees.length !== employees.length && (
-          <span> ({d.ofTotal} {employees.length})</span>
-        )}
-      </div>
+            {/* Results count */}
+            <span className="text-sm text-muted-foreground whitespace-nowrap">
+              {data?.count
+                ? `${Number(data.count).toLocaleString(lang === "ar" ? "ar-EG" : "en-US")} ${lang === "ar" ? "موظف" : "employees"}`
+                : ""}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Table */}
+      {/* ── Table ── */}
       {loading ? (
         <div className="flex items-center justify-center py-24">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
+      ) : !data?.results?.length ? (
+        <Card>
+          <CardContent className="py-24 text-center">
+            <Users className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
+            <p className="font-medium text-muted-foreground">{d.noEmployees}</p>
+          </CardContent>
+        </Card>
       ) : (
-        <Card className="border-border/50">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colEmployee}</TableHead>
-                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colCode}</TableHead>
-                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colDept}</TableHead>
-                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colJobTitle}</TableHead>
-                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colBranch}</TableHead>
-                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colPhone}</TableHead>
-                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colStatus}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedEmployees.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                    <p>{d.noEmployees}</p>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                paginatedEmployees.map(emp => (
-                  <TableRow
-                    key={emp.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => router.push(`/hr/employees/${emp.id}`)}
-                  >
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-9 h-9">
-                          <AvatarFallback className="bg-brand-primary/10 text-brand-primary text-sm font-semibold">
-                            {emp.full_name?.[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium">{emp.full_name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{emp.employee_code}</TableCell>
-                    <TableCell>{getDeptName(emp)}</TableCell>
-                    <TableCell>{getJobTitleName(emp)}</TableCell>
-                    <TableCell>{getBranchName(emp)}</TableCell>
-                    <TableCell dir="ltr">
-                      <span>{emp.phone}</span>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(emp.status_code, emp.status)}</TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    {[
+                      d.employeeName,
+                      d.employeeCode,
+                      d.department,
+                      d.jobTitle,
+                      lang === "ar" ? "الموبايل" : "Phone",
+                      d.status,
+                    ].map((h, i) => (
+                      <th
+                        key={i}
+                        className="text-right p-4 text-sm font-semibold text-muted-foreground whitespace-nowrap"
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.results.map((emp, i) => (
+                    <tr
+                      key={emp.id}
+                      onClick={() => router.push(`/hr/employees/${emp.id}`)}
+                      className={`border-b cursor-pointer transition hover:bg-muted/40 ${
+                        i % 2 === 0 ? "" : "bg-muted/20"
+                      }`}
+                    >
+                      {/* Name + Avatar */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="w-9 h-9">
+                            <AvatarFallback className="bg-brand-primary/10 text-brand-primary text-sm font-semibold">
+                              {emp.full_name?.[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="font-medium text-sm whitespace-nowrap">
+                            {getName(emp)}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Code */}
+                      <td className="p-4">
+                        <span className="font-mono text-sm text-muted-foreground">
+                          {emp.employee_code}
+                        </span>
+                      </td>
+
+                      {/* Department */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <Building2 className="w-3 h-3" />
+                          <span>{getDept(emp) || "—"}</span>
+                        </div>
+                      </td>
+
+                      {/* Job Title */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <Briefcase className="w-3 h-3" />
+                          <span>{getJob(emp) || "—"}</span>
+                        </div>
+                      </td>
+
+                      {/* Phone */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground" dir="ltr">
+                          <Phone className="w-3 h-3" />
+                          <span className="font-mono text-xs">{emp.phone || "—"}</span>
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td className="p-4">
+                        <Badge
+                          className={`border-0 text-xs ${
+                            STATUS_COLORS[emp.status_code] || "bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          {emp.status}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* ── Pagination ── */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between p-4 border-t">
+                <Button
+                  variant="outline" size="sm"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="gap-1"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                  {lang === "ar" ? "السابق" : "Prev"}
+                </Button>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {lang === "ar"
+                      ? `صفحة ${page} من ${totalPages}`
+                      : `Page ${page} of ${totalPages}`}
+                  </span>
+                </div>
+
+                <Button
+                  variant="outline" size="sm"
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="gap-1"
+                >
+                  {lang === "ar" ? "التالي" : "Next"}
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+          </CardContent>
         </Card>
       )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page <= 1}
-            onClick={() => setPage(p => p - 1)}
-          >
-            {lang === "en" ? "Previous" : "السابق"}
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            {page} / {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= totalPages}
-            onClick={() => setPage(p => p + 1)}
-          >
-            {lang === "en" ? "Next" : "التالي"}
-          </Button>
-        </div>
-      )}
+      {/* ── Create Employee Dialog ── */}
+      <CreateEmployeeDialog
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onSuccess={() => loadEmployees()}
+        departments={departments}
+        branches={branches}
+        jobTitles={jobTitles}
+      />
     </div>
   );
 }

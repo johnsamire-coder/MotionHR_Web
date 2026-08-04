@@ -1,27 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
-  Bell, BellRing, Users, Loader2, Plus, Calendar,
-  Send, Filter, MessageSquare, Search, AlertCircle,
-  CheckCircle2, Circle,
+  Bell, Plus, Search, Loader2, Trash2, Edit2,
+  BarChart2, CheckCircle, Clock, AlertCircle,
+  Info, X, Eye, EyeOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select, SelectContent, SelectItem,
-  SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog, DialogContent, DialogDescription,
-  DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
@@ -29,299 +26,329 @@ interface Announcement {
   id: number;
   title: string;
   content: string;
-  author_name?: string;
-  created_at?: string;
-  priority?: string;
+  priority: "low" | "medium" | "high";
+  priority_display?: string;
   is_read?: boolean;
+  created_at: string;
+  created_by_name?: string;
+  read_count?: number;
+  total_recipients?: number;
 }
 
-interface AnnouncementsData {
-  announcements: Announcement[];
-  unread_count: number;
-  total: number;
-}
+const PRIORITY_CONFIG = {
+  high:   { color: "text-red-700",   bg: "bg-red-500/10",   border: "border-red-400",   icon: AlertCircle },
+  medium: { color: "text-amber-700", bg: "bg-amber-500/10", border: "border-amber-400", icon: Info },
+  low:    { color: "text-blue-700",  bg: "bg-blue-500/10",  border: "border-blue-400",  icon: CheckCircle },
+};
 
-function StatCard({
-  icon: Icon, label, value, color,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: number;
-  color: string;
-}) {
-  return (
-    <Card className="border-border/50">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${color}`}>
-            <Icon className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="text-xl font-bold">{value}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+const EMPTY_FORM = { title: "", content: "", priority: "medium" as const };
 
 export default function AnnouncementsPage() {
   const d = useDict();
   const lang = useLangStore((s) => s.lang);
+  const ar = lang === "ar";
 
-  const [data, setData] = useState<AnnouncementsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [formData, setFormData] = useState({
-    title: "",
-    content: "",
-    priority: "medium",
-  });
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loading, setLoading]             = useState(true);
+  const [search, setSearch]               = useState("");
+  const [filter, setFilter]               = useState<"all" | "unread" | "read">("all");
+
+  // Dialogs
+  const [showCreate, setShowCreate]   = useState(false);
+  const [editItem, setEditItem]       = useState<Announcement | null>(null);
+  const [deleteId, setDeleteId]       = useState<number | null>(null);
+  const [statsItem, setStatsItem]     = useState<Announcement | null>(null);
+  const [statsData, setStatsData]     = useState<{ read_count: number; total: number } | null>(null);
+
+  const [form, setForm]         = useState({ ...EMPTY_FORM });
+  const [saving, setSaving]     = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
 
-  const fetchAnnouncements = () => {
+  // ── Load ────────────────────────────────────────────────
+  const load = useCallback(() => {
     if (!token) return;
     setLoading(true);
-    fetch("/api/announcements", {
-      headers: { Authorization: authHeader },
-    })
+    fetch("/api/announcements", { headers: { Authorization: authHeader } })
       .then(r => r.json())
-      .then(setData)
+      .then(data => setAnnouncements(data?.announcements || data || []))
       .catch(() => toast.error(d.failedLoad))
       .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    fetchAnnouncements();
   }, []);
 
-  const announcements = data?.announcements || [];
+  useEffect(() => { load(); }, []);
 
-  const filtered = announcements.filter(a => {
-    const matchSearch = !search ||
-      a.title.toLowerCase().includes(search.toLowerCase()) ||
-      a.content.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filter === "all" ||
-      (filter === "unread" && !a.is_read) ||
-      (filter === "read" && a.is_read);
-    return matchSearch && matchFilter;
-  });
-
-  const todayCount = announcements.filter(a => {
-    if (!a.created_at) return false;
-    const today = new Date().toDateString();
-    return new Date(a.created_at).toDateString() === today;
-  }).length;
-
+  // ── Create ──────────────────────────────────────────────
   const handleCreate = async () => {
-    if (!formData.title.trim()) { toast.error(d.annTitleRequired); return; }
-    if (!formData.content.trim()) { toast.error(d.annContentRequired); return; }
-
-    setIsSaving(true);
+    if (!form.title || !form.content) {
+      toast.error(ar ? "العنوان والمحتوى مطلوبين" : "Title and content are required");
+      return;
+    }
+    setSaving(true);
     try {
       const res = await fetch("/api/announcements", {
         method: "POST",
-        headers: {
-          Authorization: authHeader,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
+        headers: { Authorization: authHeader, "Content-Type": "application/json" },
+        body: JSON.stringify(form),
       });
-      if (!res.ok) throw new Error();
-      toast.success(d.annCreated);
-      setDialogOpen(false);
-      setFormData({ title: "", content: "", priority: "medium" });
-      fetchAnnouncements();
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(ar ? "تم إنشاء الإعلان" : "Announcement created");
+        setShowCreate(false);
+        setForm({ ...EMPTY_FORM });
+        load();
+      } else {
+        toast.error(data.message || (ar ? "فشل" : "Failed"));
+      }
     } catch {
-      toast.error(d.annCreateFailed);
+      toast.error(ar ? "خطأ" : "Error");
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   };
 
-  const getPriorityInfo = (priority?: string) => {
-    const map: Record<string, { label: string; color: string; borderColor: string }> = {
-      high: {
-        label: d.priorityHigh,
-        color: "bg-red-500/10 text-red-700 border-red-500/20",
-        borderColor: "border-l-red-500"
-      },
-      medium: {
-        label: d.priorityMedium,
-        color: "bg-amber-500/10 text-amber-700 border-amber-500/20",
-        borderColor: "border-l-amber-500"
-      },
-      low: {
-        label: d.priorityLow,
-        color: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
-        borderColor: "border-l-emerald-500"
-      },
-    };
-    return map[priority || "medium"] || map.medium;
+  // ── Edit ─────────────────────────────────────────────────
+  const handleEdit = async () => {
+    if (!editItem || !form.title || !form.content) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/hr/announcements/${editItem.id}`, {
+        method: "PUT",
+        headers: { Authorization: authHeader, "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(ar ? "تم التعديل" : "Updated");
+        setEditItem(null);
+        load();
+      } else {
+        toast.error(data.message || (ar ? "فشل" : "Failed"));
+      }
+    } catch {
+      toast.error(ar ? "خطأ" : "Error");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return "—";
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-
-    if (diffMins < 60) return lang === "ar" ? "الآن" : "Just now";
-    if (diffMins < 1440) {
-      const h = Math.floor(diffMins / 60);
-      return lang === "ar" ? `منذ ${h} ساعة` : `${h}h ago`;
+  // ── Delete ───────────────────────────────────────────────
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/hr/announcements/${deleteId}`, {
+        method: "DELETE",
+        headers: { Authorization: authHeader },
+      });
+      if (res.ok) {
+        toast.success(ar ? "تم الحذف" : "Deleted");
+        setDeleteId(null);
+        load();
+      } else {
+        toast.error(ar ? "فشل الحذف" : "Delete failed");
+      }
+    } catch {
+      toast.error(ar ? "خطأ" : "Error");
+    } finally {
+      setDeleting(false);
     }
+  };
 
-    return date.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", {
-      day: "numeric", month: "short", year: "numeric",
+  // ── Stats ────────────────────────────────────────────────
+  const loadStats = async (item: Announcement) => {
+    setStatsItem(item);
+    setStatsData(null);
+    try {
+      const res = await fetch(`/api/hr/announcements/${item.id}`, {
+        headers: { Authorization: authHeader },
+      });
+      const data = await res.json();
+      setStatsData({
+        read_count: data.read_count || 0,
+        total: data.total_recipients || 0,
+      });
+    } catch {
+      toast.error(ar ? "فشل تحميل الإحصائيات" : "Failed to load stats");
+    }
+  };
+
+  // ── Filter ───────────────────────────────────────────────
+  const filtered = announcements.filter(a => {
+    if (filter === "unread" && a.is_read)  return false;
+    if (filter === "read"   && !a.is_read) return false;
+    if (search && !a.title.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const unreadCount = announcements.filter(a => !a.is_read).length;
+  const todayCount  = announcements.filter(a =>
+    new Date(a.created_at).toDateString() === new Date().toDateString()
+  ).length;
+
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleDateString(ar ? "ar-EG" : "en-US", {
+      year: "numeric", month: "short", day: "numeric",
     });
+
+  const openEdit = (item: Announcement) => {
+    setForm({ title: item.title, content: item.content, priority: item.priority });
+    setEditItem(item);
   };
 
   return (
     <div className="space-y-6">
+
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{d.announcementsTitle}</h1>
           <p className="text-muted-foreground mt-1">{d.announcementsDesc}</p>
         </div>
-
-        <Button onClick={() => setDialogOpen(true)} className="gap-2 bg-brand-primary hover:bg-brand-primary/90">
+        <Button
+          onClick={() => { setForm({ ...EMPTY_FORM }); setShowCreate(true); }}
+          className="gap-2 bg-brand-primary hover:bg-brand-secondary"
+        >
           <Plus className="w-4 h-4" />
           {d.createAnnouncement}
         </Button>
       </div>
 
       {/* Stats */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {[...Array(3)].map((_, i) => <Card key={i}><CardContent className="p-4"><div className="h-16 bg-muted animate-pulse rounded" /></CardContent></Card>)}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <StatCard icon={Bell} label={d.totalAnnouncements} value={data?.total || 0} color="bg-blue-500/10 text-blue-600" />
-          <StatCard icon={BellRing} label={d.unreadAnnouncements} value={data?.unread_count || 0} color="bg-amber-500/10 text-amber-600" />
-          <StatCard icon={Calendar} label={d.todayAnnouncements} value={todayCount} color="bg-emerald-500/10 text-emerald-600" />
-        </div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {[
+          { label: ar ? "الكل" : "Total",      value: announcements.length, icon: Bell,         color: "text-brand-primary bg-brand-primary/10" },
+          { label: ar ? "غير مقروء" : "Unread", value: unreadCount,          icon: EyeOff,        color: "text-amber-600 bg-amber-500/10" },
+          { label: ar ? "اليوم" : "Today",      value: todayCount,            icon: CheckCircle,   color: "text-emerald-600 bg-emerald-500/10" },
+        ].map((s, i) => (
+          <Card key={i}>
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${s.color}`}>
+                <s.icon className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">{s.label}</p>
+                <p className="text-2xl font-bold">{s.value}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
       {/* Filters */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-wrap gap-3">
-            <div className="relative flex-1 min-w-[250px]">
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder={lang === "ar" ? "بحث في الإعلانات..." : "Search announcements..."}
+                placeholder={ar ? "بحث في الإعلانات..." : "Search announcements..."}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="pr-10"
               />
             </div>
-
-            <Select value={filter} onValueChange={setFilter}>
-              <SelectTrigger className="w-[180px]">
-                <Filter className="w-4 h-4 ml-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{d.filterAllAnn}</SelectItem>
-                <SelectItem value="unread">{d.filterUnread}</SelectItem>
-                <SelectItem value="read">{d.filterRead}</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex gap-1 border rounded-lg p-1">
+              {(["all", "unread", "read"] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`px-3 py-1.5 rounded text-sm font-medium transition ${
+                    filter === f
+                      ? "bg-brand-primary text-white"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {f === "all"    ? (ar ? "الكل"        : "All")    : ""}
+                  {f === "unread" ? (ar ? "غير مقروء"   : "Unread") : ""}
+                  {f === "read"   ? (ar ? "مقروء"        : "Read")   : ""}
+                </button>
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Announcements List */}
+      {/* List */}
       {loading ? (
-        <div className="flex items-center justify-center py-24">
+        <div className="flex justify-center py-24">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
       ) : filtered.length === 0 ? (
         <Card>
-          <CardContent className="py-24">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
-                <MessageSquare className="w-10 h-10 text-muted-foreground/50" />
-              </div>
-              <p className="font-medium text-lg mb-2">{d.noAnnouncementsData}</p>
-              <Button
-                onClick={() => setDialogOpen(true)}
-                variant="outline"
-                className="gap-2 mt-4"
-              >
-                <Plus className="w-4 h-4" />
-                {d.createFirstAnnouncement}
-              </Button>
-            </div>
+          <CardContent className="py-24 text-center">
+            <Bell className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
+            <p className="text-muted-foreground">
+              {ar ? "لا توجد إعلانات" : "No announcements"}
+            </p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
-          {filtered.map(ann => {
-            const priorityInfo = getPriorityInfo(ann.priority);
+          {filtered.map(item => {
+            const pc = PRIORITY_CONFIG[item.priority] || PRIORITY_CONFIG.low;
+            const PIcon = pc.icon;
             return (
               <Card
-                key={ann.id}
-                className={`border-l-4 ${priorityInfo.borderColor} hover:shadow-md transition-shadow`}
+                key={item.id}
+                className={`border-r-4 ${pc.border} hover:shadow-md transition`}
               >
                 <CardContent className="p-5">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-brand-primary/10 flex items-center justify-center flex-shrink-0">
-                      {ann.is_read ? (
-                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                      ) : (
-                        <BellRing className="w-5 h-5 text-amber-600" />
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <h3 className="font-semibold text-base">
-                          {ann.title}
-                        </h3>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <Badge className={`${priorityInfo.color} border font-medium text-[10px]`}>
-                            <AlertCircle className="w-3 h-3 ml-1" />
-                            {priorityInfo.label}
-                          </Badge>
-                          {!ann.is_read && (
-                            <Badge className="bg-brand-primary text-white border-0 text-[10px]">
-                              <Circle className="w-2 h-2 ml-1 fill-white" />
-                              {d.isUnread}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className={`w-10 h-10 rounded-lg ${pc.bg} flex items-center justify-center mt-0.5`}>
+                        <PIcon className={`w-5 h-5 ${pc.color}`} />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <p className="font-semibold">{item.title}</p>
+                          {!item.is_read && (
+                            <Badge className="bg-brand-primary/10 text-brand-primary border-0 text-[10px]">
+                              {ar ? "جديد" : "New"}
                             </Badge>
                           )}
+                          <Badge className={`${pc.bg} ${pc.color} border-0 text-[10px]`}>
+                            {item.priority_display || item.priority}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {item.content}
+                        </p>
+                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                          {item.created_by_name && <span>{item.created_by_name}</span>}
+                          <span>{fmtDate(item.created_at)}</span>
                         </div>
                       </div>
+                    </div>
 
-                      <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                        {ann.content}
-                      </p>
-
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                          <Avatar className="w-5 h-5">
-                            <AvatarFallback className="bg-brand-primary/10 text-brand-primary text-[10px]">
-                              {ann.author_name?.[0] || "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span>{ann.author_name || "—"}</span>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          <span>{formatDate(ann.created_at)}</span>
-                        </div>
-                      </div>
+                    {/* Actions */}
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="icon" variant="ghost"
+                        onClick={() => loadStats(item)}
+                        className="w-8 h-8 text-muted-foreground hover:text-brand-primary"
+                        title={ar ? "الإحصائيات" : "Stats"}
+                      >
+                        <BarChart2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="icon" variant="ghost"
+                        onClick={() => openEdit(item)}
+                        className="w-8 h-8 text-muted-foreground hover:text-amber-600"
+                        title={ar ? "تعديل" : "Edit"}
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="icon" variant="ghost"
+                        onClick={() => setDeleteId(item.id)}
+                        className="w-8 h-8 text-muted-foreground hover:text-red-600"
+                        title={ar ? "حذف" : "Delete"}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -331,92 +358,172 @@ export default function AnnouncementsPage() {
         </div>
       )}
 
-      {/* Create Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+      {/* ── Create Dialog ── */}
+      <Dialog open={showCreate} onOpenChange={v => !v && setShowCreate(false)}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{d.dialogNewAnnouncement}</DialogTitle>
-            <DialogDescription>{d.dialogNewAnnouncementDesc}</DialogDescription>
+            <DialogTitle>{ar ? "إنشاء إعلان جديد" : "Create Announcement"}</DialogTitle>
           </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">{d.annTitleLabel}</Label>
+          <div className="space-y-4 pt-2">
+            <div>
+              <label className="text-sm font-medium mb-1 block">{ar ? "العنوان *" : "Title *"}</label>
               <Input
-                id="title"
-                value={formData.title}
-                onChange={e => setFormData({ ...formData, title: e.target.value })}
-                placeholder={lang === "ar" ? "مثال: اجتماع الفريق يوم الأحد" : "Example: Team meeting on Sunday"}
-                disabled={isSaving}
+                value={form.title}
+                onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
+                placeholder={ar ? "عنوان الإعلان" : "Announcement title"}
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="content">{d.annContentLabel}</Label>
-              <Textarea
-                id="content"
-                value={formData.content}
-                onChange={e => setFormData({ ...formData, content: e.target.value })}
-                placeholder={lang === "ar" ? "اكتب محتوى الإعلان..." : "Write announcement content..."}
-                rows={5}
-                disabled={isSaving}
+            <div>
+              <label className="text-sm font-medium mb-1 block">{ar ? "المحتوى *" : "Content *"}</label>
+              <textarea
+                value={form.content}
+                onChange={e => setForm(p => ({ ...p, content: e.target.value }))}
+                rows={4}
+                placeholder={ar ? "نص الإعلان..." : "Announcement content..."}
+                className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background resize-none"
               />
             </div>
-
-            <div className="space-y-2">
-              <Label>{d.annPriorityLabel}</Label>
-              <Select
-                value={formData.priority}
-                onValueChange={v => setFormData({ ...formData, priority: v })}
-                disabled={isSaving}
+            <div>
+              <label className="text-sm font-medium mb-1 block">{ar ? "الأهمية" : "Priority"}</label>
+              <select
+                value={form.priority}
+                onChange={e => setForm(p => ({ ...p, priority: e.target.value as "low" | "medium" | "high" }))}
+                className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background"
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="high">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-red-500" />
-                      {d.priorityHigh}
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="medium">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-amber-500" />
-                      {d.priorityMedium}
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="low">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                      {d.priorityLow}
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                <option value="low">{ar ? "منخفضة" : "Low"}</option>
+                <option value="medium">{ar ? "متوسطة" : "Medium"}</option>
+                <option value="high">{ar ? "عالية" : "High"}</option>
+              </select>
             </div>
-
-            <div className="flex gap-2 justify-end pt-2">
+            <div className="flex gap-3 pt-2">
               <Button
-                variant="outline"
-                onClick={() => setDialogOpen(false)}
-                disabled={isSaving}
+                onClick={handleCreate} disabled={saving}
+                className="flex-1 bg-brand-primary hover:bg-brand-secondary gap-2"
               >
-                {d.cancel}
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                {ar ? "إنشاء" : "Create"}
               </Button>
-              <Button
-                onClick={handleCreate}
-                disabled={isSaving}
-                className="bg-brand-primary hover:bg-brand-primary/90 gap-2"
-              >
-                {isSaving ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" />{d.saving}</>
-                ) : (
-                  <><Send className="w-4 h-4" />{d.publishAnnouncement}</>
-                )}
+              <Button variant="outline" onClick={() => setShowCreate(false)} className="flex-1">
+                {ar ? "إلغاء" : "Cancel"}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ── Edit Dialog ── */}
+      <Dialog open={!!editItem} onOpenChange={v => !v && setEditItem(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{ar ? "تعديل الإعلان" : "Edit Announcement"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <label className="text-sm font-medium mb-1 block">{ar ? "العنوان *" : "Title *"}</label>
+              <Input
+                value={form.title}
+                onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">{ar ? "المحتوى *" : "Content *"}</label>
+              <textarea
+                value={form.content}
+                onChange={e => setForm(p => ({ ...p, content: e.target.value }))}
+                rows={4}
+                className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background resize-none"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">{ar ? "الأهمية" : "Priority"}</label>
+              <select
+                value={form.priority}
+                onChange={e => setForm(p => ({ ...p, priority: e.target.value as "low" | "medium" | "high" }))}
+                className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background"
+              >
+                <option value="low">{ar ? "منخفضة" : "Low"}</option>
+                <option value="medium">{ar ? "متوسطة" : "Medium"}</option>
+                <option value="high">{ar ? "عالية" : "High"}</option>
+              </select>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button
+                onClick={handleEdit} disabled={saving}
+                className="flex-1 bg-amber-600 hover:bg-amber-700 gap-2"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Edit2 className="w-4 h-4" />}
+                {ar ? "حفظ التعديلات" : "Save Changes"}
+              </Button>
+              <Button variant="outline" onClick={() => setEditItem(null)} className="flex-1">
+                {ar ? "إلغاء" : "Cancel"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Confirm ── */}
+      <AlertDialog open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {ar ? "حذف الإعلان" : "Delete Announcement"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {ar ? "هتحذف الإعلان ده نهائياً. مش هيرجع." : "This will permanently delete the announcement."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{ar ? "إلغاء" : "Cancel"}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {ar ? "حذف" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Stats Dialog ── */}
+      <Dialog open={!!statsItem} onOpenChange={v => !v && setStatsItem(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BarChart2 className="w-5 h-5 text-brand-primary" />
+              {ar ? "إحصائيات الإعلان" : "Announcement Stats"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <p className="font-medium text-sm">{statsItem?.title}</p>
+            {!statsData ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <Eye className="w-6 h-6 text-emerald-600 mx-auto mb-1" />
+                    <p className="text-2xl font-bold text-emerald-700">{statsData.read_count}</p>
+                    <p className="text-xs text-muted-foreground">{ar ? "قرأوا" : "Read"}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <Users className="w-6 h-6 text-brand-primary mx-auto mb-1" />
+                    <p className="text-2xl font-bold">{statsData.total}</p>
+                    <p className="text-xs text-muted-foreground">{ar ? "الكل" : "Total"}</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
