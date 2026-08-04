@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, Clock, Calendar, FileText,
   DollarSign, MapPin, Settings, Building2, Upload,
-  Briefcase, Bell, FileBarChart,
+  Briefcase, Bell, FileBarChart, Shield, BookOpen, GitBranch, UserMinus, Map, ScrollText, Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDict } from "@/lib/stores/language";
@@ -32,6 +32,15 @@ export function Sidebar() {
     { key: "shifts",           href: "/hr/shifts",            icon: Clock },
     { key: "jobTitles",        href: "/hr/job-titles",        icon: Briefcase },
     { key: "company",          href: "/hr/company",           icon: Building2 },
+    { key: "permissionsTitle",  href: "/hr/permissions",       icon: Shield },
+    { key: "policiesTitle",     href: "/hr/policies",          icon: BookOpen },
+    { key: "orgChartTitle",     href: "/hr/org-chart",         icon: GitBranch },
+    { key: "terminationTitle",  href: "/hr/termination",       icon: UserMinus },
+    { key: "workLocationsTitle",href: "/hr/work-locations",    icon: Map },
+    { key: "geofenceTitle",     href: "/hr/geofence",          icon: MapPin },
+    { key: "companyPoliciesTitle", href: "/hr/company-policies", icon: ScrollText },
+    { key: "leaveRecallTitle",  href: "/hr/leave-recall",      icon: Calendar },
+    { key: "flexShiftTitle",    href: "/hr/flex-shift",        icon: Zap },
     { key: "settings",         href: "/hr/settings",          icon: Settings },
   ] as const;
 
