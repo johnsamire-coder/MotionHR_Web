@@ -45,8 +45,8 @@ export default function ManagerLocationsPage() {
         headers: { Authorization: authHeader },
       });
       const data = await res.json();
-      const emps = data?.employees || data || [];
-      setEmployees(emps);
+      const emps = Array.isArray(data?.employees) ? data.employees : (Array.isArray(data) ? data : []);
+      setEmployees(Array.isArray(emps) ? emps : []);
       setLastUpdate(new Date());
       if (emps.length > 0) updateMapMarkers(emps);
     } catch {
@@ -288,3 +288,4 @@ export default function ManagerLocationsPage() {
     </div>
   );
 }
+

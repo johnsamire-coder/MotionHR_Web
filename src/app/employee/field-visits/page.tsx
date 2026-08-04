@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import {
   MapPin, Loader2, Plus, Send, Clock,
-  CheckCircle2, XCircle, Navigation, Building2,
-  Play, Square, Camera,
+  CheckCircle2, XCircle, Navigation,
+  History, Building2, Calendar, Check,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,21 @@ import {
 import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
+// ── Types ─────────────────────────────────────────
+interface Visit {
+  id: number;
+  visit_type_display?: string;
+  location_name: string;
+  purpose: string;
+  status: string;
+  arrival_time?: string;
+  arrival_date?: string;
+  arrival_address?: string;
+  departure_time?: string;
+  duration_minutes?: number;
+  is_active: boolean;
+}
+
 interface WorkLocation {
   id: number;
   name?: string;
@@ -26,224 +42,222 @@ interface WorkLocation {
   latitude?: number;
   longitude?: number;
   status?: string;
-  notes?: string;
-  visit_count?: number;
 }
 
-interface LocationType {
-  value: string;
-  label: string;
-  label_en?: string;
+interface AttStatus {
+  worker_type?: string;
 }
 
-const EMPTY_FORM = {
-  name: "",
-  location_type: "client",
-  address: "",
-  notes: "",
-  latitude: "",
-  longitude: "",
+interface SearchResult { lat: string; lon: string; display_name: string }
+
+const EGYPT_BOUNDS: [[number, number], [number, number]] = [[22.0, 24.7], [31.6, 36.9]];
+
+const LOC_STATUS: Record<string, { label_ar: string; label_en: string; color: string }> = {
+  approved: { label_ar: "معتمد",             label_en: "Approved", color: "bg-emerald-500/10 text-emerald-700" },
+  pending:  { label_ar: "بانتظار الموافقة",  label_en: "Pending",  color: "bg-amber-500/10 text-amber-700" },
+  rejected: { label_ar: "مرفوض",             label_en: "Rejected", color: "bg-red-500/10 text-red-700" },
 };
 
-const STATUS_CONFIG: Record<string, { label_ar: string; label_en: string; color: string }> = {
-  approved: { label_ar: "معتمد",          label_en: "Approved", color: "bg-emerald-500/10 text-emerald-700" },
-  pending:  { label_ar: "بانتظار الموافقة", label_en: "Pending",  color: "bg-amber-500/10 text-amber-700" },
-  rejected: { label_ar: "مرفوض",          label_en: "Rejected", color: "bg-red-500/10 text-red-700" },
-};
+function fmtMins(m?: number | null, ar = true) {
+  if (!m || m <= 0) return "—";
+  const h = Math.floor(m / 60), min = m % 60;
+  if (h > 0) return ar ? `${h}س ${min}د` : `${h}h ${min}m`;
+  return ar ? `${min}د` : `${min}m`;
+}
 
 export default function MyFieldVisitsPage() {
   const lang = useLangStore((s) => s.lang);
   const ar = lang === "ar";
 
-  const [locations, setLocations]   = useState<WorkLocation[]>([]);
-  const [locTypes, setLocTypes]     = useState<LocationType[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [showDialog, setShowDialog] = useState(false);
-  const [form, setForm]             = useState({ ...EMPTY_FORM });
-  const [submitting, setSubmitting] = useState(false);
-  const [gettingLoc, setGettingLoc] = useState(false);
-  const mapRef                      = useRef<HTMLDivElement>(null);
-  const mapInstanceRef              = useRef<unknown>(null);
-  const markerRef                   = useRef<unknown>(null);
+  const [workerType, setWorkerType]       = useState("office");
+  const [visits, setVisits]               = useState<Visit[]>([]);
+  const [workLocations, setWorkLocations] = useState<WorkLocation[]>([]);
+  const [loading, setLoading]             = useState(true);
+  const [showPropose, setShowPropose]     = useState(false);
+  const [proposeForm, setProposeForm]     = useState({ name: "", location_type: "client", address: "", notes: "", lat: "", lng: "" });
+  const [submitting, setSubmitting]       = useState(false);
+  const [gettingLoc, setGettingLoc]       = useState(false);
+  const [searchQuery, setSearchQuery]     = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching]     = useState(false);
+
+  const mapRef     = useRef<HTMLDivElement>(null);
+  const mapInst    = useRef<unknown>(null);
+  const markerRef  = useRef<unknown>(null);
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
-  const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
-  const langHeader = ar ? "ar" : "en";
+  const authH = token?.startsWith("Token") ? token : `Token ${token}`;
+  const langH = ar ? "ar" : "en";
 
-  // ── Load Data ────────────────────────────────────────────
+  const isFieldAssigned = workerType === "field_assigned";
+  const isFieldFree     = workerType === "field_free";
+  const isField         = isFieldAssigned || isFieldFree;
+
+  // ── Load ─────────────────────────────────────────
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     try {
-      const [locsRes, typesRes] = await Promise.all([
-        fetch("/api/employee/work-locations", {
-          headers: { Authorization: authHeader, "Accept-Language": langHeader },
-        }),
-        fetch("/api/employee/work-locations?types=true", {
-          headers: { Authorization: authHeader, "Accept-Language": langHeader },
-        }),
+      const headers = { Authorization: authH, "Accept-Language": langH };
+      const [stRes, fvRes, locRes] = await Promise.all([
+        fetch("/api/employee/status", { headers }),
+        fetch("/api/employee/field-visits", { headers }),
+        fetch("/api/employee/work-locations", { headers }),
       ]);
-      const [locsData, typesData] = await Promise.all([locsRes.json(), typesRes.json()]);
-      setLocations(locsData?.locations || []);
-      setLocTypes(typesData?.types || [
-        { value: "client",  label: ar ? "عميل"      : "Client"      },
-        { value: "office",  label: ar ? "مكتب"      : "Office"      },
-        { value: "site",    label: ar ? "موقع عمل"  : "Work Site"   },
-        { value: "branch",  label: ar ? "فرع"       : "Branch"      },
-        { value: "other",   label: ar ? "أخرى"      : "Other"       },
-      ]);
+      const [stD, fvD, locD] = await Promise.all([stRes.json(), fvRes.json(), locRes.json()]);
+      setWorkerType(stD?.worker_type || "office");
+      setVisits(fvD?.visits || []);
+      setWorkLocations(locD?.locations || []);
     } catch {
       toast.error(ar ? "فشل تحميل البيانات" : "Failed to load");
     } finally {
       setLoading(false);
     }
-  }, [token, ar]);
+  }, [token, ar, authH, langH]);
 
   useEffect(() => { load(); }, [load]);
 
-  // ── Init Map in Dialog ───────────────────────────────────
-  const initMap = async (lat = 30.0444, lng = 31.2357) => {
-    if (!mapRef.current) return;
-    if (mapInstanceRef.current) return;
+  // ── Tab Logic ────────────────────────────────────
+  const [tab, setTab] = useState<"history" | "locations">("history");
 
+  // ── Map Init ─────────────────────────────────────
+  const initMap = async () => {
+    if (!mapRef.current || mapInst.current) return;
     try {
       await import("leaflet/dist/leaflet.css");
       const L = await import("leaflet");
-
-      const map = L.map(mapRef.current).setView([lat, lng], 13);
+      const center: [number, number] = [30.0444, 31.2357];
+      const map = L.map(mapRef.current, {
+        maxBounds: L.latLngBounds(EGYPT_BOUNDS[0], EGYPT_BOUNDS[1]),
+        maxBoundsViscosity: 1.0,
+        minZoom: 5,
+      }).setView(center, 6);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap",
       }).addTo(map);
-
-      const marker = L.marker([lat, lng], { draggable: true }).addTo(map);
-
+      const marker = L.marker(center, { draggable: true }).addTo(map);
+      const update = (lat: number, lng: number) => {
+        setProposeForm(p => ({ ...p, lat: lat.toFixed(6), lng: lng.toFixed(6) }));
+      };
       marker.on("dragend", () => {
-        const pos = (marker as { getLatLng: () => { lat: number; lng: number } }).getLatLng();
-        setForm(p => ({
-          ...p,
-          latitude: String(pos.lat.toFixed(6)),
-          longitude: String(pos.lng.toFixed(6)),
-        }));
+        const pos = (marker as unknown as { getLatLng: () => { lat: number; lng: number } }).getLatLng();
+        update(pos.lat, pos.lng);
       });
-
       map.on("click", (e: { latlng: { lat: number; lng: number } }) => {
-        (marker as { setLatLng: (pos: [number, number]) => void }).setLatLng([e.latlng.lat, e.latlng.lng]);
-        setForm(p => ({
-          ...p,
-          latitude: String(e.latlng.lat.toFixed(6)),
-          longitude: String(e.latlng.lng.toFixed(6)),
-        }));
+        (marker as unknown as { setLatLng: (p: [number, number]) => void }).setLatLng([e.latlng.lat, e.latlng.lng]);
+        update(e.latlng.lat, e.latlng.lng);
       });
-
-      mapInstanceRef.current = map;
+      mapInst.current = map;
       markerRef.current = marker;
-
-      setForm(p => ({
-        ...p,
-        latitude: String(lat.toFixed(6)),
-        longitude: String(lng.toFixed(6)),
-      }));
-    } catch (e) {
-      console.error("Map init error:", e);
-    }
+    } catch (e) { console.error("Map error:", e); }
   };
 
-  // ── Open Dialog + Init Map ───────────────────────────────
-  const openDialog = () => {
-    setForm({ ...EMPTY_FORM });
-    mapInstanceRef.current = null;
-    markerRef.current = null;
-    setShowDialog(true);
-    setTimeout(() => initMap(), 300);
+  // ── Search ───────────────────────────────────────
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    try {
+      const res = await fetch(`/api/geocode?q=${encodeURIComponent(searchQuery)}`);
+      const data: SearchResult[] = await res.json();
+      setSearchResults(data || []);
+      if (!data?.length) toast.error(ar ? "لم يتم إيجاد نتائج" : "No results found");
+    } catch { toast.error(ar ? "فشل البحث" : "Search failed"); }
+    finally { setIsSearching(false); }
   };
 
-  // ── Get GPS Location ─────────────────────────────────────
+  const selectResult = (item: SearchResult) => {
+    const lat = parseFloat(item.lat), lng = parseFloat(item.lon);
+    setProposeForm(p => ({ ...p, lat: lat.toFixed(6), lng: lng.toFixed(6), address: item.display_name }));
+    setSearchQuery("");
+    setSearchResults([]);
+    const map = mapInst.current as { setView: (p: [number, number], z: number) => void } | null;
+    const mk = markerRef.current as { setLatLng: (p: [number, number]) => void } | null;
+    if (map) map.setView([lat, lng], 15);
+    if (mk) mk.setLatLng([lat, lng]);
+  };
+
+  // ── GPS ──────────────────────────────────────────
   const getGPS = async () => {
     setGettingLoc(true);
     try {
       const pos = await new Promise<GeolocationPosition>((res, rej) =>
         navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000 })
       );
-      const { latitude: lat, longitude: lng } = pos.coords;
-      setForm(p => ({
-        ...p,
-        latitude: String(lat.toFixed(6)),
-        longitude: String(lng.toFixed(6)),
-      }));
-
-      const map = mapInstanceRef.current as {
-        setView: (pos: [number, number], zoom: number) => void
-      } | null;
-      const marker = markerRef.current as {
-        setLatLng: (pos: [number, number]) => void
-      } | null;
-
+      const lat = pos.coords.latitude, lng = pos.coords.longitude;
+      setProposeForm(p => ({ ...p, lat: lat.toFixed(6), lng: lng.toFixed(6) }));
+      const map = mapInst.current as { setView: (p: [number, number], z: number) => void } | null;
+      const mk = markerRef.current as { setLatLng: (p: [number, number]) => void } | null;
       if (map) map.setView([lat, lng], 15);
-      if (marker) marker.setLatLng([lat, lng]);
-
+      if (mk) mk.setLatLng([lat, lng]);
       toast.success(ar ? "تم تحديد موقعك ✅" : "Location captured ✅");
-    } catch {
-      toast.error(ar ? "فشل تحديد الموقع" : "Failed to get location");
-    } finally {
-      setGettingLoc(false);
-    }
+    } catch { toast.error(ar ? "فشل تحديد الموقع" : "Location failed"); }
+    finally { setGettingLoc(false); }
   };
 
-  // ── Submit ───────────────────────────────────────────────
-  const handleSubmit = async () => {
-    if (!form.name) {
-      toast.error(ar ? "اسم الموقع مطلوب" : "Location name is required");
+  // ── Open Propose ─────────────────────────────────
+  const openPropose = () => {
+    setProposeForm({ name: "", location_type: "client", address: "", notes: "", lat: "", lng: "" });
+    setSearchQuery(""); setSearchResults([]);
+    mapInst.current = null; markerRef.current = null;
+    setShowPropose(true);
+    setTimeout(() => initMap(), 300);
+  };
+
+  // ── Submit Propose ───────────────────────────────
+  const handlePropose = async () => {
+    if (!proposeForm.lat || !proposeForm.lng) {
+      toast.error(ar ? "يرجى تحديد الموقع على الخريطة" : "Please pin location on map");
       return;
     }
     setSubmitting(true);
     try {
-      const payload: Record<string, unknown> = {
-        name: form.name,
-        location_type: form.location_type,
-        address: form.address,
-        notes: form.notes,
-      };
-      if (form.latitude && form.longitude) {
-        payload.latitude = parseFloat(form.latitude);
-        payload.longitude = parseFloat(form.longitude);
-      }
-
+      // اسم الموقع = العنوان من الخريطة
+      const name = proposeForm.name || proposeForm.address || `${proposeForm.lat}, ${proposeForm.lng}`;
       const res = await fetch("/api/employee/work-locations", {
         method: "POST",
-        headers: {
-          Authorization: authHeader,
-          "Content-Type": "application/json",
-          "Accept-Language": langHeader,
-        },
-        body: JSON.stringify(payload),
+        headers: { Authorization: authH, "Content-Type": "application/json", "Accept-Language": langH },
+        body: JSON.stringify({
+          name,
+          location_type: proposeForm.location_type,
+          address: proposeForm.address,
+          notes: proposeForm.notes,
+          latitude: parseFloat(proposeForm.lat),
+          longitude: parseFloat(proposeForm.lng),
+        }),
       });
       const data = await res.json();
-
       if (res.ok && data.success !== false) {
-        toast.success(ar ? "تم إرسال الاقتراح للمدير ✅" : "Proposal sent to manager ✅");
-        setShowDialog(false);
-        setForm({ ...EMPTY_FORM });
-        mapInstanceRef.current = null;
+        toast.success(ar ? "تم إرسال الاقتراح للمدير ✅" : "Proposal sent ✅");
+        setShowPropose(false);
+        mapInst.current = null;
         await load();
       } else {
-        toast.error(data.message || data.error || (ar ? "فشل" : "Failed"));
+        toast.error(data.message || (ar ? "فشل" : "Failed"));
       }
-    } catch {
-      toast.error(ar ? "خطأ في الشبكة" : "Network error");
-    } finally {
-      setSubmitting(false);
-    }
+    } catch { toast.error(ar ? "خطأ" : "Error"); }
+    finally { setSubmitting(false); }
   };
 
-  const getStatusInfo = (s?: string) =>
-    STATUS_CONFIG[s || "pending"] || STATUS_CONFIG.pending;
-
-  const stats = {
-    total:    locations.length,
-    approved: locations.filter(l => l.status === "approved").length,
-    pending:  locations.filter(l => l.status === "pending").length,
-    rejected: locations.filter(l => l.status === "rejected").length,
+  // ── Visit Date Groups ────────────────────────────
+  const groupByDate = (visits: Visit[]) => {
+    const groups: Record<string, Visit[]> = {};
+    visits.forEach(v => {
+      const date = v.arrival_date || "unknown";
+      if (!groups[date]) groups[date] = [];
+      groups[date].push(v);
+    });
+    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
   };
+
+  const fmtDateLabel = (d: string) => {
+    if (d === new Date().toISOString().split("T")[0])
+      return ar ? "اليوم" : "Today";
+    return new Date(d).toLocaleDateString(ar ? "ar-EG" : "en-US", {
+      weekday: "short", day: "numeric", month: "short", year: "numeric",
+    });
+  };
+
+  const visitGroups = groupByDate(visits);
 
   return (
     <div className="space-y-6 pb-6">
@@ -256,139 +270,198 @@ export default function MyFieldVisitsPage() {
           </h1>
           <p className="text-muted-foreground mt-1">
             {ar
-              ? "مواقع عملك الميدانية — اقترح مواقع للمدير ليوافق عليها"
-              : "Your field work locations — propose locations for manager approval"}
+              ? isFieldAssigned
+                ? "مواقعك المعتمدة وسجل زياراتك"
+                : "سجل زياراتك الميدانية"
+              : isFieldAssigned
+                ? "Your approved locations and visit history"
+                : "Your field visit history"}
           </p>
         </div>
-        <Button
-          onClick={openDialog}
-          className="gap-2 bg-brand-primary hover:bg-brand-secondary"
-        >
-          <Plus className="w-4 h-4" />
-          {ar ? "اقتراح موقع جديد" : "Propose Location"}
-        </Button>
+        {tab === "locations" && isFieldAssigned && (
+          <Button onClick={openPropose} className="gap-2 bg-brand-primary hover:bg-brand-secondary">
+            <Plus className="w-4 h-4" />
+            {ar ? "اقتراح موقع" : "Propose Location"}
+          </Button>
+        )}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: ar ? "الكل"     : "Total",    value: stats.total,    color: "text-brand-primary bg-brand-primary/10", icon: MapPin },
-          { label: ar ? "معتمدة"  : "Approved", value: stats.approved, color: "text-emerald-700 bg-emerald-500/10",    icon: CheckCircle2 },
-          { label: ar ? "معلقة"   : "Pending",  value: stats.pending,  color: "text-amber-700 bg-amber-500/10",        icon: Clock },
-          { label: ar ? "مرفوضة" : "Rejected", value: stats.rejected, color: "text-red-700 bg-red-500/10",            icon: XCircle },
-        ].map((s, i) => (
-          <Card key={i}>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${s.color}`}>
-                <s.icon className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{s.label}</p>
-                <p className="text-xl font-bold">{s.value}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Tabs — only for field_assigned */}
+      {isFieldAssigned && (
+        <div className="flex gap-1 border-b">
+          {[
+            { key: "locations" as const, label: ar ? "مواقعي المعتمدة" : "My Locations", icon: Building2 },
+            { key: "history" as const,   label: ar ? "سجل الزيارات"   : "Visit History", icon: History },
+          ].map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`pb-3 px-3 text-sm font-medium border-b-2 flex items-center gap-2 whitespace-nowrap transition ${
+                tab === t.key
+                  ? "border-brand-primary text-brand-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <t.icon className="w-4 h-4" />
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {/* Info Card */}
-      <Card className="border-blue-500/20 bg-blue-500/5">
-        <CardContent className="p-4">
-          <p className="text-sm text-blue-700 font-medium mb-1">
-            {ar ? "كيف تعمل الزيارات الميدانية؟" : "How do field visits work?"}
-          </p>
-          <ul className="text-xs text-blue-600 space-y-1 list-disc list-inside">
-            <li>{ar ? "اقترح موقع عمل وحدد الـ GPS بدقة" : "Propose a location and set GPS accurately"}</li>
-            <li>{ar ? "المدير يوافق على الموقع" : "Manager approves the location"}</li>
-            <li>{ar ? "بعد الموافقة تقدر تسجل حضور من الموقع ده في الموبايل" : "After approval you can check-in from this location on mobile"}</li>
-            <li>{ar ? "الموظف الميداني المحدد لازم يسجل حضور من موقعه المعتمد" : "Field-assigned employees must check-in from approved locations"}</li>
-          </ul>
-        </CardContent>
-      </Card>
-
-      {/* Locations List */}
+      {/* Content */}
       {loading ? (
         <div className="flex justify-center py-24">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
-      ) : locations.length === 0 ? (
-        <Card>
-          <CardContent className="py-24 text-center">
-            <MapPin className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="font-medium mb-2">
-              {ar ? "لا يوجد مواقع مقترحة" : "No locations proposed"}
-            </p>
-            <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
-              {ar
-                ? "اقترح موقع عمل وحدد الـ GPS على الخريطة ليوافق عليه المدير"
-                : "Propose a work location and set GPS on the map for manager approval"}
-            </p>
-            <Button onClick={openDialog} className="gap-2">
-              <Plus className="w-4 h-4" />
-              {ar ? "اقتراح موقع" : "Propose Location"}
-            </Button>
-          </CardContent>
-        </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {locations.map(loc => {
-            const sc = getStatusInfo(loc.status);
-            return (
-              <Card key={loc.id} className="hover:shadow-md transition">
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-xl bg-brand-primary/10 flex items-center justify-center">
-                        <MapPin className="w-5 h-5 text-brand-primary" />
+
+        // ─── Locations Tab (field_assigned only) ───────────
+        tab === "locations" && isFieldAssigned ? (
+          <div className="space-y-3">
+            {workLocations.length === 0 ? (
+              <Card>
+                <CardContent className="py-16 text-center">
+                  <Building2 className="w-14 h-14 text-muted-foreground/30 mx-auto mb-4" />
+                  <p className="font-medium mb-2">
+                    {ar ? "لا توجد مواقع معتمدة" : "No approved locations"}
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {ar ? "اقترح موقع من الخريطة ليوافق عليه المدير" : "Propose from map for manager approval"}
+                  </p>
+                  <Button onClick={openPropose} className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    {ar ? "اقتراح موقع" : "Propose"}
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              workLocations.map(loc => {
+                const sc = LOC_STATUS[loc.status || "pending"];
+                return (
+                  <Card key={loc.id} className="hover:shadow-md transition">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-brand-primary/10 flex items-center justify-center">
+                            <MapPin className="w-5 h-5 text-brand-primary" />
+                          </div>
+                          <div>
+                            <p className="font-semibold">{loc.name}</p>
+                            {loc.location_type_display && (
+                              <p className="text-xs text-muted-foreground">{loc.location_type_display}</p>
+                            )}
+                            {loc.address && (
+                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{loc.address}</p>
+                            )}
+                            {loc.latitude && loc.longitude && (
+                              <p className="text-xs font-mono text-muted-foreground mt-0.5" dir="ltr">
+                                📍 {Number(loc.latitude).toFixed(5)}, {Number(loc.longitude).toFixed(5)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <Badge className={`${sc.color} border-0 text-[10px] shrink-0`}>
+                          {ar ? sc.label_ar : sc.label_en}
+                        </Badge>
                       </div>
-                      <div>
-                        <p className="font-semibold">{loc.name}</p>
-                        {loc.location_type_display && (
-                          <Badge variant="outline" className="mt-1 text-[10px]">
-                            {loc.location_type_display}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <Badge className={`${sc.color} border-0 text-[10px]`}>
-                      {ar ? sc.label_ar : sc.label_en}
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
+          </div>
+
+        // ─── History Tab (both field types) ────────────────
+        ) : (
+          <div className="space-y-4">
+            {visits.length === 0 ? (
+              <Card>
+                <CardContent className="py-16 text-center">
+                  <History className="w-14 h-14 text-muted-foreground/30 mx-auto mb-4" />
+                  <p className="text-muted-foreground">
+                    {ar ? "لا يوجد سجل زيارات" : "No visit history"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {ar
+                      ? "ابدأ زيارة ميدانية من شاشة الحضور والانصراف"
+                      : "Start a field visit from Attendance page"}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              visitGroups.map(([date, dayVisits]) => (
+                <div key={date}>
+                  {/* Date Header */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className="w-4 h-4 text-brand-primary" />
+                    <h3 className="text-sm font-semibold">{fmtDateLabel(date)}</h3>
+                    <Badge variant="outline" className="text-[10px]">
+                      {dayVisits.length} {ar ? "زيارة" : "visits"}
                     </Badge>
                   </div>
 
-                  {loc.address && (
-                    <p className="text-sm text-muted-foreground mb-2">
-                      📍 {loc.address}
-                    </p>
-                  )}
+                  {/* Visits */}
+                  <div className="space-y-2">
+                    {dayVisits.map(v => (
+                      <Card key={v.id} className={`${v.is_active ? "border-blue-500/30 bg-blue-500/5" : ""}`}>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1">
+                              {/* Type + Status */}
+                              <div className="flex items-center gap-2 flex-wrap mb-1">
+                                {v.is_active && (
+                                  <span className="flex items-center gap-1 text-[10px] text-blue-700 font-semibold">
+                                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                                    {ar ? "نشطة" : "Active"}
+                                  </span>
+                                )}
+                                <span className="text-xs font-medium text-muted-foreground">
+                                  {v.visit_type_display}
+                                </span>
+                              </div>
 
-                  {loc.latitude && loc.longitude && (
-                    <p className="text-xs font-mono text-muted-foreground" dir="ltr">
-                      {Number(loc.latitude).toFixed(5)}, {Number(loc.longitude).toFixed(5)}
-                    </p>
-                  )}
+                              {/* Time */}
+                              <div className="flex items-center gap-2 text-sm font-mono mb-1">
+                                <span className="text-emerald-700">{v.arrival_time || "—"}</span>
+                                <span className="text-muted-foreground">→</span>
+                                <span className="text-red-700">{v.departure_time || (v.is_active ? (ar ? "..." : "...") : "—")}</span>
+                                {v.duration_minutes != null && v.duration_minutes > 0 && (
+                                  <span className="text-xs text-muted-foreground">
+                                    ({fmtMins(v.duration_minutes, ar)})
+                                  </span>
+                                )}
+                              </div>
 
-                  {loc.visit_count !== undefined && loc.visit_count > 0 && (
-                    <div className="mt-3 pt-3 border-t flex items-center gap-1 text-sm text-muted-foreground">
-                      <Navigation className="w-3.5 h-3.5" />
-                      <span>
-                        {loc.visit_count} {ar ? "زيارة" : "visits"}
-                      </span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                              {/* Location */}
+                              {v.arrival_address && (
+                                <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                                  <MapPin className="w-3 h-3 mt-0.5 shrink-0 text-brand-primary" />
+                                  <span className="line-clamp-1">{v.arrival_address}</span>
+                                </div>
+                              )}
+
+                              {/* Purpose — for field_free only */}
+                              {isFieldFree && v.purpose && (
+                                <p className="text-xs text-brand-primary mt-1">
+                                  {ar ? "الغرض" : "Purpose"}: {v.purpose}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )
       )}
 
-      {/* ── Propose Location Dialog ── */}
-      <Dialog
-        open={showDialog}
-        onOpenChange={v => {
-          if (!v) { setShowDialog(false); mapInstanceRef.current = null; }
-        }}
-      >
+      {/* ══ Propose Location Dialog (field_assigned only) ══ */}
+      <Dialog open={showPropose} onOpenChange={v => { if (!v) { setShowPropose(false); mapInst.current = null; } }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -396,130 +469,114 @@ export default function MyFieldVisitsPage() {
               {ar ? "اقتراح موقع جديد" : "Propose New Location"}
             </DialogTitle>
           </DialogHeader>
-
           <div className="space-y-4 pt-2">
-            {/* Name + Type */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium mb-1 block">
-                  {ar ? "اسم الموقع *" : "Location Name *"}
-                </label>
+
+            <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
+              {ar
+                ? "حدد الموقع على الخريطة أو ابحث عنه — سيتم إرساله للمدير للموافقة"
+                : "Pin location on map or search — it will be sent to manager for approval"}
+            </p>
+
+            {/* Search */}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  value={form.name}
-                  onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                  placeholder={ar ? "مثال: مكتب العميل أحمد" : "e.g. Client Ahmed Office"}
+                  placeholder={ar ? "ابحث عن مكان في مصر..." : "Search in Egypt..."}
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleSearch()}
+                  className="pr-9"
                 />
               </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">
-                  {ar ? "نوع الموقع" : "Location Type"}
-                </label>
-                <select
-                  value={form.location_type}
-                  onChange={e => setForm(p => ({ ...p, location_type: e.target.value }))}
-                  className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background"
-                >
-                  {locTypes.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-              </div>
+              <Button onClick={handleSearch} disabled={isSearching} variant="secondary" className="shrink-0">
+                {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : ar ? "بحث" : "Search"}
+              </Button>
+              <Button onClick={getGPS} disabled={gettingLoc} variant="outline" className="shrink-0 gap-1">
+                {gettingLoc ? <Loader2 className="w-4 h-4 animate-spin" /> : <Navigation className="w-4 h-4" />}
+                {ar ? "موقعي" : "GPS"}
+              </Button>
             </div>
 
-            {/* Address */}
-            <div>
-              <label className="text-sm font-medium mb-1 block">
-                {ar ? "العنوان" : "Address"}
-              </label>
-              <Input
-                value={form.address}
-                onChange={e => setForm(p => ({ ...p, address: e.target.value }))}
-                placeholder={ar ? "العنوان التفصيلي" : "Detailed address"}
-              />
-            </div>
+            {/* Search Results */}
+            {searchResults.length > 0 && (
+              <div className="border border-border rounded-lg max-h-36 overflow-y-auto bg-background shadow-sm">
+                {searchResults.map((item, i) => (
+                  <div
+                    key={i}
+                    onClick={() => selectResult(item)}
+                    className="p-2.5 text-sm border-b last:border-0 hover:bg-brand-primary/5 cursor-pointer flex items-start gap-2 transition"
+                  >
+                    <MapPin className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
+                    <span className="line-clamp-2">{item.display_name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Map */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">
-                  {ar ? "حدد الموقع على الخريطة *" : "Pin Location on Map *"}
-                </label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={getGPS}
-                  disabled={gettingLoc}
-                  className="gap-1"
-                >
-                  {gettingLoc
-                    ? <Loader2 className="w-3 h-3 animate-spin" />
-                    : <Navigation className="w-3 h-3" />}
-                  {ar ? "موقعي الحالي" : "My Location"}
-                </Button>
+            <div ref={mapRef} className="w-full rounded-xl overflow-hidden border border-border" style={{ height: "250px" }} />
+            <p className="text-xs text-muted-foreground">
+              {ar ? "اضغط على الخريطة أو اسحب الـ Pin لتحديد الموقع" : "Click map or drag pin to set location"}
+            </p>
+
+            {/* Selected */}
+            {proposeForm.lat && proposeForm.lng && (
+              <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                {proposeForm.address && (
+                  <div className="flex items-center gap-1.5 text-sm text-emerald-800 font-medium mb-1">
+                    <Check className="w-4 h-4" />
+                    <span className="line-clamp-1">{proposeForm.address}</span>
+                  </div>
+                )}
+                <p className="text-xs font-mono text-emerald-700" dir="ltr">
+                  📍 {proposeForm.lat}, {proposeForm.lng}
+                </p>
               </div>
+            )}
 
-              {/* Leaflet Map */}
-              <div
-                ref={mapRef}
-                className="w-full rounded-xl overflow-hidden border border-border"
-                style={{ height: "280px" }}
-              />
-
-              {/* Coordinates */}
-              {form.latitude && form.longitude && (
-                <div className="mt-2 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <p className="text-xs font-mono text-muted-foreground" dir="ltr">
-                    {parseFloat(form.latitude).toFixed(5)}, {parseFloat(form.longitude).toFixed(5)}
-                  </p>
-                </div>
-              )}
-
-              <p className="text-xs text-muted-foreground mt-1">
-                {ar
-                  ? "اضغط على الخريطة أو اسحب الـ Pin لتحديد الموقع بدقة"
-                  : "Click on map or drag the pin to set exact location"}
-              </p>
+            {/* Type */}
+            <div>
+              <label className="text-sm font-medium mb-1 block">{ar ? "نوع الموقع" : "Type"}</label>
+              <select
+                value={proposeForm.location_type}
+                onChange={e => setProposeForm(p => ({ ...p, location_type: e.target.value }))}
+                className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background"
+              >
+                <option value="client">{ar ? "عميل" : "Client"}</option>
+                <option value="supplier">{ar ? "مورد" : "Supplier"}</option>
+                <option value="site">{ar ? "موقع عمل" : "Work Site"}</option>
+                <option value="office">{ar ? "مكتب" : "Office"}</option>
+                <option value="other">{ar ? "أخرى" : "Other"}</option>
+              </select>
             </div>
 
             {/* Notes */}
             <div>
-              <label className="text-sm font-medium mb-1 block">
-                {ar ? "ملاحظات" : "Notes"}
-              </label>
+              <label className="text-sm font-medium mb-1 block">{ar ? "ملاحظات" : "Notes"}</label>
               <textarea
-                value={form.notes}
-                onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
+                value={proposeForm.notes}
+                onChange={e => setProposeForm(p => ({ ...p, notes: e.target.value }))}
                 rows={2}
-                placeholder={ar ? "أي معلومات إضافية..." : "Additional info..."}
+                placeholder={ar ? "أي تفاصيل إضافية..." : "Additional details..."}
                 className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background resize-none"
               />
             </div>
 
             {/* Actions */}
             <div className="flex gap-3 pt-2">
-              <Button
-                onClick={handleSubmit}
-                disabled={submitting || !form.name}
-                className="flex-1 bg-brand-primary hover:bg-brand-secondary gap-2"
-              >
-                {submitting
-                  ? <Loader2 className="w-4 h-4 animate-spin" />
-                  : <Send className="w-4 h-4" />}
+              <Button onClick={handlePropose} disabled={submitting} className="flex-1 bg-brand-primary hover:bg-brand-secondary gap-2">
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 {ar ? "إرسال للمدير" : "Send to Manager"}
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => { setShowDialog(false); mapInstanceRef.current = null; }}
-                className="flex-1"
-              >
+              <Button variant="outline" onClick={() => { setShowPropose(false); mapInst.current = null; }} className="flex-1">
                 {ar ? "إلغاء" : "Cancel"}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }

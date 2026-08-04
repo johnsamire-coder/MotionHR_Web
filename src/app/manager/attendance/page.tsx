@@ -57,7 +57,7 @@ export default function ManagerAttendancePage() {
     })
       .then(r => r.json())
       .then(data => {
-        setRecords(data?.records || data || []);
+        setRecords(Array.isArray(data?.records) ? data.records : (Array.isArray(data) ? data : []));
       })
       .catch(() => toast.error(d.failedLoad))
       .finally(() => setLoading(false));
@@ -269,3 +269,4 @@ export default function ManagerAttendancePage() {
     </div>
   );
 }
+

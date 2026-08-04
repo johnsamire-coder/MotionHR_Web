@@ -79,8 +79,8 @@ export default function ManagerMissionsPage() {
       fetch("/api/manager/mission-requests", { headers: { Authorization: authHeader } }).then(r => r.json()),
       fetch("/api/manager/team", { headers: { Authorization: authHeader } }).then(r => r.json()),
     ]).then(([missData, reqData, teamData]) => {
-      setMissions(missData?.missions || missData || []);
-      setRequests(reqData?.requests || reqData || []);
+      setMissions(Array.isArray(missData?.missions) ? missData.missions : (Array.isArray(missData) ? missData : []));
+      setRequests(Array.isArray(reqData?.requests) ? reqData.requests : (Array.isArray(reqData) ? reqData : []));
       setTeam(teamData?.employees || []);
     })
       .catch(() => toast.error(d.failedLoad))
@@ -451,3 +451,4 @@ export default function ManagerMissionsPage() {
     </div>
   );
 }
+
