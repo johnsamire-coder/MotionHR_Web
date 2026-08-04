@@ -186,7 +186,7 @@ export default function EmployeesPage() {
           <Button variant="outline" onClick={() => router.push("/hr/employees/import")} className="gap-2">
             <Upload className="w-4 h-4" />{d.importBtn}
           </Button>
-          <Button className="gap-2 bg-brand-primary hover:bg-brand-primary/90">
+          <Button onClick={() => router.push("/hr/employees/import")} className="gap-2 bg-brand-primary hover:bg-brand-primary/90">
             <Plus className="w-4 h-4" />{d.addEmployee}
           </Button>
         </div>

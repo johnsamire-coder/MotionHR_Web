@@ -20,6 +20,13 @@ import {
   TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog, DialogContent, DialogHeader,
+  DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
@@ -108,6 +115,50 @@ function FeedbackStatCard({
         <p className="text-xs text-muted-foreground">{label}</p>
       </div>
       <p className="text-2xl font-bold">{value}</p>
+
+      <Dialog open={createDialog} onOpenChange={setCreateDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{d.createMission}</DialogTitle>
+            <DialogDescription>
+              {lang === "ar" ? "إنشاء مهمة جديدة" : "Create a new mission"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>{d.missionTitle}</Label>
+              <Input value={missionForm.title}
+                onChange={e => setMissionForm({ ...missionForm, title: e.target.value })}
+                placeholder={lang === "ar" ? "عنوان المهمة" : "Mission title"} />
+            </div>
+            <div className="space-y-2">
+              <Label>{d.missionLocation}</Label>
+              <Input value={missionForm.location}
+                onChange={e => setMissionForm({ ...missionForm, location: e.target.value })}
+                placeholder={lang === "ar" ? "الموقع" : "Location"} />
+            </div>
+            <div className="space-y-2">
+              <Label>{d.missionDate}</Label>
+              <Input type="date" value={missionForm.scheduled_date}
+                onChange={e => setMissionForm({ ...missionForm, scheduled_date: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>{lang === "ar" ? "ملاحظات" : "Notes"}</Label>
+              <Textarea value={missionForm.notes}
+                onChange={e => setMissionForm({ ...missionForm, notes: e.target.value })}
+                rows={3} />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setCreateDialog(false)} disabled={submitting}>
+                {d.cancel}
+              </Button>
+              <Button onClick={handleCreateMission} disabled={submitting} className="bg-brand-primary hover:bg-brand-primary/90">
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : d.createMission}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -123,6 +174,65 @@ export default function MissionsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeTab, setActiveTab] = useState<"all" | "pending">("all");
+  const [createDialog, setCreateDialog] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [missionForm, setMissionForm] = useState({
+    title: "",
+    location: "",
+    scheduled_date: "",
+    notes: "",
+  });
+
+  const handleCreateMission = async () => {
+    if (!missionForm.title || !missionForm.scheduled_date) {
+      toast.error(lang === "ar" ? "املأ الحقول المطلوبة" : "Fill required fields");
+      return;
+    }
+    const auth = authHeader;
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/manager/create-mission", {
+        method: "POST",
+        headers: { Authorization: auth, "Content-Type": "application/json" },
+        body: JSON.stringify(missionForm),
+      });
+      const data = await res.json();
+      if (data.success || data.mission) {
+        toast.success(lang === "ar" ? "تم إنشاء المهمة" : "Mission created");
+        setCreateDialog(false);
+        setMissionForm({ title: "", location: "", scheduled_date: "", notes: "" });
+        setTimeout(() => window.location.reload(), 500);
+      } else {
+        toast.error(data.message || (lang === "ar" ? "فشل الإنشاء" : "Failed"));
+      }
+    } catch {
+      toast.error(lang === "ar" ? "خطأ" : "Error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleMissionAction = async (requestId: number, action: "approve" | "reject") => {
+    const auth = authHeader;
+    try {
+      const res = await fetch("/api/manager/mission-approve", {
+        method: "POST",
+        headers: { Authorization: auth, "Content-Type": "application/json" },
+        body: JSON.stringify({ request_id: requestId, action }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(action === "approve"
+          ? (lang === "ar" ? "تم القبول" : "Approved")
+          : (lang === "ar" ? "تم الرفض" : "Rejected"));
+        setTimeout(() => window.location.reload(), 500);
+      } else {
+        toast.error(data.message || (lang === "ar" ? "فشل" : "Failed"));
+      }
+    } catch {
+      toast.error(lang === "ar" ? "خطأ" : "Error");
+    }
+  };
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
@@ -192,7 +302,7 @@ export default function MissionsPage() {
           <p className="text-muted-foreground mt-1">{d.missionsDesc}</p>
         </div>
 
-        <Button className="gap-2 bg-brand-primary hover:bg-brand-primary/90">
+        <Button onClick={() => setCreateDialog(true)} className="gap-2 bg-brand-primary hover:bg-brand-primary/90">
           <Plus className="w-4 h-4" />
           {d.createMission}
         </Button>
@@ -487,10 +597,10 @@ export default function MissionsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button variant="outline" size="sm" className="h-8 text-emerald-600 hover:bg-emerald-50">
+                        <Button onClick={() => handleMissionAction(r.id, "approve")} variant="outline" size="sm" className="h-8 text-emerald-600 hover:bg-emerald-50">
                           <CheckCircle2 className="w-4 h-4" />
                         </Button>
-                        <Button variant="outline" size="sm" className="h-8 text-red-600 hover:bg-red-50">
+                        <Button onClick={() => handleMissionAction(r.id, "reject")} variant="outline" size="sm" className="h-8 text-red-600 hover:bg-red-50">
                           <XCircle className="w-4 h-4" />
                         </Button>
                       </div>
@@ -502,6 +612,50 @@ export default function MissionsPage() {
           )
         )}
       </Card>
+
+      <Dialog open={createDialog} onOpenChange={setCreateDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{d.createMission}</DialogTitle>
+            <DialogDescription>
+              {lang === "ar" ? "إنشاء مهمة جديدة" : "Create a new mission"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>{d.missionTitle}</Label>
+              <Input value={missionForm.title}
+                onChange={e => setMissionForm({ ...missionForm, title: e.target.value })}
+                placeholder={lang === "ar" ? "عنوان المهمة" : "Mission title"} />
+            </div>
+            <div className="space-y-2">
+              <Label>{d.missionLocation}</Label>
+              <Input value={missionForm.location}
+                onChange={e => setMissionForm({ ...missionForm, location: e.target.value })}
+                placeholder={lang === "ar" ? "الموقع" : "Location"} />
+            </div>
+            <div className="space-y-2">
+              <Label>{d.missionDate}</Label>
+              <Input type="date" value={missionForm.scheduled_date}
+                onChange={e => setMissionForm({ ...missionForm, scheduled_date: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>{lang === "ar" ? "ملاحظات" : "Notes"}</Label>
+              <Textarea value={missionForm.notes}
+                onChange={e => setMissionForm({ ...missionForm, notes: e.target.value })}
+                rows={3} />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setCreateDialog(false)} disabled={submitting}>
+                {d.cancel}
+              </Button>
+              <Button onClick={handleCreateMission} disabled={submitting} className="bg-brand-primary hover:bg-brand-primary/90">
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : d.createMission}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

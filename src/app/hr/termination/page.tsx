@@ -40,6 +40,28 @@ export default function TerminationPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleReactivate = async (employeeId: number) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
+    if (!token) return;
+    const auth = token.startsWith("Token") ? token : `Token ${token}`;
+    try {
+      const res = await fetch("/api/hr/reactivate", {
+        method: "POST",
+        headers: { Authorization: auth, "Content-Type": "application/json" },
+        body: JSON.stringify({ employee_id: employeeId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(lang === "ar" ? "تم إعادة التفعيل" : "Reactivated");
+        setEmployees(employees.filter(e => e.id !== employeeId));
+      } else {
+        toast.error(data.message || (lang === "ar" ? "فشل" : "Failed"));
+      }
+    } catch {
+      toast.error(lang === "ar" ? "خطأ" : "Error");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -100,7 +122,7 @@ export default function TerminationPage() {
                         {emp.termination_date}
                       </Badge>
                     )}
-                    <Button variant="outline" size="sm" className="gap-2">
+                    <Button onClick={() => handleReactivate(emp.id)} variant="outline" size="sm" className="gap-2">
                       <RotateCcw className="w-3 h-3" />
                       {d.reactivate}
                     </Button>

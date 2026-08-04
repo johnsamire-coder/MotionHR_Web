@@ -121,6 +121,61 @@ export default function EmployeeDashboardPage() {
 
   const isCheckedIn = status?.checked_in && status?.check_in_time && !status?.check_out_time;
 
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const handleCheckInOut = async (action: "check_in" | "check_out") => {
+    const token = typeof window !== "undefined"
+      ? localStorage.getItem(STORAGE_KEYS.token) : null;
+    if (!token) return;
+    const authHeader = token.startsWith("Token") ? token : `Token ${token}`;
+
+    setActionLoading(true);
+    try {
+      // نجيب الموقع الجغرافي
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error("Geolocation not supported"));
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+        });
+      });
+
+      const res = await fetch("/api/employee/checkin", {
+        method: "POST",
+        headers: {
+          Authorization: authHeader,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success(data.message_ar || data.message || (action === "check_in" ? "تم تسجيل الحضور" : "تم تسجيل الانصراف"));
+        // نحدث الـ status
+        const statusRes = await fetch("/api/employee/attendance-status", {
+          headers: { Authorization: authHeader },
+        });
+        setStatus(await statusRes.json());
+      } else {
+        toast.error(data.message_ar || data.message || (lang === "ar" ? "فشل العملية" : "Operation failed"));
+      }
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      toast.error(e?.message || (lang === "ar" ? "خطأ في تسجيل الحضور" : "Check-in error"));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Welcome */}
@@ -166,13 +221,13 @@ export default function EmployeeDashboardPage() {
 
             <div className="flex gap-2">
               {!isCheckedIn ? (
-                <Button className="bg-brand-primary hover:bg-brand-primary/90 gap-2 h-12 px-6">
-                  <LogIn className="w-5 h-5" />
+                <Button onClick={() => handleCheckInOut("check_in")} disabled={actionLoading} className="bg-brand-primary hover:bg-brand-primary/90 gap-2 h-12 px-6">
+                  {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <LogIn className="w-5 h-5" />}
                   {d.checkInNow}
                 </Button>
               ) : (
-                <Button variant="outline" className="border-red-500/20 text-red-700 hover:bg-red-50 gap-2 h-12 px-6">
-                  <LogOut className="w-5 h-5" />
+                <Button onClick={() => handleCheckInOut("check_out")} disabled={actionLoading} variant="outline" className="border-red-500/20 text-red-700 hover:bg-red-50 gap-2 h-12 px-6">
+                  {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <LogOut className="w-5 h-5" />}
                   {d.checkOutNow}
                 </Button>
               )}

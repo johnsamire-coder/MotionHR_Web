@@ -41,12 +41,29 @@ export default function GeofencePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
+    if (!token) return;
+    const auth = token.startsWith("Token") ? token : `Token ${token}`;
+
     setSaving(true);
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/hr/geofence-set", {
+        method: "POST",
+        headers: { Authorization: auth, "Content-Type": "application/json" },
+        body: JSON.stringify(geofence),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(d.settingsSaved);
+      } else {
+        toast.error(data.message || d.settingsSaveFailed);
+      }
+    } catch {
+      toast.error(d.settingsSaveFailed);
+    } finally {
       setSaving(false);
-      toast.success(d.settingsSaved);
-    }, 1000);
+    }
   };
 
   if (loading) {

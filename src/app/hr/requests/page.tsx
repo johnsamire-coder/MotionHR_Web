@@ -151,6 +151,29 @@ export default function RequestsPage() {
     return matchSearch && matchStatus && matchTab;
   });
 
+  const handleAction = async (requestId: number, action: "approve" | "reject") => {
+    const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
+    try {
+      const res = await fetch("/api/manager/action", {
+        method: "POST",
+        headers: { Authorization: authHeader, "Content-Type": "application/json" },
+        body: JSON.stringify({ request_id: requestId, action }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(action === "approve"
+          ? (lang === "ar" ? "تم القبول" : "Approved")
+          : (lang === "ar" ? "تم الرفض" : "Rejected"));
+        // إعادة تحميل الداتا
+        setTimeout(() => window.location.reload(), 500);
+      } else {
+        toast.error(data.message || (lang === "ar" ? "فشل العملية" : "Failed"));
+      }
+    } catch {
+      toast.error(lang === "ar" ? "خطأ في الاتصال" : "Connection error");
+    }
+  };
+
   const getStatusBadge = (status?: string) => {
     const map: Record<string, { label: string; color: string; icon: React.ComponentType<{ className?: string }> }> = {
       approved: { label: d.reqApproved, color: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20", icon: CheckCircle2 },
@@ -413,10 +436,10 @@ export default function RequestsPage() {
                       </Button>
                       {req.status === "pending" && (
                         <>
-                          <Button variant="ghost" size="sm" className="h-8 px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
+                          <Button onClick={() => handleAction(req.id, "approve")} variant="ghost" size="sm" className="h-8 px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
                             <Check className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50">
+                          <Button onClick={() => handleAction(req.id, "reject")} variant="ghost" size="sm" className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50">
                             <X className="w-4 h-4" />
                           </Button>
                         </>
