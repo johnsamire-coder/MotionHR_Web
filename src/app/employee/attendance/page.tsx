@@ -4,360 +4,267 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
   Clock, Calendar, Loader2, LogIn, LogOut,
-  CheckCircle2, XCircle, MapPin, TrendingUp,
-  Coffee, Zap,
+  CheckCircle2, XCircle, MapPin, TrendingUp, AlertTriangle,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table, TableBody, TableCell, TableHead,
-  TableHeader, TableRow,
-} from "@/components/ui/table";
-import { useDict, useLangStore } from "@/lib/stores/language";
+import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
-interface AttendanceRecord {
+interface HistoryItem {
   date: string;
-  check_in?: string;
-  check_out?: string;
-  work_hours?: number;
+  date_display?: string;
   status?: string;
-  late_minutes?: number;
-  check_in_address?: string;
-  check_out_address?: string;
-}
-
-interface AttendanceStatus {
   checked_in?: boolean;
+  checked_out?: boolean;
   check_in_time?: string;
   check_out_time?: string;
+  check_in_address?: string;
+  check_out_address?: string;
+  late_minutes?: number;
   work_hours?: number;
-  shift_name?: string;
-  shift_start?: string;
-  shift_end?: string;
-  today?: {
-    date?: string;
-    status?: string;
-    checked_in?: boolean;
-    check_in_time?: string;
-    check_in_address?: string;
-    checked_out?: boolean;
-    check_out_time?: string;
-    check_out_address?: string;
+  early_leave_minutes?: number;
+  overtime_hours?: number;
+}
+
+interface SummaryData {
+  month?: string;
+  attendance?: {
+    total_days: number;
+    present: number;
+    late: number;
+    absent: number;
+    total_late_minutes: number;
+    total_work_hours: number;
   };
 }
 
-export default function MyAttendancePage() {
-  const d = useDict();
-  const lang = useLangStore((s) => s.lang);
+const STATUS_CONFIG: Record<string, {
+  label_ar: string; label_en: string; color: string; icon: React.ComponentType<{ className?: string }>
+}> = {
+  present: { label_ar: "حاضر",  label_en: "Present", color: "bg-emerald-500/10 text-emerald-700", icon: CheckCircle2 },
+  late:    { label_ar: "متأخر", label_en: "Late",    color: "bg-amber-500/10 text-amber-700",    icon: AlertTriangle },
+  absent:  { label_ar: "غائب",  label_en: "Absent",  color: "bg-red-500/10 text-red-700",        icon: XCircle },
+  on_leave:{ label_ar: "إجازة", label_en: "Leave",   color: "bg-blue-500/10 text-blue-700",      icon: Calendar },
+};
 
-  const [status, setStatus] = useState<AttendanceStatus | null>(null);
-  const [records, setRecords] = useState<AttendanceRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
+export default function MyAttendancePage() {
+  const lang = useLangStore((s) => s.lang);
+  const ar = lang === "ar";
+
+  const [history, setHistory]   = useState<HistoryItem[]>([]);
+  const [summary, setSummary]   = useState<SummaryData | null>(null);
+  const [loading, setLoading]   = useState(true);
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
+  const langHeader = ar ? "ar" : "en";
 
-  const loadData = useCallback(() => {
+  const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
-    Promise.all([
-      fetch("/api/employee/attendance-status", { headers: { Authorization: authHeader } }).then(r => r.json()),
-      fetch("/api/employee/history", { headers: { Authorization: authHeader } }).then(r => r.json()),
-    ]).then(([statusData, historyData]) => {
-      setStatus(statusData);
-      setRecords(historyData?.items || historyData?.records || []);
-    })
-      .catch(() => toast.error(d.failedLoad))
-      .finally(() => setLoading(false));
-  }, [token, authHeader, d.failedLoad]);
-
-  useEffect(() => { loadData(); }, [loadData]);
-
-  const handleCheckInOut = async (action: "check_in" | "check_out") => {
-    setActionLoading(true);
     try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        if (!navigator.geolocation) {
-          reject(new Error("Geolocation not supported"));
-          return;
-        }
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-        });
-      });
-
-      const res = await fetch("/api/employee/checkin", {
-        method: "POST",
-        headers: { Authorization: authHeader, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action,
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
+      const [hRes, sRes] = await Promise.all([
+        fetch("/api/employee/history", {
+          headers: { Authorization: authHeader, "Accept-Language": langHeader },
         }),
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        toast.success(data.message_ar || data.message);
-        loadData();
-      } else {
-        toast.error(data.message_ar || data.message);
-      }
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      toast.error(e?.message || (lang === "ar" ? "خطأ" : "Error"));
+        fetch("/api/employee/summary", {
+          headers: { Authorization: authHeader, "Accept-Language": langHeader },
+        }),
+      ]);
+      const [hData, sData] = await Promise.all([hRes.json(), sRes.json()]);
+      setHistory(hData?.items || []);
+      setSummary(sData);
+    } catch {
+      toast.error(ar ? "فشل تحميل البيانات" : "Failed to load");
     } finally {
-      setActionLoading(false);
+      setLoading(false);
     }
-  };
+  }, [token, ar]);
 
-  const isCheckedIn = status?.today?.checked_in && !status?.today?.checked_out;
+  useEffect(() => { load(); }, [load]);
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", {
+  const att = summary?.attendance;
+
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleDateString(ar ? "ar-EG" : "en-US", {
       weekday: "short", day: "numeric", month: "short",
     });
-  };
 
-  const formatTime = (time?: string) => {
-    if (!time) return "—";
-    return time.length > 5 ? time.substring(0, 5) : time;
+  const fmtMins = (m?: number) => {
+    if (!m || m === 0) return "—";
+    const h = Math.floor(m / 60);
+    const min = m % 60;
+    if (h > 0) return ar ? `${h}س ${min}د` : `${h}h ${min}m`;
+    return ar ? `${min}د` : `${min}m`;
   };
-
-  const getStatusBadge = (statusVal?: string) => {
-    const map: Record<string, { label: string; color: string }> = {
-      present: { label: d.statusPresent, color: "bg-emerald-500/10 text-emerald-700" },
-      late: { label: d.statusLate, color: "bg-amber-500/10 text-amber-700" },
-      absent: { label: d.statusAbsent, color: "bg-red-500/10 text-red-700" },
-      on_leave: { label: d.statusOnLeaveAtt, color: "bg-blue-500/10 text-blue-700" },
-    };
-    const info = map[statusVal || ""] || { label: "—", color: "bg-gray-500/10 text-gray-700" };
-    return <Badge className={`${info.color} border-0`}>{info.label}</Badge>;
-  };
-
-  // Stats calculations
-  const totalRecords = records.length;
-  const presentDays = records.filter(r => r.status === "present" || r.status === "late").length;
-  const lateDays = records.filter(r => r.status === "late").length;
-  const absentDays = records.filter(r => r.status === "absent").length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-6">
+
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{d.myAttendance}</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {ar ? "سجل حضوري" : "My Attendance"}
+        </h1>
         <p className="text-muted-foreground mt-1">
-          {lang === "ar" ? "سجل الحضور والانصراف الخاص بك" : "Your attendance and check-in/out records"}
+          {ar ? "سجل الحضور والانصراف الخاص بك" : "Your check-in and check-out records"}
         </p>
       </div>
 
-      {/* Check-in Card */}
-      <Card className={`border-0 ${isCheckedIn ? "bg-gradient-to-br from-emerald-500/10 to-emerald-500/5" : "bg-gradient-to-br from-brand-primary/10 to-brand-primary/5"}`}>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${
-                isCheckedIn ? "bg-emerald-500/20" : "bg-brand-primary/20"
-              }`}>
-                {isCheckedIn ? (
-                  <CheckCircle2 className="w-8 h-8 text-emerald-600" />
-                ) : (
-                  <Clock className="w-8 h-8 text-brand-primary" />
-                )}
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">{d.checkInStatus}</p>
-                <p className="text-2xl font-bold">
-                  {isCheckedIn ? d.checkedIn : d.notCheckedIn}
-                </p>
-                {status?.today?.check_in_time && (
-                  <p className="text-sm text-emerald-700 mt-1 flex items-center gap-1">
-                    <LogIn className="w-3 h-3" />
-                    {d.checkIn}: {status.today.check_in_time}
-                    {status.today.check_out_time && (
-                      <>
-                        <span className="mx-2">•</span>
-                        <LogOut className="w-3 h-3" />
-                        {d.checkOut}: {status.today.check_out_time}
-                      </>
-                    )}
-                  </p>
-                )}
-                {status?.today?.check_in_address && (
-                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                    <MapPin className="w-3 h-3" />
-                    {status.today.check_in_address}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              {!isCheckedIn && !status?.today?.checked_out && (
-                <Button
-                  onClick={() => handleCheckInOut("check_in")}
-                  disabled={actionLoading}
-                  className="bg-brand-primary hover:bg-brand-primary/90 gap-2 h-12 px-6"
-                >
-                  {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <LogIn className="w-5 h-5" />}
-                  {d.checkInNow}
-                </Button>
-              )}
-              {isCheckedIn && (
-                <Button
-                  onClick={() => handleCheckInOut("check_out")}
-                  disabled={actionLoading}
-                  variant="outline"
-                  className="border-red-500/20 text-red-700 hover:bg-red-50 gap-2 h-12 px-6"
-                >
-                  {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <LogOut className="w-5 h-5" />}
-                  {d.checkOutNow}
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {status?.shift_name && (
-            <div className="mt-6 grid grid-cols-3 gap-4 pt-4 border-t border-border/50">
-              <div>
-                <p className="text-xs text-muted-foreground">{d.myShift}</p>
-                <p className="font-semibold text-sm mt-1">{status.shift_name}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{d.shiftStart}</p>
-                <p className="font-mono font-semibold text-sm mt-1" dir="ltr">
-                  {formatTime(status.shift_start)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{d.shiftEnd}</p>
-                <p className="font-mono font-semibold text-sm mt-1" dir="ltr">
-                  {formatTime(status.shift_end)}
-                </p>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-blue-600" />
+        {[
+          { label: ar ? "إجمالي الأيام" : "Total Days",   value: att?.total_days ?? 0,   color: "text-brand-primary bg-brand-primary/10",  icon: Calendar },
+          { label: ar ? "حاضر"          : "Present",       value: att?.present ?? 0,       color: "text-emerald-700 bg-emerald-500/10",       icon: CheckCircle2 },
+          { label: ar ? "متأخر"         : "Late",          value: att?.late ?? 0,           color: "text-amber-700 bg-amber-500/10",           icon: AlertTriangle },
+          { label: ar ? "غائب"          : "Absent",        value: att?.absent ?? 0,         color: "text-red-700 bg-red-500/10",               icon: XCircle },
+        ].map((s, i) => (
+          <Card key={i}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${s.color}`}>
+                  <s.icon className="w-4 h-4" />
+                </div>
+                <p className="text-xs text-muted-foreground">{s.label}</p>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">
-                  {lang === "ar" ? "إجمالي الأيام" : "Total Days"}
-                </p>
-                <p className="text-xl font-bold">{totalRecords}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{d.statusPresent}</p>
-                <p className="text-xl font-bold">{presentDays}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{d.statusLate}</p>
-                <p className="text-xl font-bold">{lateDays}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
-                <XCircle className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{d.statusAbsent}</p>
-                <p className="text-xl font-bold">{absentDays}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              <p className="text-2xl font-bold">
+                {loading ? "..." : s.value}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* History Table */}
-      <Card>
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-brand-primary" />
-            <h2 className="text-lg font-semibold">
-              {lang === "ar" ? "سجل الحضور" : "Attendance History"}
-            </h2>
-          </div>
+      {/* Summary extras */}
+      {att && (att.total_late_minutes > 0 || att.total_work_hours > 0) && (
+        <div className="grid grid-cols-2 gap-3">
+          <Card className="bg-amber-500/5 border-amber-500/20">
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground mb-1">
+                {ar ? "إجمالي التأخير هذا الشهر" : "Total Late This Month"}
+              </p>
+              <p className="text-xl font-bold text-amber-700">
+                {fmtMins(att.total_late_minutes)}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="bg-emerald-500/5 border-emerald-500/20">
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground mb-1">
+                {ar ? "إجمالي ساعات العمل" : "Total Work Hours"}
+              </p>
+              <p className="text-xl font-bold text-emerald-700">
+                {att.total_work_hours.toFixed(1)} {ar ? "س" : "h"}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* History */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <TrendingUp className="w-5 h-5 text-brand-primary" />
+          <h2 className="text-lg font-semibold">
+            {ar ? "سجل الحضور" : "Attendance History"}
+          </h2>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-24">
+          <div className="flex justify-center py-16">
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
-        ) : records.length === 0 ? (
-          <CardContent className="py-24 text-center">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4 mx-auto">
-              <Clock className="w-8 h-8 text-muted-foreground/50" />
-            </div>
-            <p className="font-medium">{d.noAttendanceData}</p>
-          </CardContent>
+        ) : history.length === 0 ? (
+          <Card>
+            <CardContent className="py-16 text-center">
+              <Clock className="w-14 h-14 text-muted-foreground/30 mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                {ar ? "لا يوجد سجلات حضور" : "No attendance records"}
+              </p>
+            </CardContent>
+          </Card>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.requestDate}</TableHead>
-                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.checkIn}</TableHead>
-                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.checkOut}</TableHead>
-                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.workHours}</TableHead>
-                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.lateMinutesCol}</TableHead>
-                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colStatus}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {records.map((rec, idx) => (
-                <TableRow key={idx}>
-                  <TableCell className="font-medium">{formatDate(rec.date)}</TableCell>
-                  <TableCell className="font-mono" dir="ltr">{formatTime(rec.check_in)}</TableCell>
-                  <TableCell className="font-mono" dir="ltr">{formatTime(rec.check_out)}</TableCell>
-                  <TableCell className="font-mono">{rec.work_hours?.toFixed(1) || "—"}</TableCell>
-                  <TableCell>
-                    {rec.late_minutes ? (
-                      <span className="text-amber-600 font-mono">{rec.late_minutes}</span>
-                    ) : "—"}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(rec.status)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="space-y-3">
+            {history.map((rec, i) => {
+              const sc = STATUS_CONFIG[rec.status || ""] || STATUS_CONFIG.present;
+              const Icon = sc.icon;
+              return (
+                <Card key={i} className="hover:shadow-md transition">
+                  <CardContent className="p-5">
+                    {/* Date + Status */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-muted-foreground" />
+                        <span className="font-semibold">
+                          {rec.date_display || fmtDate(rec.date)}
+                        </span>
+                      </div>
+                      <Badge className={`${sc.color} border-0 gap-1 text-xs`}>
+                        <Icon className="w-3 h-3" />
+                        {ar ? sc.label_ar : sc.label_en}
+                      </Badge>
+                    </div>
+
+                    {/* Times */}
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div className="bg-emerald-500/5 rounded-lg p-3 text-center">
+                        <div className="flex items-center justify-center gap-1 mb-1">
+                          <LogIn className="w-3 h-3 text-emerald-600" />
+                          <p className="text-xs text-muted-foreground">
+                            {ar ? "حضور" : "Check-in"}
+                          </p>
+                        </div>
+                        <p className="font-bold font-mono text-emerald-700">
+                          {rec.check_in_time || "—"}
+                        </p>
+                      </div>
+                      <div className="bg-red-500/5 rounded-lg p-3 text-center">
+                        <div className="flex items-center justify-center gap-1 mb-1">
+                          <LogOut className="w-3 h-3 text-red-600" />
+                          <p className="text-xs text-muted-foreground">
+                            {ar ? "انصراف" : "Check-out"}
+                          </p>
+                        </div>
+                        <p className="font-bold font-mono text-red-700">
+                          {rec.check_out_time || "—"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Details */}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      {rec.late_minutes && rec.late_minutes > 0 ? (
+                        <span className="text-amber-700 font-semibold">
+                          ⏰ {ar ? "تأخير" : "Late"}: {fmtMins(rec.late_minutes)}
+                        </span>
+                      ) : null}
+                      {rec.work_hours && rec.work_hours > 0 ? (
+                        <span>
+                          🕐 {ar ? "ساعات العمل" : "Work"}: {Number(rec.work_hours).toFixed(1)}{ar ? "س" : "h"}
+                        </span>
+                      ) : null}
+                      {rec.overtime_hours && rec.overtime_hours > 0 ? (
+                        <span className="text-emerald-700">
+                          ⚡ {ar ? "إضافي" : "OT"}: {Number(rec.overtime_hours).toFixed(1)}{ar ? "س" : "h"}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {/* Address */}
+                    {rec.check_in_address && (
+                      <div className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground">
+                        <MapPin className="w-3 h-3 mt-0.5 shrink-0 text-brand-primary" />
+                        <span className="line-clamp-1">{rec.check_in_address}</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         )}
-      </Card>
+      </div>
     </div>
   );
 }
