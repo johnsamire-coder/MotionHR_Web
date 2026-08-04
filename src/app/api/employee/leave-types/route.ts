@@ -6,7 +6,7 @@ export async function GET(request: Request) {
   const lang = request.headers.get("accept-language") || "ar";
   if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
-    const res = await fetch(`${BACKEND}/attendance/api/mobile/request-types/`, {
+    const res = await fetch(`${BACKEND}/attendance/api/mobile/leave-types/`, {
       headers: {
         Authorization: authHeader,
         "Accept-Language": lang,
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const body = await request.json();
-    const res = await fetch(`${BACKEND}/attendance/api/mobile/submit-request/`, {
+    const res = await fetch(`${BACKEND}/attendance/api/mobile/leave-request/`, {
       method: "POST",
       headers: {
         Authorization: authHeader,

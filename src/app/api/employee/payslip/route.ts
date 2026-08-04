@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const params = url.searchParams.toString();
   try {
     const res = await fetch(
-      `${BACKEND}/attendance/api/mobile/my-leaves/${params ? "?" + params : ""}`,
+      `${BACKEND}/attendance/api/mobile/employee/payslip/${params ? "?" + params : ""}`,
       {
         headers: {
           Authorization: authHeader,

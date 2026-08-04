@@ -5,8 +5,13 @@ export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   const lang = request.headers.get("accept-language") || "ar";
   if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const url = new URL(request.url);
+  const types = url.searchParams.get("types") === "true";
+  const endpoint = types
+    ? `${BACKEND}/attendance/api/mobile/work-locations/types/`
+    : `${BACKEND}/attendance/api/mobile/work-locations/`;
   try {
-    const res = await fetch(`${BACKEND}/attendance/api/mobile/request-types/`, {
+    const res = await fetch(endpoint, {
       headers: {
         Authorization: authHeader,
         "Accept-Language": lang,
@@ -27,7 +32,7 @@ export async function POST(request: Request) {
   if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const body = await request.json();
-    const res = await fetch(`${BACKEND}/attendance/api/mobile/submit-request/`, {
+    const res = await fetch(`${BACKEND}/attendance/api/mobile/work-locations/propose/`, {
       method: "POST",
       headers: {
         Authorization: authHeader,

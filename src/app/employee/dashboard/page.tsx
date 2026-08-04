@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  Clock, Calendar, FileText, Briefcase, Wallet, User,
-  LogIn, LogOut, TrendingUp, Loader2, ChevronRight, Activity,
-  CheckCircle2, Building2,
+  Clock, MapPin, LogIn, LogOut, Pause, Play,
+  Calendar, FileText, Briefcase, ChevronRight,
+  Loader2, Building2, User, AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,380 +15,389 @@ import { useAuthStore } from "@/lib/stores/auth";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
-interface AttendanceStatus {
-  checked_in?: boolean;
+interface AttStatus {
+  success: boolean;
+  date: string;
+  checked_in: boolean;
+  checked_out: boolean;
   check_in_time?: string;
   check_out_time?: string;
-  work_hours?: number;
   shift_name?: string;
   shift_start?: string;
   shift_end?: string;
+  shift_mode?: string;
+  worker_type?: string;
+  can_check_out?: boolean;
+  allow_partial_checkout?: boolean;
+  can_partial_checkout?: boolean;
+  can_resume?: boolean;
+  has_open_session?: boolean;
+  sessions_today?: number;
+  remaining_seconds?: number;
 }
 
-interface EmployeeSummary {
-  leave_balances?: {
-    annual?: { remaining: number };
-    sick?: { remaining: number };
-    emergency?: { remaining: number };
+interface ShiftData {
+  success: boolean;
+  has_shift: boolean;
+  today_shift?: {
+    name: string;
+    start_time: string;
+    end_time: string;
+    work_hours: number;
+    shift_type: string;
+    work_days: string[];
+    grace_period: number;
   };
-  upcoming_leaves?: Array<{ id: number; from: string; to: string; type: string }>;
-  upcoming_missions?: Array<{ id: number; title: string; date: string }>;
 }
 
-function QuickAction({
-  title, description, href, icon: Icon,
-}: {
-  title: string;
-  description: string;
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-}) {
-  const router = useRouter();
-  return (
-    <button
-      onClick={() => router.push(href)}
-      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition group text-start"
-    >
-      <div className="w-10 h-10 rounded-lg bg-brand-primary/10 text-brand-primary flex items-center justify-center group-hover:bg-brand-primary group-hover:text-white transition">
-        <Icon className="w-5 h-5" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium">{title}</div>
-        <div className="text-xs text-muted-foreground">{description}</div>
-      </div>
-      <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-brand-primary" />
-    </button>
-  );
-}
-
-function BalanceCard({
-  label, remaining, color, icon: Icon,
-}: {
-  label: string;
-  remaining: number;
-  color: string;
-  icon: React.ComponentType<{ className?: string }>;
-}) {
-  return (
-    <div className="p-4 rounded-xl border border-border/50 hover:shadow-md transition">
-      <div className="flex items-center gap-2 mb-2">
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color}`}>
-          <Icon className="w-4 h-4" />
-        </div>
-        <p className="text-xs text-muted-foreground">{label}</p>
-      </div>
-      <p className="text-2xl font-bold">{remaining}</p>
-    </div>
-  );
-}
+const WORKER_TYPE_LABELS: Record<string, { ar: string; en: string; color: string }> = {
+  office:         { ar: "مكتبي",        en: "Office",         color: "bg-blue-500/10 text-blue-700" },
+  field_free:     { ar: "ميداني حر",    en: "Field (Free)",   color: "bg-emerald-500/10 text-emerald-700" },
+  field_assigned: { ar: "ميداني محدد",  en: "Field (Assigned)",color: "bg-purple-500/10 text-purple-700" },
+};
 
 export default function EmployeeDashboardPage() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const d = useDict();
   const lang = useLangStore((s) => s.lang);
-  const [status, setStatus] = useState<AttendanceStatus | null>(null);
-  const [summary, setSummary] = useState<EmployeeSummary | null>(null);
+  const ar = lang === "ar";
+
+  const [status, setStatus]   = useState<AttStatus | null>(null);
+  const [shift, setShift]     = useState<ShiftData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [checking, setChecking] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
+  const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
+  const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
+  const langHeader = ar ? "ar" : "en";
+
+  // ── Clock ──────────────────────────────────────────────
   useEffect(() => {
-    const token = typeof window !== "undefined"
-      ? localStorage.getItem(STORAGE_KEYS.token)
-      : null;
-    if (!token) return;
-    const authHeader = token.startsWith("Token") ? token : `Token ${token}`;
-
-    Promise.all([
-      fetch("/api/employee/attendance-status", { headers: { Authorization: authHeader } }).then(r => r.json()),
-      fetch("/api/employee/summary", { headers: { Authorization: authHeader } }).then(r => r.json()),
-    ]).then(([statusData, summaryData]) => {
-      setStatus(statusData);
-      setSummary(summaryData);
-    })
-      .catch(() => toast.error(d.failedLoad))
-      .finally(() => setLoading(false));
+    const t = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(t);
   }, []);
 
-  const formatDate = () => {
-    return new Date().toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", {
-      weekday: "long", year: "numeric", month: "long", day: "numeric",
-    });
-  };
-
-  const formatTime = (time?: string) => {
-    if (!time) return "—";
-    return time.substring(0, 5);
-  };
-
-  const isCheckedIn = status?.checked_in && status?.check_in_time && !status?.check_out_time;
-
-  const [actionLoading, setActionLoading] = useState(false);
-
-  const handleCheckInOut = async (action: "check_in" | "check_out") => {
-    const token = typeof window !== "undefined"
-      ? localStorage.getItem(STORAGE_KEYS.token) : null;
+  // ── Load Status + Shift ────────────────────────────────
+  const loadData = useCallback(async () => {
     if (!token) return;
-    const authHeader = token.startsWith("Token") ? token : `Token ${token}`;
-
-    setActionLoading(true);
     try {
-      // نجيب الموقع الجغرافي
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        if (!navigator.geolocation) {
-          reject(new Error("Geolocation not supported"));
-          return;
-        }
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-        });
-      });
+      const [sRes, shRes] = await Promise.all([
+        fetch("/api/employee/status", {
+          headers: { Authorization: authHeader, "Accept-Language": langHeader },
+        }),
+        fetch("/api/employee/my-shift", {
+          headers: { Authorization: authHeader, "Accept-Language": langHeader },
+        }),
+      ]);
+      const [sData, shData] = await Promise.all([sRes.json(), shRes.json()]);
+      if (sData.success !== false) setStatus(sData);
+      if (shData.success !== false) setShift(shData);
+    } catch {
+      toast.error(ar ? "فشل تحميل البيانات" : "Failed to load data");
+    } finally {
+      setLoading(false);
+    }
+  }, [token, ar]);
 
-      const res = await fetch("/api/employee/checkin", {
+  useEffect(() => { loadData(); }, [loadData]);
+
+  // ── Check In/Out ───────────────────────────────────────
+  const handleAttendance = async (action: "check_in" | "check_out") => {
+    setChecking(true);
+    try {
+      // نجيب الموقع
+      let lat = 30.0444, lng = 31.2357;
+      try {
+        const pos = await new Promise<GeolocationPosition>((res, rej) =>
+          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
+        );
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
+      } catch { /* استخدم الموقع الافتراضي */ }
+
+      const res = await fetch("/api/employee/attendance", {
+        method: "POST",
+        headers: {
+          Authorization: authHeader,
+          "Content-Type": "application/json",
+          "Accept-Language": langHeader,
+        },
+        body: JSON.stringify({ action, latitude: lat, longitude: lng }),
+      });
+      const data = await res.json();
+
+      if (data.success || res.ok) {
+        toast.success(
+          action === "check_in"
+            ? (ar ? "تم تسجيل الحضور ✅" : "Checked in ✅")
+            : (ar ? "تم تسجيل الانصراف ✅" : "Checked out ✅")
+        );
+        await loadData();
+      } else {
+        toast.error(data.message || data.error || (ar ? "فشل" : "Failed"));
+      }
+    } catch {
+      toast.error(ar ? "خطأ في الشبكة" : "Network error");
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  // ── Partial Checkout ───────────────────────────────────
+  const handlePartialCheckout = async () => {
+    setChecking(true);
+    try {
+      let lat = 30.0444, lng = 31.2357;
+      try {
+        const pos = await new Promise<GeolocationPosition>((res, rej) =>
+          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
+        );
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
+      } catch { }
+
+      const res = await fetch("/api/employee/partial-checkout", {
         method: "POST",
         headers: {
           Authorization: authHeader,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          action,
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        }),
+        body: JSON.stringify({ latitude: lat, longitude: lng }),
       });
-
       const data = await res.json();
-
-      if (data.success) {
-        toast.success(data.message_ar || data.message || (action === "check_in" ? "تم تسجيل الحضور" : "تم تسجيل الانصراف"));
-        // نحدث الـ status
-        const statusRes = await fetch("/api/employee/attendance-status", {
-          headers: { Authorization: authHeader },
-        });
-        setStatus(await statusRes.json());
+      if (data.success || res.ok) {
+        toast.success(ar ? "تم تسجيل خروج مؤقت ✅" : "Partial checkout done ✅");
+        await loadData();
       } else {
-        toast.error(data.message_ar || data.message || (lang === "ar" ? "فشل العملية" : "Operation failed"));
+        toast.error(data.message || (ar ? "فشل" : "Failed"));
       }
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      toast.error(e?.message || (lang === "ar" ? "خطأ في تسجيل الحضور" : "Check-in error"));
+    } catch {
+      toast.error(ar ? "خطأ" : "Error");
     } finally {
-      setActionLoading(false);
+      setChecking(false);
     }
   };
 
+  // ── Resume ─────────────────────────────────────────────
+  const handleResume = async () => {
+    setChecking(true);
+    try {
+      let lat = 30.0444, lng = 31.2357;
+      try {
+        const pos = await new Promise<GeolocationPosition>((res, rej) =>
+          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
+        );
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
+      } catch { }
+
+      const res = await fetch("/api/employee/resume-checkin", {
+        method: "POST",
+        headers: {
+          Authorization: authHeader,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ latitude: lat, longitude: lng }),
+      });
+      const data = await res.json();
+      if (data.success || res.ok) {
+        toast.success(ar ? "تم استئناف العمل ✅" : "Resumed ✅");
+        await loadData();
+      } else {
+        toast.error(data.message || (ar ? "فشل" : "Failed"));
+      }
+    } catch {
+      toast.error(ar ? "خطأ" : "Error");
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const workerTypeInfo = WORKER_TYPE_LABELS[status?.worker_type || "office"];
+  const todayShift = shift?.today_shift;
+
+  const fmtTime = (d: Date) =>
+    d.toLocaleTimeString(ar ? "ar-EG" : "en-US", {
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+    });
+
+  const fmtDate = (d: Date) =>
+    d.toLocaleDateString(ar ? "ar-EG" : "en-US", {
+      weekday: "long", year: "numeric", month: "long", day: "numeric",
+    });
+
+  // ── Render Attendance Button ───────────────────────────
+  const renderAttBtn = () => {
+    if (!status) return null;
+    const { checked_in, checked_out, can_check_out, can_resume, can_partial_checkout, allow_partial_checkout } = status;
+
+    if (!checked_in) {
+      return (
+        <Button
+          onClick={() => handleAttendance("check_in")}
+          disabled={checking}
+          className="w-full h-16 text-lg gap-3 bg-emerald-600 hover:bg-emerald-700"
+        >
+          {checking ? <Loader2 className="w-6 h-6 animate-spin" /> : <LogIn className="w-6 h-6" />}
+          {ar ? "تسجيل الحضور" : "Check In"}
+        </Button>
+      );
+    }
+
+    if (checked_in && !checked_out && can_check_out) {
+      return (
+        <div className="space-y-2">
+          <Button
+            onClick={() => handleAttendance("check_out")}
+            disabled={checking}
+            className="w-full h-14 text-base gap-3 bg-red-600 hover:bg-red-700"
+          >
+            {checking ? <Loader2 className="w-5 h-5 animate-spin" /> : <LogOut className="w-5 h-5" />}
+            {ar ? "تسجيل الانصراف" : "Check Out"}
+          </Button>
+          {(allow_partial_checkout || can_partial_checkout) && (
+            <Button
+              onClick={handlePartialCheckout}
+              disabled={checking}
+              variant="outline"
+              className="w-full h-12 gap-2 border-amber-500 text-amber-700 hover:bg-amber-50"
+            >
+              <Pause className="w-4 h-4" />
+              {ar ? "خروج مؤقت" : "Partial Checkout"}
+            </Button>
+          )}
+        </div>
+      );
+    }
+
+    if (can_resume) {
+      return (
+        <Button
+          onClick={handleResume}
+          disabled={checking}
+          className="w-full h-14 gap-3 bg-blue-600 hover:bg-blue-700"
+        >
+          {checking ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5" />}
+          {ar ? "استئناف العمل" : "Resume Check-in"}
+        </Button>
+      );
+    }
+
+    if (checked_in && checked_out) {
+      return (
+        <div className="w-full h-14 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center gap-3">
+          <div className="w-3 h-3 rounded-full bg-emerald-500" />
+          <span className="text-emerald-700 font-semibold">
+            {ar ? "اكتمل دوام اليوم ✅" : "Shift Complete ✅"}
+          </span>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Welcome */}
-      <div className="flex items-start justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {d.empDashboardWelcome}، {user?.first_name} 👋
-          </h1>
-          <p className="text-muted-foreground mt-1">{d.empDashboardDesc}</p>
+    <div className="space-y-6 pb-6">
+
+      {/* Header */}
+      <div className="bg-gradient-to-br from-brand-primary to-brand-secondary rounded-2xl p-6 text-white">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <p className="text-white/70 text-sm">{fmtDate(currentTime)}</p>
+            <p className="text-4xl font-bold font-mono mt-1 tracking-wider">
+              {fmtTime(currentTime)}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-white/70 text-xs">{ar ? "مرحباً" : "Welcome"}</p>
+            <p className="font-semibold">{user?.first_name || user?.username}</p>
+            {workerTypeInfo && (
+              <Badge className={`mt-1 text-[10px] border-0 ${workerTypeInfo.color}`}>
+                {ar ? workerTypeInfo.ar : workerTypeInfo.en}
+              </Badge>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-          <Building2 className="w-4 h-4" />
-          <span>{formatDate()}</span>
-        </div>
+
+        {/* Shift Info */}
+        {todayShift && (
+          <div className="bg-white/10 rounded-xl p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-white/70" />
+              <span className="text-sm">{todayShift.name}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm" dir="ltr">
+              <span className="font-mono font-semibold">{todayShift.start_time}</span>
+              <span className="text-white/50">→</span>
+              <span className="font-mono font-semibold">{todayShift.end_time}</span>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Check-in Status Card */}
-      <Card className={`border-0 ${isCheckedIn ? "bg-gradient-to-br from-emerald-500/10 to-emerald-500/5" : "bg-gradient-to-br from-brand-primary/10 to-brand-primary/5"}`}>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${
-                isCheckedIn ? "bg-emerald-500/20" : "bg-brand-primary/20"
-              }`}>
-                {isCheckedIn ? (
-                  <CheckCircle2 className="w-8 h-8 text-emerald-600" />
-                ) : (
-                  <Clock className="w-8 h-8 text-brand-primary" />
-                )}
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">{d.checkInStatus}</p>
-                <p className="text-2xl font-bold">
-                  {isCheckedIn ? d.checkedIn : d.notCheckedIn}
-                </p>
-                {isCheckedIn && status?.check_in_time && (
-                  <p className="text-sm text-emerald-700 mt-1" dir="ltr">
-                    {d.checkIn}: {formatTime(status.check_in_time)}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              {!isCheckedIn ? (
-                <Button onClick={() => handleCheckInOut("check_in")} disabled={actionLoading} className="bg-brand-primary hover:bg-brand-primary/90 gap-2 h-12 px-6">
-                  {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <LogIn className="w-5 h-5" />}
-                  {d.checkInNow}
-                </Button>
-              ) : (
-                <Button onClick={() => handleCheckInOut("check_out")} disabled={actionLoading} variant="outline" className="border-red-500/20 text-red-700 hover:bg-red-50 gap-2 h-12 px-6">
-                  {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <LogOut className="w-5 h-5" />}
-                  {d.checkOutNow}
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Shift Info */}
-          {status?.shift_name && (
-            <div className="mt-6 grid grid-cols-3 gap-4 pt-4 border-t border-border/50">
-              <div>
-                <p className="text-xs text-muted-foreground">{d.myShift}</p>
-                <p className="font-semibold text-sm mt-1">{status.shift_name}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{d.shiftStart}</p>
-                <p className="font-mono font-semibold text-sm mt-1" dir="ltr">
-                  {formatTime(status.shift_start)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{d.shiftEnd}</p>
-                <p className="font-mono font-semibold text-sm mt-1" dir="ltr">
-                  {formatTime(status.shift_end)}
-                </p>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Leave Balances */}
+      {/* Check In/Out Card */}
       <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Calendar className="w-5 h-5 text-brand-primary" />
-            <h2 className="text-lg font-semibold">{d.myBalances}</h2>
-          </div>
-
+        <CardContent className="p-5">
           {loading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            <div className="flex justify-center py-6">
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <BalanceCard
-                label={d.annualBalance}
-                remaining={summary?.leave_balances?.annual?.remaining || 21}
-                color="bg-emerald-500/10 text-emerald-600"
-                icon={Calendar}
-              />
-              <BalanceCard
-                label={d.sickBalance}
-                remaining={summary?.leave_balances?.sick?.remaining || 14}
-                color="bg-red-500/10 text-red-600"
-                icon={Calendar}
-              />
-              <BalanceCard
-                label={d.emergencyBalance}
-                remaining={summary?.leave_balances?.emergency?.remaining || 7}
-                color="bg-amber-500/10 text-amber-600"
-                icon={Calendar}
-              />
+            <div className="space-y-4">
+              {/* Status Row */}
+              {status && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-muted/50 rounded-xl p-3 text-center">
+                    <p className="text-xs text-muted-foreground mb-1">
+                      {ar ? "وقت الحضور" : "Check-in"}
+                    </p>
+                    <p className="font-bold font-mono text-emerald-700">
+                      {status.check_in_time || "—"}
+                    </p>
+                  </div>
+                  <div className="bg-muted/50 rounded-xl p-3 text-center">
+                    <p className="text-xs text-muted-foreground mb-1">
+                      {ar ? "وقت الانصراف" : "Check-out"}
+                    </p>
+                    <p className="font-bold font-mono text-red-700">
+                      {status.check_out_time || "—"}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {renderAttBtn()}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Two Columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Upcoming */}
-        <Card className="lg:col-span-2">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="w-5 h-5 text-brand-primary" />
-              <h2 className="text-lg font-semibold">{d.myUpcoming}</h2>
-            </div>
-
-            <div className="space-y-4">
-              {/* Upcoming Leaves */}
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Calendar className="w-4 h-4 text-cyan-600" />
-                  <p className="text-sm font-medium">{d.upcomingLeaves}</p>
-                </div>
-                {summary?.upcoming_leaves && summary.upcoming_leaves.length > 0 ? (
-                  <div className="space-y-2">
-                    {summary.upcoming_leaves.slice(0, 3).map(lv => (
-                      <div key={lv.id} className="p-3 rounded-lg bg-cyan-500/5 border border-cyan-500/20 flex items-center justify-between">
-                        <span className="text-sm font-medium">{lv.type}</span>
-                        <span className="text-xs text-muted-foreground font-mono" dir="ltr">
-                          {lv.from} → {lv.to}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground py-4 text-center">
-                    {d.noUpcomingLeaves}
-                  </p>
-                )}
+      {/* Quick Links */}
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { icon: Calendar,  label: ar ? "إجازاتي"   : "My Leaves",    href: "/employee/leaves",      color: "text-emerald-600 bg-emerald-500/10" },
+          { icon: FileText,  label: ar ? "طلباتي"    : "My Requests",  href: "/employee/requests",    color: "text-purple-600 bg-purple-500/10" },
+          { icon: Briefcase, label: ar ? "مهماتي"    : "My Missions",  href: "/employee/missions",    color: "text-brand-primary bg-brand-primary/10" },
+          { icon: Clock,     label: ar ? "حضوري"     : "Attendance",   href: "/employee/attendance",  color: "text-amber-600 bg-amber-500/10" },
+        ].map((item, i) => (
+          <Card
+            key={i}
+            onClick={() => router.push(item.href)}
+            className="cursor-pointer hover:shadow-md transition hover:-translate-y-0.5"
+          >
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${item.color}`}>
+                <item.icon className="w-5 h-5" />
               </div>
-
-              {/* Upcoming Missions */}
-              <div className="pt-4 border-t border-border">
-                <div className="flex items-center gap-2 mb-2">
-                  <Briefcase className="w-4 h-4 text-purple-600" />
-                  <p className="text-sm font-medium">{d.upcomingMissions}</p>
-                </div>
-                {summary?.upcoming_missions && summary.upcoming_missions.length > 0 ? (
-                  <div className="space-y-2">
-                    {summary.upcoming_missions.slice(0, 3).map(m => (
-                      <div key={m.id} className="p-3 rounded-lg bg-purple-500/5 border border-purple-500/20 flex items-center justify-between">
-                        <span className="text-sm font-medium">{m.title}</span>
-                        <span className="text-xs text-muted-foreground font-mono" dir="ltr">
-                          {m.date}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground py-4 text-center">
-                    {d.noUpcomingMissions}
-                  </p>
-                )}
+              <div className="flex-1">
+                <p className="font-medium text-sm">{item.label}</p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions */}
-        <Card>
-          <CardContent className="p-6">
-            <h3 className="text-lg font-semibold mb-4">{d.quickActionsEmp}</h3>
-            <div className="space-y-2">
-              <QuickAction
-                title={d.requestLeave}
-                description={d.myLeaves}
-                href="/employee/leaves"
-                icon={Calendar}
-              />
-              <QuickAction
-                title={d.submitRequest}
-                description={d.myRequests}
-                href="/employee/requests"
-                icon={FileText}
-              />
-              <QuickAction
-                title={d.viewPayslipMy}
-                description={d.myPayslip}
-                href="/employee/payslip"
-                icon={Wallet}
-              />
-              <QuickAction
-                title={d.viewProfileMy}
-                description={d.myProfile}
-                href="/employee/profile"
-                icon={User}
-              />
-            </div>
-          </CardContent>
-        </Card>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   );

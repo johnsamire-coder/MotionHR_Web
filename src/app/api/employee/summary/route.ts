@@ -1,19 +1,21 @@
 import { NextResponse } from "next/server";
-
 const BACKEND = "https://jssolutions-eg.com";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
+  const lang = request.headers.get("accept-language") || "ar";
   if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   try {
-    const url = `${BACKEND}/attendance/api/mobile/employee/summary/`;
-    const res = await fetch(url, {
-      headers: { Authorization: authHeader, "Accept-Language": "ar" },
+    const res = await fetch(`${BACKEND}/attendance/api/mobile/employee/summary/`, {
+      headers: {
+        Authorization: authHeader,
+        "Accept-Language": lang,
+        "Host": "jssolutions-eg.com",
+      },
       cache: "no-store",
     });
-    if (!res.ok) return NextResponse.json({ error: "Backend error" }, { status: res.status });
-    return NextResponse.json(await res.json());
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch {
     return NextResponse.json({ error: "Network error" }, { status: 500 });
   }

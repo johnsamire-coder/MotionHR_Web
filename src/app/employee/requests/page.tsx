@@ -1,23 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
-  FileText, Loader2, CheckCircle2, Clock, XCircle,
-  ChevronDown, ChevronUp, Send,
+  FileText, ChevronRight, ChevronLeft, Loader2,
+  Plus, X, Send, Clock, CheckCircle2, XCircle,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog, DialogContent, DialogHeader,
-  DialogTitle, DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+
+interface FormField {
+  key: string;
+  type: "text" | "textarea" | "number" | "date" | "time" | "select" | "boolean";
+  label_ar: string;
+  label_en: string;
+  required: boolean;
+  options?: { value: string; label_ar: string; label_en: string }[];
+}
 
 interface RequestType {
   id: number;
@@ -25,8 +32,10 @@ interface RequestType {
   name_en?: string;
   description?: string;
   description_en?: string;
-  requires_date_range?: boolean;
-  requires_amount?: boolean;
+  requires_amount: boolean;
+  requires_date_range: boolean;
+  requires_document: boolean;
+  form_schema?: { fields: FormField[] };
 }
 
 interface RequestCategory {
@@ -38,296 +47,401 @@ interface RequestCategory {
   types: RequestType[];
 }
 
-interface RequestItem {
+interface MyRequest {
   id: number;
-  request_type?: string;
-  request_type_en?: string;
-  submitted_at?: string;
-  status?: string;
-  reason?: string;
+  request_type_name: string;
+  status: string;
+  status_display?: string;
+  created_at: string;
+  details?: Record<string, unknown>;
 }
 
-export default function MyRequestsPage() {
+const STATUS_COLORS: Record<string, string> = {
+  pending:  "bg-amber-500/10 text-amber-700",
+  approved: "bg-emerald-500/10 text-emerald-700",
+  rejected: "bg-red-500/10 text-red-700",
+};
+
+export default function EmployeeRequestsPage() {
   const d = useDict();
   const lang = useLangStore((s) => s.lang);
+  const ar = lang === "ar";
 
-  const [categories, setCategories] = useState<RequestCategory[]>([]);
-  const [requests, setRequests] = useState<RequestItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [expandedCategory, setExpandedCategory] = useState<number | null>(null);
+  const [categories, setCategories]     = useState<RequestCategory[]>([]);
+  const [myRequests, setMyRequests]     = useState<MyRequest[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [selectedCat, setSelectedCat]  = useState<RequestCategory | null>(null);
   const [selectedType, setSelectedType] = useState<RequestType | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({
-    reason: "", start_date: "", end_date: "", amount: "",
-  });
+  const [formData, setFormData]         = useState<Record<string, string>>({});
+  const [submitting, setSubmitting]     = useState(false);
+  const [tab, setTab]                   = useState<"new" | "history">("new");
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
+  const langHeader = ar ? "ar" : "en";
 
-  const loadData = () => {
+  const load = useCallback(async () => {
     if (!token) return;
-    Promise.all([
-      fetch("/api/employee/request-types", { headers: { Authorization: authHeader } }).then(r => r.json()),
-      fetch("/api/employee/my-requests", { headers: { Authorization: authHeader } }).then(r => r.json()),
-    ]).then(([typesData, reqData]) => {
-      setCategories(typesData?.categories || []);
-      setRequests(reqData?.requests || reqData?.items || []);
-    })
-      .catch(() => toast.error(d.failedLoad))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => { loadData(); }, []);
-
-  // نحسب عدد المرات اللي عمل الموظف الطلب ده
-  const getTypeCount = (typeName: string, typeNameEn?: string) => {
-    return requests.filter(r =>
-      r.request_type === typeName ||
-      (typeNameEn && r.request_type_en === typeNameEn)
-    ).length;
-  };
-
-  // نجيب آخر تاريخ للطلب
-  const getLastRequest = (typeName: string) => {
-    const list = requests.filter(r => r.request_type === typeName);
-    if (list.length === 0) return null;
-    return list[0];
-  };
-
-  const handleSubmit = async () => {
-    if (!selectedType || !form.reason) {
-      toast.error(lang === "ar" ? "املأ الحقول" : "Fill fields");
-      return;
+    setLoading(true);
+    try {
+      const [catRes, myRes] = await Promise.all([
+        fetch("/api/employee/request-types", {
+          headers: { Authorization: authHeader, "Accept-Language": langHeader },
+        }),
+        fetch("/api/employee/my-requests", {
+          headers: { Authorization: authHeader, "Accept-Language": langHeader },
+        }),
+      ]);
+      const [catData, myData] = await Promise.all([catRes.json(), myRes.json()]);
+      setCategories(catData?.categories || []);
+      setMyRequests(myData?.requests || myData?.results || myData || []);
+    } catch {
+      toast.error(ar ? "فشل تحميل البيانات" : "Failed to load");
+    } finally {
+      setLoading(false);
     }
+  }, [token, ar]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // ── Open Type Dialog ────────────────────────────────────
+  const openType = (type: RequestType) => {
+    setSelectedType(type);
+    setFormData({}); // ← reset كل مرة
+  };
+
+  // ── Submit ──────────────────────────────────────────────
+  const handleSubmit = async () => {
+    if (!selectedType) return;
+
+    // Validate required fields
+    const fields = selectedType.form_schema?.fields || [];
+    for (const f of fields) {
+      if (f.required && !formData[f.key]) {
+        toast.error(
+          ar
+            ? `حقل "${f.label_ar}" مطلوب`
+            : `"${f.label_en}" is required`
+        );
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
-      const body: Record<string, unknown> = {
+      const payload = {
         request_type_id: selectedType.id,
-        reason: form.reason,
+        form_data: formData,
       };
-      if (selectedType.requires_date_range) {
-        body.start_date = form.start_date;
-        body.end_date = form.end_date;
-      }
-      if (selectedType.requires_amount) {
-        body.amount = parseFloat(form.amount);
-      }
 
-      const res = await fetch("/api/employee/submit-request", {
+      const res = await fetch("/api/employee/request-types", {
         method: "POST",
-        headers: { Authorization: authHeader, "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        headers: {
+          Authorization: authHeader,
+          "Content-Type": "application/json",
+          "Accept-Language": langHeader,
+        },
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (data.success) {
-        toast.success(lang === "ar" ? "تم تقديم الطلب" : "Submitted");
+
+      if (res.ok && (data.success !== false)) {
+        toast.success(ar ? "تم تقديم الطلب ✅" : "Request submitted ✅");
         setSelectedType(null);
-        setForm({ reason: "", start_date: "", end_date: "", amount: "" });
-        loadData();
+        setSelectedCat(null);
+        setFormData({});
+        await load();
+        setTab("history");
       } else {
-        toast.error(data.message || (lang === "ar" ? "فشل" : "Failed"));
+        toast.error(data.message || data.error || (ar ? "فشل" : "Failed"));
       }
     } catch {
-      toast.error(lang === "ar" ? "خطأ" : "Error");
+      toast.error(ar ? "خطأ في الشبكة" : "Network error");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const getStatusBadge = (status?: string) => {
-    const map: Record<string, { label: string; color: string; icon: React.ComponentType<{ className?: string }> }> = {
-      approved: { label: d.reqApproved, color: "bg-emerald-500/10 text-emerald-700", icon: CheckCircle2 },
-      pending: { label: d.reqPending, color: "bg-amber-500/10 text-amber-700", icon: Clock },
-      rejected: { label: d.reqRejected, color: "bg-red-500/10 text-red-700", icon: XCircle },
-    };
-    const info = map[status || ""] || map.pending;
-    const Icon = info.icon;
+  // ── Render Form Field ───────────────────────────────────
+  const renderField = (field: FormField) => {
+    const label = ar ? field.label_ar : field.label_en;
+    const value = formData[field.key] || "";
+    const set = (v: string) => setFormData(p => ({ ...p, [field.key]: v }));
+
+    const baseClass = "w-full border border-border rounded-md px-3 py-2 text-sm bg-background";
+
     return (
-      <Badge className={`${info.color} border-0 gap-1`}>
-        <Icon className="w-3 h-3" />{info.label}
-      </Badge>
+      <div key={field.key}>
+        <label className="text-sm font-medium mb-1 block">
+          {label} {field.required && <span className="text-red-500">*</span>}
+        </label>
+        {field.type === "textarea" ? (
+          <textarea
+            value={value}
+            onChange={e => set(e.target.value)}
+            rows={3}
+            className={`${baseClass} resize-none`}
+          />
+        ) : field.type === "select" ? (
+          <select value={value} onChange={e => set(e.target.value)} className={baseClass}>
+            <option value="">{ar ? "اختر..." : "Select..."}</option>
+            {field.options?.map(opt => (
+              <option key={opt.value} value={opt.value}>
+                {ar ? opt.label_ar : opt.label_en}
+              </option>
+            ))}
+          </select>
+        ) : field.type === "boolean" ? (
+          <div className="flex gap-3">
+            {["true", "false"].map(v => (
+              <button
+                key={v}
+                onClick={() => set(v)}
+                className={`flex-1 py-2 rounded-lg border text-sm font-medium transition ${
+                  value === v
+                    ? "border-brand-primary bg-brand-primary/10 text-brand-primary"
+                    : "border-border text-muted-foreground"
+                }`}
+              >
+                {v === "true" ? (ar ? "نعم" : "Yes") : (ar ? "لا" : "No")}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <Input
+            type={field.type === "number" ? "number" : field.type === "date" ? "date" : field.type === "time" ? "time" : "text"}
+            value={value}
+            onChange={e => set(e.target.value)}
+          />
+        )}
+      </div>
     );
   };
 
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US");
-  };
-
-  const getCatName = (c: RequestCategory) => lang === "en" && c.name_en ? c.name_en : c.name;
-  const getTypeName = (t: RequestType) => lang === "en" && t.name_en ? t.name_en : t.name;
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleDateString(ar ? "ar-EG" : "en-US", {
+      year: "numeric", month: "short", day: "numeric",
+    });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-6">
+
+      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{d.myRequests}</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {ar ? "طلباتي" : "My Requests"}
+        </h1>
         <p className="text-muted-foreground mt-1">
-          {lang === "ar" ? "اختر قسم لتقديم طلب" : "Choose category to submit request"}
+          {ar ? "قدم طلباتك وتابع حالتها" : "Submit and track your requests"}
         </p>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 border-b">
+        {[
+          { key: "new",     label: ar ? "طلب جديد"   : "New Request" },
+          { key: "history", label: ar ? "سجل الطلبات" : "History",
+            badge: myRequests.filter(r => r.status === "pending").length || undefined },
+        ].map(t => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key as "new" | "history")}
+            className={`pb-3 px-2 text-sm font-medium border-b-2 flex items-center gap-2 transition ${
+              tab === t.key
+                ? "border-brand-primary text-brand-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t.label}
+            {t.badge ? (
+              <Badge className="bg-amber-500/10 text-amber-700 border-0 text-[10px]">{t.badge}</Badge>
+            ) : null}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
-        <div className="flex items-center justify-center py-24">
+        <div className="flex justify-center py-24">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
-      ) : (
-        <>
-          {/* Categories with expandable types */}
+      ) : tab === "new" ? (
+        !selectedCat ? (
+          // ── Categories Grid ───────────────────────────────
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {categories.map(cat => (
+              <Card
+                key={cat.id}
+                onClick={() => setSelectedCat(cat)}
+                className="cursor-pointer hover:shadow-md transition hover:-translate-y-0.5"
+              >
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-12 h-12 rounded-xl flex items-center justify-center text-white text-xl"
+                        style={{ backgroundColor: cat.color || "#1A1B4B" }}
+                      >
+                        <FileText className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className="font-semibold">
+                          {ar ? cat.name : (cat.name_en || cat.name)}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {cat.types.length} {ar ? "بنود" : "types"}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronLeft className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          // ── Types List ────────────────────────────────────
           <div className="space-y-3">
-            {categories.map(cat => {
-              const isExpanded = expandedCategory === cat.id;
+            <Button
+              variant="ghost"
+              onClick={() => setSelectedCat(null)}
+              className="gap-2 text-muted-foreground"
+            >
+              <ChevronRight className="w-4 h-4" />
+              {ar ? "العودة للأقسام" : "Back to Categories"}
+            </Button>
+            <h2 className="text-lg font-semibold">
+              {ar ? selectedCat.name : (selectedCat.name_en || selectedCat.name)}
+            </h2>
+            {selectedCat.types.map(type => (
+              <Card
+                key={type.id}
+                onClick={() => openType(type)}
+                className="cursor-pointer hover:shadow-md transition"
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="font-medium">
+                        {ar ? type.name : (type.name_en || type.name)}
+                      </p>
+                      {type.description && (
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                          {ar ? type.description : (type.description_en || type.description)}
+                        </p>
+                      )}
+                      <div className="flex gap-2 mt-2 flex-wrap">
+                        {type.requires_amount && (
+                          <Badge variant="outline" className="text-[10px]">
+                            {ar ? "مبلغ" : "Amount"}
+                          </Badge>
+                        )}
+                        {type.requires_document && (
+                          <Badge variant="outline" className="text-[10px]">
+                            {ar ? "مستند" : "Document"}
+                          </Badge>
+                        )}
+                        {type.requires_date_range && (
+                          <Badge variant="outline" className="text-[10px]">
+                            {ar ? "فترة" : "Period"}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <Plus className="w-5 h-5 text-brand-primary" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )
+      ) : (
+        // ── History Tab ─────────────────────────────────────
+        myRequests.length === 0 ? (
+          <Card>
+            <CardContent className="py-24 text-center">
+              <FileText className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                {ar ? "لا توجد طلبات" : "No requests yet"}
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {myRequests.map(req => {
+              const sc = STATUS_COLORS[req.status] || STATUS_COLORS.pending;
               return (
-                <Card key={cat.id} className="border-2 overflow-hidden" style={{ borderColor: cat.color ? `${cat.color}40` : undefined }}>
-                  <button
-                    onClick={() => setExpandedCategory(isExpanded ? null : cat.id)}
-                    className="w-full p-5 hover:bg-muted/30 transition text-start"
-                  >
+                <Card key={req.id}>
+                  <CardContent className="p-4">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-12 h-12 rounded-xl flex items-center justify-center"
-                          style={{ backgroundColor: cat.color ? `${cat.color}20` : "#e0e7ff" }}
-                        >
-                          <FileText className="w-6 h-6" style={{ color: cat.color || "#6366f1" }} />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-lg">{getCatName(cat)}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {cat.types?.length || 0} {lang === "ar" ? "نوع" : "types"}
-                          </p>
-                        </div>
+                      <div>
+                        <p className="font-medium text-sm">{req.request_type_name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {fmtDate(req.created_at)}
+                        </p>
                       </div>
-                      {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                      <Badge className={`${sc} border-0 text-xs`}>
+                        {req.status_display || req.status}
+                      </Badge>
                     </div>
-                  </button>
-
-                  {isExpanded && (
-                    <div className="border-t border-border p-4 bg-muted/20">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {cat.types?.map(type => {
-                          const count = getTypeCount(type.name, type.name_en);
-                          const last = getLastRequest(type.name);
-                          return (
-                            <div
-                              key={type.id}
-                              onClick={() => setSelectedType(type)}
-                              className="p-4 rounded-lg bg-white border border-border hover:border-brand-primary hover:shadow-md cursor-pointer transition"
-                            >
-                              <div className="flex items-start justify-between mb-2">
-                                <p className="font-medium text-sm">{getTypeName(type)}</p>
-                                {count > 0 && (
-                                  <Badge variant="outline" className="text-[10px]">
-                                    {count}× {lang === "ar" ? "مرة" : "times"}
-                                  </Badge>
-                                )}
-                              </div>
-                              {last && (
-                                <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border">
-                                  <span className="text-[10px] text-muted-foreground">
-                                    {lang === "ar" ? "آخر طلب" : "Last"}:
-                                  </span>
-                                  {getStatusBadge(last.status)}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+                  </CardContent>
                 </Card>
               );
             })}
           </div>
-
-          {/* History */}
-          <div>
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-brand-primary" />
-              {lang === "ar" ? "طلباتي السابقة" : "My Previous Requests"}
-            </h2>
-            {requests.length === 0 ? (
-              <Card>
-                <CardContent className="py-16 text-center">
-                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4 mx-auto">
-                    <FileText className="w-8 h-8 text-muted-foreground/50" />
-                  </div>
-                  <p className="font-medium">{d.noRequestsData}</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-3">
-                {requests.slice(0, 10).map(req => (
-                  <Card key={req.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <p className="font-semibold">
-                            {lang === "en" && req.request_type_en ? req.request_type_en : req.request_type}
-                          </p>
-                          <p className="text-xs text-muted-foreground font-mono mt-1" dir="ltr">
-                            {formatDate(req.submitted_at)}
-                          </p>
-                          {req.reason && <p className="text-sm text-muted-foreground mt-2">{req.reason}</p>}
-                        </div>
-                        {getStatusBadge(req.status)}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        </>
+        )
       )}
 
-      {/* Submit Dialog */}
-      <Dialog open={!!selectedType} onOpenChange={(open) => !open && setSelectedType(null)}>
-        <DialogContent className="sm:max-w-md">
+      {/* ── Request Form Dialog ── */}
+      <Dialog open={!!selectedType} onOpenChange={v => !v && setSelectedType(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedType && getTypeName(selectedType)}</DialogTitle>
-            <DialogDescription>
-              {selectedType?.description && (lang === "en" && selectedType.description_en ? selectedType.description_en : selectedType.description)}
-            </DialogDescription>
+            <DialogTitle>
+              {selectedType && (ar ? selectedType.name : (selectedType.name_en || selectedType.name))}
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            {selectedType?.requires_date_range && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>{d.colStartDate}</Label>
-                  <Input type="date" value={form.start_date}
-                    onChange={e => setForm({ ...form, start_date: e.target.value })} />
+
+          {selectedType && (
+            <div className="space-y-4 pt-2">
+              {/* Description */}
+              {selectedType.description && (
+                <p className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
+                  {ar ? selectedType.description : (selectedType.description_en || selectedType.description)}
+                </p>
+              )}
+
+              {/* Dynamic Fields from form_schema */}
+              {(selectedType.form_schema?.fields || []).map(field => renderField(field))}
+
+              {/* Document Upload hint */}
+              {selectedType.requires_document && (
+                <div className="border border-dashed border-border rounded-lg p-4 text-center text-sm text-muted-foreground">
+                  <Upload className="w-6 h-6 mx-auto mb-2" />
+                  {ar ? "رفع مستند (قريباً)" : "Upload document (coming soon)"}
                 </div>
-                <div className="space-y-2">
-                  <Label>{d.colEndDate}</Label>
-                  <Input type="date" value={form.end_date}
-                    onChange={e => setForm({ ...form, end_date: e.target.value })} />
-                </div>
+              )}
+
+              {/* Submit */}
+              <div className="flex gap-3 pt-2">
+                <Button
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="flex-1 bg-brand-primary hover:bg-brand-secondary gap-2"
+                >
+                  {submitting
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <Send className="w-4 h-4" />}
+                  {ar ? "تقديم الطلب" : "Submit"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => { setSelectedType(null); setFormData({}); }}
+                  className="flex-1"
+                >
+                  {ar ? "إلغاء" : "Cancel"}
+                </Button>
               </div>
-            )}
-            {selectedType?.requires_amount && (
-              <div className="space-y-2">
-                <Label>{d.requestAmount}</Label>
-                <Input type="number" value={form.amount}
-                  onChange={e => setForm({ ...form, amount: e.target.value })} />
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label>{d.requestReason}</Label>
-              <Textarea value={form.reason}
-                onChange={e => setForm({ ...form, reason: e.target.value })}
-                rows={3} />
             </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setSelectedType(null)} disabled={submitting}>
-                {d.cancel}
-              </Button>
-              <Button onClick={handleSubmit} disabled={submitting} className="bg-brand-primary hover:bg-brand-primary/90 gap-2">
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                {d.submitRequest}
-              </Button>
-            </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
