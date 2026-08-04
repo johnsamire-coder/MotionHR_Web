@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard, Clock, Calendar, FileText, ShieldCheck,
-  Briefcase, MapPin, DollarSign, User, Users, Inbox,
-  Bell, Building2, Menu,
+  Briefcase, MapPin, DollarSign, Users, Inbox,
+  Bell, Building2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/dashboard/header";
@@ -34,7 +34,6 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
   const lang = useLangStore((s) => s.lang);
   const ar = lang === "ar";
 
-  const [sidebarOpen, setSidebarOpen]   = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
@@ -60,13 +59,13 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
       title_en: "My Account",
       items: [
         { icon: LayoutDashboard, label_ar: "الرئيسية",         label_en: "Dashboard",       href: "/manager/dashboard" },
-        { icon: Clock,           label_ar: "حضوري",            label_en: "My Attendance",   href: "/employee/attendance" },
-        { icon: Calendar,        label_ar: "إجازاتي",          label_en: "My Leaves",       href: "/employee/leaves" },
-        { icon: FileText,        label_ar: "طلباتي",           label_en: "My Requests",     href: "/employee/requests" },
-        { icon: ShieldCheck,     label_ar: "أذوناتي",          label_en: "My Permissions",  href: "/employee/permissions" },
-        { icon: Briefcase,       label_ar: "مهماتي",           label_en: "My Missions",     href: "/employee/missions" },
-        { icon: MapPin,          label_ar: "زياراتي الميدانية", label_en: "Field Visits",    href: "/employee/field-visits" },
-        { icon: DollarSign,      label_ar: "كشف مرتبي",        label_en: "My Payslip",      href: "/employee/payslip" },
+        { icon: Clock,           label_ar: "حضوري",            label_en: "My Attendance",   href: "/manager/my-attendance" },
+        { icon: Calendar,        label_ar: "إجازاتي",          label_en: "My Leaves",       href: "/manager/my-leaves" },
+        { icon: FileText,        label_ar: "طلباتي",           label_en: "My Requests",     href: "/manager/my-requests" },
+        { icon: ShieldCheck,     label_ar: "أذوناتي",          label_en: "My Permissions",  href: "/manager/my-permissions" },
+        { icon: Briefcase,       label_ar: "مهماتي",           label_en: "My Missions",     href: "/manager/my-missions" },
+        { icon: MapPin,          label_ar: "زياراتي الميدانية", label_en: "Field Visits",    href: "/manager/my-field-visits" },
+        { icon: DollarSign,      label_ar: "كشف مرتبي",        label_en: "My Payslip",      href: "/manager/my-payslip" },
       ],
     },
     {
@@ -84,10 +83,10 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
       title_ar: "عام",
       title_en: "General",
       items: [
-        { icon: Bell,      label_ar: "الإعلانات",       label_en: "Announcements", href: "/employee/announcements" },
-        { icon: Bell,      label_ar: "الإشعارات",       label_en: "Notifications", href: "/employee/notifications" },
-        { icon: Building2, label_ar: "اللائحة",         label_en: "Regulations",   href: "/employee/regulations" },
-        { icon: Users,     label_ar: "الهيكل التنظيمي", label_en: "Org Chart",     href: "/employee/org-chart" },
+        { icon: Bell,      label_ar: "الإعلانات",       label_en: "Announcements", href: "/manager/announcements" },
+        { icon: Bell,      label_ar: "الإشعارات",       label_en: "Notifications", href: "/manager/notifications" },
+        { icon: Building2, label_ar: "اللائحة",         label_en: "Regulations",   href: "/manager/regulations" },
+        { icon: Users,     label_ar: "الهيكل التنظيمي", label_en: "Org Chart",     href: "/manager/org-chart" },
       ],
     },
   ];
@@ -96,7 +95,6 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
 
   const Sidebar = () => (
     <aside className={`fixed top-0 ${ar ? "right-0" : "left-0"} w-64 h-screen bg-brand-primary flex flex-col z-40`}>
-      {/* Logo */}
       <div className="p-5 border-b border-white/10">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-accent to-emerald-500 flex items-center justify-center">
@@ -111,7 +109,6 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
         </div>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 overflow-y-auto p-3 space-y-4">
         {sections.map((section, idx) => (
           <div key={idx}>
@@ -125,7 +122,6 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
                   <Link
                     key={item.href}
                     href={item.href}
-                    onClick={() => setSidebarOpen(false)}
                     className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition ${
                       active
                         ? "bg-brand-accent text-brand-primary font-semibold"
@@ -152,16 +148,6 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
   return (
     <div className="min-h-screen bg-background" dir={ar ? "rtl" : "ltr"}>
       <Sidebar />
-
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-30"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Main */}
       <div className={ar ? "mr-64" : "ml-64"}>
         <Header />
         <main className="p-6">{children}</main>
