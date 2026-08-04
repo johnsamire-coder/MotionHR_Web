@@ -14,6 +14,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useState } from "react";
+import { STORAGE_KEYS } from "@/lib/constants/config";
 import { useAuthStore } from "@/lib/stores/auth";
 import { useLangStore, useDict } from "@/lib/stores/language";
 
@@ -36,6 +38,22 @@ export function Header() {
   };
 
   const initials = user?.first_name?.[0] || "M";
+
+  const [jobInfo, setJobInfo] = useState<{ job_title?: string; department?: string; job_title_en?: string; department_en?: string } | null>(null);
+
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
+    if (!token) return;
+    const authHeader = token.startsWith("Token") ? token : `Token ${token}`;
+
+    fetch("/api/profile", { headers: { Authorization: authHeader } })
+      .then(r => r.json())
+      .then(data => setJobInfo({
+        job_title: data.job_title,
+        department: data.department,
+      }))
+      .catch(() => {});
+  }, []);
 
   const roleLabels = {
     ar: {
@@ -112,7 +130,11 @@ export function Header() {
           <DropdownMenuTrigger className="flex items-center gap-3 rounded-lg hover:bg-muted p-1.5 pl-3 transition outline-none">
             <div className="text-right">
               <div className="text-sm font-medium">{user?.full_name}</div>
-              <div className="text-xs text-muted-foreground">{company?.name}</div>
+              <div className="text-xs text-muted-foreground">
+                {jobInfo?.job_title
+                  ? (jobInfo.department ? `${jobInfo.job_title} — ${jobInfo.department}` : jobInfo.job_title)
+                  : company?.name}
+              </div>
             </div>
             <Avatar className="w-9 h-9 border-2 border-brand-primary/20">
               <AvatarFallback className="bg-brand-primary text-white font-semibold">
@@ -122,9 +144,15 @@ export function Header() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
-              <div className="flex flex-col">
+              <div className="flex flex-col gap-0.5">
                 <span className="font-semibold">{user?.full_name}</span>
-                <span className="text-xs font-normal text-muted-foreground">{displayRole}</span>
+                {jobInfo?.job_title && (
+                  <span className="text-xs font-medium text-brand-primary">
+                    {jobInfo.job_title}
+                    {jobInfo.department && ` — ${jobInfo.department}`}
+                  </span>
+                )}
+                <span className="text-[10px] font-normal text-muted-foreground">{displayRole}</span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
