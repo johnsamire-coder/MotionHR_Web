@@ -7,7 +7,7 @@ export async function GET(request: Request) {
 
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=1`,
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=8&addressdetails=1&countrycodes=eg&viewbox=24.7,31.6,36.9,22.0&bounded=1`,
       {
         headers: {
           "User-Agent": "MotionHR/1.0",
