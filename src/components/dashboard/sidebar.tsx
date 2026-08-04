@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, Clock, Calendar, FileText,
   DollarSign, MapPin, Settings, Building2, Upload,
-  Briefcase, Bell,
+  Briefcase, Bell, FileBarChart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDict } from "@/lib/stores/language";
@@ -26,6 +26,7 @@ export function Sidebar() {
     { key: "missions",         href: "/hr/missions",          icon: Briefcase },
     { key: "locations",        href: "/hr/locations",         icon: MapPin },
     { key: "announcements",    href: "/hr/announcements",     icon: Bell },
+    { key: "reports",          href: "/hr/reports",           icon: FileBarChart },
     { key: "departments",      href: "/hr/departments",       icon: Building2 },
     { key: "branches",         href: "/hr/branches",          icon: MapPin },
     { key: "shifts",           href: "/hr/shifts",            icon: Clock },

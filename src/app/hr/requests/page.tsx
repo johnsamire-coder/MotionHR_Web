@@ -1,29 +1,433 @@
 "use client";
 
-import { FileText } from "lucide-react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import {
+  FileText, Calendar, Activity, CheckCircle2, Clock, XCircle,
+  Search, Filter, Loader2, Users, Download, Building2,
+  Eye, Check, X, LayoutGrid,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { useDict } from "@/lib/stores/language";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select, SelectContent, SelectItem,
+  SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Table, TableBody, TableCell, TableHead,
+  TableHeader, TableRow,
+} from "@/components/ui/table";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useDict, useLangStore } from "@/lib/stores/language";
+import { STORAGE_KEYS } from "@/lib/constants/config";
 
-export default function Page() {
+interface RequestType {
+  id: number;
+  name: string;
+  name_en?: string;
+  description?: string;
+  description_en?: string;
+  permission_kind?: string;
+  requires_date_range?: boolean;
+  requires_amount?: boolean;
+  requires_document?: boolean;
+}
+
+interface RequestCategory {
+  id: number;
+  name: string;
+  name_en?: string;
+  icon?: string;
+  color: string;
+  types: RequestType[];
+}
+
+interface RequestReport {
+  year: number;
+  month: number;
+  total_requests: number;
+  approved: number;
+  rejected: number;
+  pending: number;
+  details: Array<{
+    id: number;
+    employee_name?: string;
+    department?: string;
+    request_type?: string;
+    request_type_en?: string;
+    status?: string;
+    submitted_at?: string;
+    reason?: string;
+  }>;
+}
+
+function StatCard({
+  icon: Icon, label, value, color, active, onClick,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: number;
+  color: string;
+  active?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <Card
+      className={`border transition-all cursor-pointer hover:shadow-md ${
+        active ? "border-brand-primary shadow-md" : "border-border/50"
+      }`}
+      onClick={onClick}
+    >
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${color}`}>
+            <Icon className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="text-xl font-bold">{value}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function RequestsPage() {
   const d = useDict();
+  const lang = useLangStore((s) => s.lang);
+
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [report, setReport] = useState<RequestReport | null>(null);
+  const [categories, setCategories] = useState<RequestCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState<"all" | "pending">("all");
+
+  const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
+  const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
+
+  useEffect(() => {
+    if (!token) return;
+    setLoading(true);
+    Promise.all([
+      fetch(`/api/requests/report?year=${year}&month=${month}`, { headers: { Authorization: authHeader } }).then(r => r.json()),
+      fetch("/api/requests/types", { headers: { Authorization: authHeader } }).then(r => r.json()),
+    ]).then(([reportData, typesData]) => {
+      setReport(reportData);
+      setCategories(typesData?.categories || []);
+    })
+      .catch(() => toast.error(d.failedLoad))
+      .finally(() => setLoading(false));
+  }, [year, month]);
+
+  const getName = (item: { name: string; name_en?: string }) => {
+    return lang === "en" && item.name_en ? item.name_en : item.name;
+  };
+
+  const monthNames = [
+    d.January, d.February, d.March, d.April, d.May, d.June,
+    d.July, d.August, d.September, d.October, d.November, d.December,
+  ];
+
+  const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i);
+  const months = Array.from({ length: 12 }, (_, i) => i + 1);
+
+  const details = report?.details || [];
+
+  const filtered = details.filter(req => {
+    const matchSearch = !search ||
+      (req.employee_name || "").toLowerCase().includes(search.toLowerCase()) ||
+      (req.request_type || "").toLowerCase().includes(search.toLowerCase());
+
+    const matchStatus = statusFilter === "all" || req.status === statusFilter;
+    const matchTab = activeTab === "all" || (activeTab === "pending" && req.status === "pending");
+
+    return matchSearch && matchStatus && matchTab;
+  });
+
+  const getStatusBadge = (status?: string) => {
+    const map: Record<string, { label: string; color: string; icon: React.ComponentType<{ className?: string }> }> = {
+      approved: { label: d.reqApproved, color: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20", icon: CheckCircle2 },
+      pending: { label: d.reqPending, color: "bg-amber-500/10 text-amber-700 border-amber-500/20", icon: Clock },
+      rejected: { label: d.reqRejected, color: "bg-red-500/10 text-red-700 border-red-500/20", icon: XCircle },
+      cancelled: { label: d.reqCancelled, color: "bg-gray-500/10 text-gray-700 border-gray-500/20", icon: X },
+    };
+    const info = map[status || ""] || map.pending;
+    const Icon = info.icon;
+    return (
+      <Badge className={`${info.color} border font-medium gap-1`}>
+        <Icon className="w-3 h-3" />
+        {info.label}
+      </Badge>
+    );
+  };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{d.requests}</h1>
-        <p className="text-muted-foreground mt-1">{d.comingSoon}</p>
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">{d.requestsTitle}</h1>
+          <p className="text-muted-foreground mt-1">{d.requestsDesc}</p>
+        </div>
+
+        <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-1">
+            <Calendar className="w-4 h-4 text-muted-foreground mx-2" />
+            <Select value={String(month)} onValueChange={v => setMonth(Number(v))}>
+              <SelectTrigger className="border-0 bg-transparent w-[110px] focus:ring-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {months.map(m => (
+                  <SelectItem key={m} value={String(m)}>{monthNames[m - 1]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={String(year)} onValueChange={v => setYear(Number(v))}>
+              <SelectTrigger className="border-0 bg-transparent w-[90px] focus:ring-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {years.map(y => (
+                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button variant="outline" className="gap-2">
+            <Download className="w-4 h-4" />
+            {d.exportExcel}
+          </Button>
+        </div>
       </div>
 
-      <Card className="border-dashed">
-        <CardContent className="flex flex-col items-center justify-center py-24">
-          <div className="w-20 h-20 rounded-2xl bg-muted flex items-center justify-center mb-6">
-            <FileText className="w-10 h-10 text-muted-foreground" />
+      {/* Stats Cards */}
+      {loading ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}><CardContent className="p-4"><div className="h-16 bg-muted animate-pulse rounded" /></CardContent></Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard
+            icon={Activity}
+            label={d.totalRequests}
+            value={report?.total_requests || 0}
+            color="bg-blue-500/10 text-blue-600"
+            active={statusFilter === "all"}
+            onClick={() => setStatusFilter("all")}
+          />
+          <StatCard
+            icon={CheckCircle2}
+            label={d.approvedRequests}
+            value={report?.approved || 0}
+            color="bg-emerald-500/10 text-emerald-600"
+            active={statusFilter === "approved"}
+            onClick={() => setStatusFilter(statusFilter === "approved" ? "all" : "approved")}
+          />
+          <StatCard
+            icon={Clock}
+            label={d.pendingRequestsCount}
+            value={report?.pending || 0}
+            color="bg-amber-500/10 text-amber-600"
+            active={statusFilter === "pending"}
+            onClick={() => setStatusFilter(statusFilter === "pending" ? "all" : "pending")}
+          />
+          <StatCard
+            icon={XCircle}
+            label={d.rejectedRequests}
+            value={report?.rejected || 0}
+            color="bg-red-500/10 text-red-600"
+            active={statusFilter === "rejected"}
+            onClick={() => setStatusFilter(statusFilter === "rejected" ? "all" : "rejected")}
+          />
+        </div>
+      )}
+
+      {/* Request Categories */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <LayoutGrid className="w-5 h-5 text-brand-primary" />
+            <h3 className="text-lg font-semibold">{d.requestCategories}</h3>
           </div>
-          <h2 className="text-xl font-semibold mb-2">{d.comingSoon}</h2>
-          <p className="text-sm text-muted-foreground text-center max-w-md">
-            {d.requests}
-          </p>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {categories.map(cat => (
+              <Card key={cat.id} className="border-2" style={{ borderColor: cat.color + "40" }}>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div
+                      className="w-10 h-10 rounded-lg flex items-center justify-center"
+                      style={{ backgroundColor: cat.color + "20", color: cat.color }}
+                    >
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{getName(cat)}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {cat.types?.length || 0} {d.typesInCategory}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </CardContent>
+      </Card>
+
+      {/* Tabs + Filters */}
+      <Card>
+        <CardContent className="p-4">
+          {/* Tabs */}
+          <div className="flex gap-1 mb-4 border-b border-border">
+            <button
+              onClick={() => setActiveTab("all")}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
+                activeTab === "all"
+                  ? "border-brand-primary text-brand-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {d.tabAllRequests}
+            </button>
+            <button
+              onClick={() => setActiveTab("pending")}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition flex items-center gap-2 ${
+                activeTab === "pending"
+                  ? "border-brand-primary text-brand-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {d.tabPendingOnly}
+              {(report?.pending || 0) > 0 && (
+                <Badge className="bg-amber-500/10 text-amber-700 border-0 text-[10px]">
+                  {report?.pending}
+                </Badge>
+              )}
+            </button>
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-wrap gap-3">
+            <div className="relative flex-1 min-w-[250px]">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder={d.searchEmployees}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pr-10"
+              />
+            </div>
+
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <Filter className="w-4 h-4 ml-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{d.allStatusesAtt}</SelectItem>
+                <SelectItem value="approved">{d.reqApproved}</SelectItem>
+                <SelectItem value="pending">{d.reqPending}</SelectItem>
+                <SelectItem value="rejected">{d.reqRejected}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Requests Table */}
+      <Card className="border-border/50">
+        <div className="p-4 border-b border-border flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            {d.showingOf} <span className="font-semibold text-foreground">{filtered.length}</span> {d.of}{" "}
+            <span className="font-semibold text-foreground">{details.length}</span>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <FileText className="w-8 h-8 text-muted-foreground/50" />
+            </div>
+            <p className="font-medium">{d.noRequestsData}</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colEmployee}</TableHead>
+                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.requestType}</TableHead>
+                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.requestDate}</TableHead>
+                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.requestStatus}</TableHead>
+                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.requestActions}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map(req => (
+                <TableRow key={req.id} className="hover:bg-muted/30">
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="w-9 h-9">
+                        <AvatarFallback className="bg-brand-primary/10 text-brand-primary text-sm font-semibold">
+                          {req.employee_name?.[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <span className="font-medium">{req.employee_name || "—"}</span>
+                        {req.department && (
+                          <div className="text-xs text-muted-foreground">{req.department}</div>
+                        )}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm">
+                      {lang === "en" && req.request_type_en ? req.request_type_en : req.request_type}
+                    </span>
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {req.submitted_at ? new Date(req.submitted_at).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US") : "—"}
+                  </TableCell>
+                  <TableCell>
+                    {getStatusBadge(req.status)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" className="h-8 px-2">
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      {req.status === "pending" && (
+                        <>
+                          <Button variant="ghost" size="sm" className="h-8 px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
+                            <Check className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50">
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </Card>
     </div>
   );
