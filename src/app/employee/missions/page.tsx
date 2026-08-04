@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import {
   Briefcase, Plus, Loader2, MapPin, Calendar,
-  User, Send, Navigation, Phone,
+  User, Send, Navigation, Phone, Search, Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,9 +60,15 @@ export default function EmployeeMissionsPage() {
   const [submitting, setSubmitting]   = useState(false);
   const [gettingLoc, setGettingLoc]   = useState(false);
   const [tab, setTab]                 = useState<"active" | "pending" | "completed">("active");
+  
+  // ── Search State ─────────────────────────────────────────
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
   const mapRef                        = useRef<HTMLDivElement>(null);
-  const mapInstanceRef                = useRef<unknown>(null);
-  const markerRef                     = useRef<unknown>(null);
+  const mapInstanceRef                = useRef<any>(null);
+  const markerRef                     = useRef<any>(null);
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
@@ -78,13 +84,52 @@ export default function EmployeeMissionsPage() {
       const d = await res.json();
       setData({ missions: d?.missions || [], count: d?.count || 0 });
     } catch {
-      toast.error(ar ? "فشل تحميل المهمات" : "Failed to load");
+      toast.error(ar ? "فشل تحميل المهمات" : "Failed to load missions");
     } finally {
       setLoading(false);
     }
-  }, [token, ar]);
+  }, [token, ar, authHeader, langHeader]);
 
   useEffect(() => { load(); }, [load]);
+
+  // ── Search Location (Nominatim) ──────────────────────────
+  const handleSearchLocation = async () => {
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    try {
+      const res = await fetch(`/api/geocode?q=${encodeURIComponent(searchQuery)}`);
+      const data = await res.json();
+      setSearchResults(data || []);
+      if (data.length === 0) {
+        toast.error(ar ? "لم يتم العثور على نتائج" : "No results found");
+      }
+    } catch {
+      toast.error(ar ? "فشل البحث عن الموقع" : "Search failed");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const selectSearchResult = (item: any) => {
+    const lat = parseFloat(item.lat);
+    const lng = parseFloat(item.lon);
+    const name = item.display_name;
+
+    setForm(p => ({
+      ...p,
+      location_name: name,
+      location_lat: String(lat.toFixed(6)),
+      location_lng: String(lng.toFixed(6)),
+    }));
+    
+    setSearchQuery("");
+    setSearchResults([]);
+
+    if (mapInstanceRef.current && markerRef.current) {
+      mapInstanceRef.current.setView([lat, lng], 15);
+      markerRef.current.setLatLng([lat, lng]);
+    }
+  };
 
   // ── Init Map ─────────────────────────────────────────────
   const initMap = async (lat = 30.0444, lng = 31.2357) => {
@@ -109,18 +154,22 @@ export default function EmployeeMissionsPage() {
       };
 
       marker.on("dragend", () => {
-        const pos = (marker as { getLatLng: () => { lat: number; lng: number } }).getLatLng();
+        const pos = marker.getLatLng();
         updatePos(pos.lat, pos.lng);
       });
 
-      map.on("click", (e: { latlng: { lat: number; lng: number } }) => {
-        (marker as { setLatLng: (p: [number, number]) => void }).setLatLng([e.latlng.lat, e.latlng.lng]);
+      map.on("click", (e: any) => {
+        marker.setLatLng([e.latlng.lat, e.latlng.lng]);
         updatePos(e.latlng.lat, e.latlng.lng);
       });
 
       mapInstanceRef.current = map;
       markerRef.current = marker;
-      updatePos(lat, lng);
+      
+      // If we already had coordinates, don't overwrite them with default center
+      if (!form.location_lat) {
+          updatePos(lat, lng);
+      }
     } catch (e) {
       console.error("Map error:", e);
     }
@@ -128,6 +177,8 @@ export default function EmployeeMissionsPage() {
 
   const openRequest = () => {
     setForm({ ...EMPTY_FORM });
+    setSearchQuery("");
+    setSearchResults([]);
     mapInstanceRef.current = null;
     markerRef.current = null;
     setShowRequest(true);
@@ -150,10 +201,10 @@ export default function EmployeeMissionsPage() {
         location_lng: String(lng.toFixed(6)),
       }));
 
-      const map = mapInstanceRef.current as { setView: (p: [number, number], z: number) => void } | null;
-      const marker = markerRef.current as { setLatLng: (p: [number, number]) => void } | null;
-      if (map) map.setView([lat, lng], 15);
-      if (marker) marker.setLatLng([lat, lng]);
+      if (mapInstanceRef.current && markerRef.current) {
+        mapInstanceRef.current.setView([lat, lng], 15);
+        markerRef.current.setLatLng([lat, lng]);
+      }
 
       toast.success(ar ? "تم تحديد موقعك ✅" : "Location captured ✅");
     } catch {
@@ -173,6 +224,11 @@ export default function EmployeeMissionsPage() {
       toast.error(ar ? "وقت البداية والنهاية مطلوبين" : "Start and end time are required");
       return;
     }
+    if (!form.location_lat || !form.location_lng) {
+      toast.error(ar ? "يرجى تحديد الموقع على الخريطة" : "Please pin location on map");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const payload: Record<string, unknown> = {
@@ -184,11 +240,9 @@ export default function EmployeeMissionsPage() {
         reason: form.reason || "",
         planned_start_time: form.planned_start_time,
         planned_end_time: form.planned_end_time,
+        location_lat: parseFloat(form.location_lat),
+        location_lng: parseFloat(form.location_lng),
       };
-      if (form.location_lat && form.location_lng) {
-        payload.location_lat = parseFloat(form.location_lat);
-        payload.location_lng = parseFloat(form.location_lng);
-      }
 
       const res = await fetch("/api/employee/missions", {
         method: "POST",
@@ -204,8 +258,6 @@ export default function EmployeeMissionsPage() {
       if (res.ok && d.success !== false) {
         toast.success(ar ? "تم إرسال طلب المهمة للمدير ✅" : "Mission request sent to manager ✅");
         setShowRequest(false);
-        setForm({ ...EMPTY_FORM });
-        mapInstanceRef.current = null;
         await load();
       } else {
         toast.error(d.message || d.error || (ar ? "فشل التقديم" : "Failed"));
@@ -407,63 +459,11 @@ export default function EmployeeMissionsPage() {
               </div>
             </div>
 
-            {/* Location Name */}
-            <div>
-              <label className="text-sm font-medium mb-1 block">
-                {ar ? "اسم موقع العميل" : "Client Location Name"}
-              </label>
-              <Input
-                value={form.location_name}
-                onChange={e => setForm(p => ({ ...p, location_name: e.target.value }))}
-                placeholder={ar ? "مثال: مكتب العميل - المعادي" : "e.g. Client office - Maadi"}
-              />
-            </div>
-
-            {/* Map for Location */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">
-                  {ar ? "موقع العميل على الخريطة" : "Client Location on Map"}
-                </label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={getGPS}
-                  disabled={gettingLoc}
-                  className="gap-1"
-                >
-                  {gettingLoc
-                    ? <Loader2 className="w-3 h-3 animate-spin" />
-                    : <Navigation className="w-3 h-3" />}
-                  {ar ? "موقعي" : "My GPS"}
-                </Button>
-              </div>
-
-              <div
-                ref={mapRef}
-                className="w-full rounded-xl overflow-hidden border border-border"
-                style={{ height: "220px" }}
-              />
-
-              {form.location_lat && form.location_lng && (
-                <p className="text-xs font-mono text-emerald-700 mt-1" dir="ltr">
-                  📍 {parseFloat(form.location_lat).toFixed(5)},
-                  {parseFloat(form.location_lng).toFixed(5)}
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground mt-1">
-                {ar
-                  ? "اضغط على الخريطة أو اسحب الـ Pin لتحديد موقع العميل"
-                  : "Click on map or drag pin to set client location"}
-              </p>
-            </div>
-
-            {/* Dates */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Dates / Times (REQUIRED) */}
+            <div className="grid grid-cols-2 gap-3 p-3 bg-brand-primary/5 border border-brand-primary/20 rounded-lg">
               <div>
-                <label className="text-sm font-medium mb-1 block">
-                  {ar ? "وقت البداية *" : "Start Time *"}
+                <label className="text-sm font-medium mb-1 block text-brand-primary">
+                  {ar ? "تاريخ ووقت البداية *" : "Start Date & Time *"}
                 </label>
                 <Input
                   type="datetime-local"
@@ -472,8 +472,8 @@ export default function EmployeeMissionsPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1 block">
-                  {ar ? "وقت النهاية *" : "End Time *"}
+                <label className="text-sm font-medium mb-1 block text-brand-primary">
+                  {ar ? "تاريخ ووقت النهاية *" : "End Date & Time *"}
                 </label>
                 <Input
                   type="datetime-local"
@@ -481,6 +481,74 @@ export default function EmployeeMissionsPage() {
                   onChange={e => setForm(p => ({ ...p, planned_end_time: e.target.value }))}
                 />
               </div>
+            </div>
+
+            {/* Google-like Map Search */}
+            <div>
+              <label className="text-sm font-medium mb-2 block">
+                {ar ? "موقع العميل على الخريطة *" : "Client Location on Map *"}
+              </label>
+              
+              {/* Search Bar */}
+              <div className="flex gap-2 mb-2 relative">
+                <div className="relative flex-1">
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder={ar ? "ابحث عن عنوان أو مكان..." : "Search for address or place..."}
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && handleSearchLocation()}
+                    className="pr-9"
+                  />
+                </div>
+                <Button onClick={handleSearchLocation} disabled={isSearching} variant="secondary">
+                  {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : ar ? "بحث" : "Search"}
+                </Button>
+                <Button onClick={getGPS} disabled={gettingLoc} variant="outline" className="gap-1">
+                  {gettingLoc ? <Loader2 className="w-4 h-4 animate-spin" /> : <Navigation className="w-4 h-4" />}
+                  {ar ? "موقعي" : "My GPS"}
+                </Button>
+              </div>
+
+              {/* Search Results Dropdown */}
+              {searchResults.length > 0 && (
+                <div className="border border-border rounded-md max-h-40 overflow-y-auto mb-2 bg-background shadow-sm">
+                  {searchResults.map((item, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => selectSearchResult(item)}
+                      className="p-2 text-sm border-b hover:bg-muted cursor-pointer flex items-start gap-2 transition"
+                    >
+                      <MapPin className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
+                      <span>{item.display_name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Map */}
+              <div
+                ref={mapRef}
+                className="w-full rounded-xl overflow-hidden border border-border"
+                style={{ height: "240px" }}
+              />
+
+              {/* Selected Location Info */}
+              {(form.location_name || form.location_lat) && (
+                <div className="mt-2 p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-md">
+                  {form.location_name && (
+                    <div className="flex items-center gap-1.5 text-sm text-emerald-800 font-medium mb-1">
+                      <Check className="w-4 h-4" />
+                      <span className="line-clamp-1">{form.location_name}</span>
+                    </div>
+                  )}
+                  {form.location_lat && form.location_lng && (
+                    <p className="text-xs font-mono text-emerald-700" dir="ltr">
+                      📍 Lat: {form.location_lat}, Lng: {form.location_lng}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Description */}
@@ -493,20 +561,6 @@ export default function EmployeeMissionsPage() {
                 onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
                 rows={2}
                 placeholder={ar ? "تفاصيل..." : "Details..."}
-                className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background resize-none"
-              />
-            </div>
-
-            {/* Reason */}
-            <div>
-              <label className="text-sm font-medium mb-1 block">
-                {ar ? "سبب الطلب" : "Reason"}
-              </label>
-              <textarea
-                value={form.reason}
-                onChange={e => setForm(p => ({ ...p, reason: e.target.value }))}
-                rows={2}
-                placeholder={ar ? "سبب طلب المهمة..." : "Reason for requesting..."}
                 className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background resize-none"
               />
             </div>
