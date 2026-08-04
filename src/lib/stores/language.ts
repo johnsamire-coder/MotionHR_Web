@@ -52,6 +52,10 @@ export const dict = {
     myMissions: "مهماتي",
     myPayslip: "كشف مرتبي",
     myProfile: "ملفي الشخصي",
+    myPermissions: "أذوناتي",
+    myFieldVisits: "زياراتي الميدانية",
+    notifications: "الإشعارات",
+    companyRegulations: "لائحة الشركة",
     reports: "التقارير",
     // Header
     logout: "تسجيل الخروج",
@@ -923,6 +927,10 @@ export const dict = {
     myMissions: "My Missions",
     myPayslip: "My Payslip",
     myProfile: "My Profile",
+    myPermissions: "My Permissions",
+    myFieldVisits: "Field Visits",
+    notifications: "Notifications",
+    companyRegulations: "Company Regulations",
     reports: "Reports",
     // Header
     logout: "Logout",

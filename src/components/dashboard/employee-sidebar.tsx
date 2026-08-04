@@ -4,8 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, Clock, Calendar, FileText,
-  Briefcase, Wallet, User,
+  LayoutDashboard, Clock, Calendar, FileText, Briefcase,
+  Wallet, User, MapPin, Bell, ScrollText, GitBranch,
+  ShieldCheck, Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDict } from "@/lib/stores/language";
@@ -15,13 +16,19 @@ export function EmployeeSidebar() {
   const d = useDict();
 
   const navigation = [
-    { key: "dashboard",      href: "/employee/dashboard",   icon: LayoutDashboard },
-    { key: "myAttendance",   href: "/employee/attendance",  icon: Clock },
-    { key: "myLeaves",       href: "/employee/leaves",      icon: Calendar },
-    { key: "myRequests",     href: "/employee/requests",    icon: FileText },
-    { key: "myMissions",     href: "/employee/missions",    icon: Briefcase },
-    { key: "myPayslip",      href: "/employee/payslip",     icon: Wallet },
-    { key: "myProfile",      href: "/employee/profile",     icon: User },
+    { key: "dashboard",      href: "/employee/dashboard",     icon: LayoutDashboard },
+    { key: "myAttendance",   href: "/employee/attendance",    icon: Clock },
+    { key: "myLeaves",       href: "/employee/leaves",        icon: Calendar },
+    { key: "myRequests",     href: "/employee/requests",      icon: FileText },
+    { key: "myPermissions",  href: "/employee/permissions",   icon: ShieldCheck },
+    { key: "myMissions",     href: "/employee/missions",      icon: Briefcase },
+    { key: "myFieldVisits",  href: "/employee/field-visits",  icon: MapPin },
+    { key: "myPayslip",      href: "/employee/payslip",       icon: Wallet },
+    { key: "announcementsTitle", href: "/employee/announcements", icon: Megaphone },
+    { key: "notifications",  href: "/employee/notifications", icon: Bell },
+    { key: "companyRegulations", href: "/employee/regulations", icon: ScrollText },
+    { key: "orgChartTitle",  href: "/employee/org-chart",     icon: GitBranch },
+    { key: "myProfile",      href: "/employee/profile",       icon: User },
   ] as const;
 
   return (
