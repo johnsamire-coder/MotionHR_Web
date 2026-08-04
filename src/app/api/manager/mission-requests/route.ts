@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
 const BACKEND = "https://jssolutions-eg.com";
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
-    const body = await request.json();
-    const res = await fetch(`${BACKEND}/attendance/api/mobile/manager/action/`, {
-      method: "POST",
-      headers: { Authorization: authHeader, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+    const res = await fetch(`/attendance/api/mobile/manager/missions/pending-requests/`, {
+      headers: { Authorization: authHeader, "Accept-Language": "ar" },
+      cache: "no-store",
     });
     return NextResponse.json(await res.json(), { status: res.status });
   } catch {

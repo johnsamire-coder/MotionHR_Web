@@ -4,20 +4,12 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  Users, Search, Loader2, Building2, MapPin, Phone,
-  UserCheck, UserX, Mail, Briefcase,
+  Users, Search, Loader2, UserCheck, UserX, Phone, Mail,
+  ChevronRight, Building2, Briefcase,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select, SelectContent, SelectItem,
-  SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
-  Table, TableBody, TableCell, TableHead,
-  TableHeader, TableRow,
-} from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
@@ -32,36 +24,9 @@ interface TeamMember {
   branch: string;
   branch_id: number;
   phone: string;
+  email?: string;
   status: string;
   status_code: string;
-}
-
-interface JobTitleItem { id: number; name_ar: string; name_en: string; }
-interface BranchItem { id: number; name_ar: string; name_en: string; }
-
-function StatCard({
-  icon: Icon, label, value, color,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: number;
-  color: string;
-}) {
-  return (
-    <Card className="border-border/50 hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${color}`}>
-            <Icon className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="text-xl font-bold">{value}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
 }
 
 export default function MyTeamPage() {
@@ -70,79 +35,29 @@ export default function MyTeamPage() {
   const lang = useLangStore((s) => s.lang);
 
   const [team, setTeam] = useState<TeamMember[]>([]);
-  const [jtMap, setJtMap] = useState<Record<string, JobTitleItem>>({});
-  const [branchMap, setBranchMap] = useState<Record<string, BranchItem>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-
-  const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
-  const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
 
   useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
     if (!token) return;
-    setLoading(true);
-    Promise.all([
-      fetch("/api/manager/team", { headers: { Authorization: authHeader } }).then(r => r.json()),
-      fetch("/api/job-titles", { headers: { Authorization: authHeader } }).then(r => r.json()),
-      fetch("/api/branches", { headers: { Authorization: authHeader } }).then(r => r.json()),
-    ]).then(([teamData, jtData, brData]) => {
-      const list = Array.isArray(teamData) ? teamData : teamData.employees || [];
-      setTeam(list);
+    const authHeader = token.startsWith("Token") ? token : `Token ${token}`;
 
-      const jts = Array.isArray(jtData) ? jtData : jtData.job_titles || jtData.jobTitles || [];
-      const jm: Record<string, JobTitleItem> = {};
-      jts.forEach((j: JobTitleItem) => { jm[j.name_ar] = j; });
-      setJtMap(jm);
-
-      const brs = Array.isArray(brData) ? brData : brData.branches || [];
-      const bm: Record<string, BranchItem> = {};
-      brs.forEach((b: BranchItem) => { bm[b.name_ar] = b; });
-      setBranchMap(bm);
-    })
+    fetch("/api/manager/team", { headers: { Authorization: authHeader } })
+      .then(r => r.json())
+      .then(data => setTeam(data?.employees || []))
       .catch(() => toast.error(d.failedLoad))
       .finally(() => setLoading(false));
   }, []);
 
-  const getJobTitleName = (name: string) => {
-    const item = jtMap[name];
-    if (!item) return name;
-    return lang === "en" && item.name_en ? item.name_en : item.name_ar;
-  };
-
-  const getBranchName = (name: string) => {
-    const item = branchMap[name];
-    if (!item) return name;
-    return lang === "en" && item.name_en ? item.name_en : item.name_ar;
-  };
-
-  const filtered = team.filter(emp => {
-    const matchSearch = !search ||
-      emp.full_name.toLowerCase().includes(search.toLowerCase()) ||
-      emp.employee_code.toLowerCase().includes(search.toLowerCase()) ||
-      emp.phone.includes(search);
-    const matchStatus = statusFilter === "all" || emp.status_code === statusFilter;
-    return matchSearch && matchStatus;
-  });
+  const filtered = team.filter(m =>
+    !search ||
+    m.full_name.toLowerCase().includes(search.toLowerCase()) ||
+    m.employee_code.toLowerCase().includes(search.toLowerCase()) ||
+    (m.phone || "").includes(search)
+  );
 
   const activeCount = team.filter(e => e.status_code === "active").length;
-  const inactiveCount = team.length - activeCount;
-
-  const getStatusBadge = (statusCode: string, status: string) => {
-    const colors: Record<string, string> = {
-      active: "bg-emerald-500/10 text-emerald-700",
-      inactive: "bg-red-500/10 text-red-700",
-      on_leave: "bg-amber-500/10 text-amber-700",
-    };
-    const statusLabels: Record<string, string> = lang === "en" ? {
-      active: "Active", inactive: "Inactive", on_leave: "On Leave",
-    } : {};
-    return (
-      <Badge variant="outline" className={`${colors[statusCode] || colors.inactive} border-0 text-[10px]`}>
-        {statusLabels[statusCode] || status}
-      </Badge>
-    );
-  };
 
   return (
     <div className="space-y-6">
@@ -153,104 +68,129 @@ export default function MyTeamPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <StatCard icon={Users} label={d.teamSize} value={team.length} color="bg-blue-500/10 text-blue-600" />
-        <StatCard icon={UserCheck} label={d.activeEmployeesCount} value={activeCount} color="bg-emerald-500/10 text-emerald-600" />
-        <StatCard icon={UserX} label={d.inactiveEmployees} value={inactiveCount} color="bg-red-500/10 text-red-600" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-0 bg-gradient-to-br from-blue-500/10 to-blue-500/5">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                <Users className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">{d.teamSize}</p>
+                <p className="text-3xl font-bold text-blue-700">{team.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 bg-gradient-to-br from-emerald-500/10 to-emerald-500/5">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                <UserCheck className="w-6 h-6 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">{d.activeEmployeesCount}</p>
+                <p className="text-3xl font-bold text-emerald-700">{activeCount}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 bg-gradient-to-br from-red-500/10 to-red-500/5">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center">
+                <UserX className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">{d.inactiveEmployees}</p>
+                <p className="text-3xl font-bold text-red-700">{team.length - activeCount}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Filters */}
+      {/* Search */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-wrap gap-3">
-            <div className="relative flex-1 min-w-[250px]">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder={d.searchEmployees}
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="pr-10"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder={d.statusFilter} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{d.allStatuses}</SelectItem>
-                <SelectItem value="active">{d.statusActive}</SelectItem>
-                <SelectItem value="inactive">{d.statusInactive}</SelectItem>
-                <SelectItem value="on_leave">{d.statusOnLeave}</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder={d.searchEmployees}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pr-10"
+            />
           </div>
         </CardContent>
       </Card>
 
-      {/* Team Table */}
-      <Card className="border-border/50">
-        <div className="p-4 border-b border-border">
-          <div className="text-sm text-muted-foreground">
-            {d.showingOf} <span className="font-semibold text-foreground">{filtered.length}</span> {d.of}{" "}
-            <span className="font-semibold text-foreground">{team.length}</span> {d.teamMembers}
-          </div>
+      {/* Team Cards */}
+      {loading ? (
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-24">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-              <Users className="w-8 h-8 text-muted-foreground/50" />
-            </div>
+      ) : filtered.length === 0 ? (
+        <Card>
+          <CardContent className="py-24 text-center">
+            <Users className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
             <p className="font-medium">{d.noEmployees}</p>
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colEmployee}</TableHead>
-                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colCode}</TableHead>
-                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colJobTitle}</TableHead>
-                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colBranch}</TableHead>
-                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colPhone}</TableHead>
-                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colStatus}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map(emp => (
-                <TableRow
-                  key={emp.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => router.push(`/hr/employees/${emp.id}`)}
-                >
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-9 h-9">
-                        <AvatarFallback className="bg-brand-primary/10 text-brand-primary text-sm font-semibold">
-                          {emp.full_name?.[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="font-medium">{emp.full_name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{emp.employee_code}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="bg-brand-primary/10 text-brand-primary border-0">
-                      {getJobTitleName(emp.job_title)}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map(member => (
+            <Card
+              key={member.id}
+              onClick={() => router.push(`/hr/employees/${member.id}`)}
+              className="hover:shadow-lg transition cursor-pointer hover:-translate-y-0.5"
+            >
+              <CardContent className="p-5">
+                <div className="flex items-start gap-3 mb-3">
+                  <Avatar className="w-14 h-14">
+                    <AvatarFallback className="bg-brand-primary/10 text-brand-primary text-lg font-semibold">
+                      {member.full_name?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold truncate">{member.full_name}</p>
+                    <p className="text-xs text-muted-foreground">{member.employee_code}</p>
+                    <Badge
+                      className={`mt-1 text-[10px] border-0 ${
+                        member.status_code === "active"
+                          ? "bg-emerald-500/10 text-emerald-700"
+                          : "bg-red-500/10 text-red-700"
+                      }`}
+                    >
+                      {member.status}
                     </Badge>
-                  </TableCell>
-                  <TableCell>{getBranchName(emp.branch)}</TableCell>
-                  <TableCell dir="ltr">{emp.phone}</TableCell>
-                  <TableCell>{getStatusBadge(emp.status_code, emp.status)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </Card>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Briefcase className="w-4 h-4" />
+                    <span>{member.job_title}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Building2 className="w-4 h-4" />
+                    <span>{member.department}</span>
+                  </div>
+                  {member.phone && (
+                    <div className="flex items-center gap-2 text-muted-foreground" dir="ltr">
+                      <Phone className="w-4 h-4" />
+                      <span className="font-mono text-xs">{member.phone}</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

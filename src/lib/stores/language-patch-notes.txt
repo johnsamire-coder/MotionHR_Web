@@ -1,0 +1,33 @@
+// ============================================================
+// إضافة هذه المفاتيح لـ src/lib/stores/language.ts
+// في داخل الـ dictionary object (ar + en)
+// ============================================================
+
+// ── Manager Keys ──────────────────────────────────────────
+// ar:
+managerWelcome: "أهلاً",
+myTeamTitle: "فريقي",
+myTeamDesc: "أعضاء فريقك",
+teamSize: "حجم الفريق",
+presentToday: "حاضر اليوم",
+pendingRequests: "طلبات معلقة",
+quickActionsManager: "إجراءات سريعة",
+viewTeam: "عرض الفريق",
+reviewRequests: "مراجعة الطلبات",
+trackTeam: "تتبع الفريق",
+createMissionMgr: "مهمة جديدة",
+failedLoad: "فشل تحميل البيانات",
+
+// en:
+managerWelcome: "Welcome",
+myTeamTitle: "My Team",
+myTeamDesc: "Your team members",
+teamSize: "Team Size",
+presentToday: "Present Today",
+pendingRequests: "Pending Requests",
+quickActionsManager: "Quick Actions",
+viewTeam: "View Team",
+reviewRequests: "Review Requests",
+trackTeam: "Track Team",
+createMissionMgr: "New Mission",
+failedLoad: "Failed to load data",

@@ -6,15 +6,13 @@ export async function POST(request: Request) {
   if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const body = await request.json();
-    const { request_id, action } = body;
-    const res = await fetch(
-      `${BACKEND}/attendance/api/mobile/manager/missions/requests/${request_id}/respond/`,
-      {
-        method: "POST",
-        headers: { Authorization: authHeader, "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
-      }
-    );
+    const { request_id, action, reason } = body;
+    const url = `${BACKEND}/attendance/api/mobile/manager/shifts/change-requests/${request_id}/action/`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: authHeader, "Content-Type": "application/json" },
+      body: JSON.stringify({ action, reason }),
+    });
     return NextResponse.json(await res.json(), { status: res.status });
   } catch {
     return NextResponse.json({ error: "Network error" }, { status: 500 });
