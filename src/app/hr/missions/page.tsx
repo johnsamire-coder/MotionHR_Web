@@ -115,49 +115,6 @@ function FeedbackStatCard({
       </div>
       <p className="text-2xl font-bold">{value}</p>
 
-      <Dialog open={createDialog} onOpenChange={setCreateDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{d.createMission}</DialogTitle>
-            <DialogDescription>
-              {lang === "ar" ? "إنشاء مهمة جديدة" : "Create a new mission"}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>{d.missionTitle}</Label>
-              <Input value={missionForm.title}
-                onChange={e => setMissionForm({ ...missionForm, title: e.target.value })}
-                placeholder={lang === "ar" ? "عنوان المهمة" : "Mission title"} />
-            </div>
-            <div className="space-y-2">
-              <Label>{d.missionLocation}</Label>
-              <Input value={missionForm.location}
-                onChange={e => setMissionForm({ ...missionForm, location: e.target.value })}
-                placeholder={lang === "ar" ? "الموقع" : "Location"} />
-            </div>
-            <div className="space-y-2">
-              <Label>{d.missionDate}</Label>
-              <Input type="date" value={missionForm.scheduled_date}
-                onChange={e => setMissionForm({ ...missionForm, scheduled_date: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>{lang === "ar" ? "ملاحظات" : "Notes"}</Label>
-              <Textarea value={missionForm.notes}
-                onChange={e => setMissionForm({ ...missionForm, notes: e.target.value })}
-                rows={3} />
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setCreateDialog(false)} disabled={submitting}>
-                {d.cancel}
-              </Button>
-              <Button onClick={handleCreateMission} disabled={submitting} className="bg-brand-primary hover:bg-brand-primary/90">
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : d.createMission}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
