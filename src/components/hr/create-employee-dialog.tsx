@@ -200,9 +200,7 @@ export function CreateEmployeeDialog({ open, onClose, onSuccess, departments, br
 
           {/* بيانات وظيفية */}
           <Section title={ar ? "البيانات الوظيفية" : "Job Info"} />
-          <div className="grid grid-cols-2 gap-3">
-            <Field label={ar ? "كود الموظف" : "Employee Code"} value={form.employee_code} onChange={v => set("employee_code", v)} placeholder="EMP001" />
-            <Field label={ar ? "تاريخ التعيين *" : "Hire Date *"} value={form.hire_date} onChange={v => set("hire_date", v)} type="date" />
+          <div className="grid grid-cols-2 gap-3">            <Field label={ar ? "تاريخ التعيين *" : "Hire Date *"} value={form.hire_date} onChange={v => set("hire_date", v)} type="date" />
             <Sel label={ar ? "الفرع" : "Branch"} value={form.branch_id} onChange={v => set("branch_id", v)}>
               <option value="">{ar ? "اختر..." : "Select..."}</option>
               {branches.map(b => <option key={b.id} value={b.id}>{bLabel(b)}</option>)}
@@ -290,4 +288,5 @@ export function CreateEmployeeDialog({ open, onClose, onSuccess, departments, br
     </Dialog>
   );
 }
+
 

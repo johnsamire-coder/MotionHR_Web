@@ -5,14 +5,14 @@ import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   ArrowLeft, Edit, User, Briefcase, DollarSign, FileText,
-  Phone, Mail, MapPin, Building2, Calendar, Loader2, Save, X,
+  Loader2, Save, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { useDict, useLangStore } from "@/lib/stores/language";
+import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
 interface EmployeeData {
@@ -29,6 +29,8 @@ interface EmployeeData {
   birth_date: string;
   gender: string;
   marital_status: string;
+  religion?: string;
+  nationality?: string;
   phone: string;
   phone2?: string;
   email?: string;
@@ -36,37 +38,67 @@ interface EmployeeData {
   city?: string;
   hire_date: string;
   branch_id?: number;
+  branch?: string;
+  branch_name_en?: string;
   department_id?: number;
+  department?: string;
+  department_name_en?: string;
   job_title_id?: number;
-  direct_manager_id?: number;
+  job_title?: string;
+  job_title_name_en?: string;
+  direct_manager_id?: number | null;
+  direct_manager_name?: string;
   worker_type: string;
   contract_type: string;
+  contract_start_date?: string;
   contract_end_date?: string;
+  contract_duration_months?: number | null;
   basic_salary?: number;
-  base_salary?: number;
   currency?: string;
   salary_payment_method?: string;
   bank_name?: string;
   bank_account?: string;
   iban?: string;
   instapay_phone?: string;
-  instapay_transfer_id?: string;
   wallet_phone?: string;
-  wallet_transfer_number?: string;
   wallet_provider?: string;
   has_insurance?: boolean;
   insurance_number?: string;
+  insurance_date?: string;
   status?: string;
-  department?: string;
-  branch?: string;
-  job_title?: string;
-  direct_manager?: { id: number; name: string } | null;
+  country?: string;
+  language?: string;
+  emergency_contact_name?: string;
+  emergency_contact_relation?: string;
+  emergency_contact_phone?: string;
 }
 
-interface Lookup { id: number; name_ar?: string; name_en?: string; name?: string; title?: string; title_ar?: string; title_en?: string }
-interface Manager { id: number; full_name?: string; name?: string; employee_code?: string }
+interface Lookup {
+  id: number;
+  name_ar?: string;
+  name_en?: string;
+  name?: string;
+  title?: string;
+  title_ar?: string;
+  title_en?: string;
+}
 
-function Field({ label, value, dir }: { label: string; value?: string | number | null; dir?: "ltr" | "rtl" }) {
+interface Manager {
+  id: number;
+  full_name?: string;
+  name?: string;
+  employee_code?: string;
+}
+
+function Field({
+  label,
+  value,
+  dir,
+}: {
+  label: string;
+  value?: string | number | null;
+  dir?: "ltr" | "rtl";
+}) {
   const display = value !== null && value !== undefined && value !== "" ? String(value) : "—";
   return (
     <div className="space-y-1">
@@ -76,30 +108,115 @@ function Field({ label, value, dir }: { label: string; value?: string | number |
   );
 }
 
-function FField({ label, value, onChange, type = "text", placeholder = "" }: {
-  label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string;
+function FField({
+  label, value, onChange, type = "text", placeholder = "",
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  placeholder?: string;
 }) {
   return (
     <div>
       <label className="text-xs text-muted-foreground mb-1 block">{label}</label>
-      <Input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className="h-9 text-sm" />
+      <Input
+        type={type}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="h-9 text-sm"
+      />
     </div>
   );
 }
 
-function FSel({ label, value, onChange, children }: {
-  label: string; value: string; onChange: (v: string) => void; children: React.ReactNode;
+function FSel({
+  label, value, onChange, children,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  children: React.ReactNode;
 }) {
   return (
     <div>
       <label className="text-xs text-muted-foreground mb-1 block">{label}</label>
-      <select value={value} onChange={e => onChange(e.target.value)}
-        className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background h-9">
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background h-9"
+      >
         {children}
       </select>
     </div>
   );
 }
+
+const normalizeMaritalStatus = (value?: string) => {
+  const v = (value || "").trim().toLowerCase();
+  if (!v) return "single";
+  if (["single", "أعزب", "اعزب"].includes(v)) return "single";
+  if (["married", "متزوج"].includes(v)) return "married";
+  if (["divorced", "مطلق"].includes(v)) return "divorced";
+  if (["widowed", "أرمل", "ارمل"].includes(v)) return "widowed";
+  return "single";
+};
+
+const normalizePaymentMethod = (value?: string) => {
+  const v = (value || "").trim().toLowerCase();
+  if (!v) return "none";
+  if (v === "cash") return "none";
+  if (["none", "bank", "instapay", "wallet"].includes(v)) return v;
+  return "none";
+};
+
+const paymentMethodLabel = (value?: string, ar = true) => {
+  const v = normalizePaymentMethod(value);
+  const map: Record<string, string> = ar
+    ? { none: "كاش", bank: "بنك", instapay: "انستاباي", wallet: "محفظة" }
+    : { none: "Cash", bank: "Bank", instapay: "InstaPay", wallet: "Wallet" };
+  return map[v] || (ar ? "كاش" : "Cash");
+};
+
+const workerTypeLabel = (value?: string, ar = true) => {
+  const v = (value || "").trim().toLowerCase();
+  const map: Record<string, string> = ar
+    ? { office: "مكتبي", field_free: "ميداني حر", field_assigned: "ميداني محدد" }
+    : { office: "Office", field_free: "Field Free", field_assigned: "Field Assigned" };
+  return map[v] || value || "—";
+};
+
+const contractTypeLabel = (value?: string, ar = true) => {
+  const v = (value || "").trim().toLowerCase();
+  const map: Record<string, string> = ar
+    ? { permanent: "دائم", temporary: "مؤقت", training: "تدريب", freelance: "عمل حر", part_time: "دوام جزئي" }
+    : { permanent: "Permanent", temporary: "Temporary", training: "Training", freelance: "Freelance", part_time: "Part Time" };
+  return map[v] || value || "—";
+};
+
+const genderLabel = (value?: string, ar = true) => {
+  const v = (value || "").trim().toLowerCase();
+  if (v === "male") return ar ? "ذكر" : "Male";
+  if (v === "female") return ar ? "أنثى" : "Female";
+  return value || "—";
+};
+
+const maritalLabel = (value?: string, ar = true) => {
+  const v = normalizeMaritalStatus(value);
+  const map: Record<string, string> = ar
+    ? { single: "أعزب", married: "متزوج", divorced: "مطلق", widowed: "أرمل" }
+    : { single: "Single", married: "Married", divorced: "Divorced", widowed: "Widowed" };
+  return map[v] || value || "—";
+};
+
+const extractArray = (payload: any, keys: string[]) => {
+  if (Array.isArray(payload)) return payload;
+  for (const k of keys) {
+    if (Array.isArray(payload?.[k])) return payload[k];
+  }
+  return [];
+};
 
 export default function EmployeeDetailPage() {
   const router = useRouter();
@@ -108,89 +225,105 @@ export default function EmployeeDetailPage() {
   const ar = lang === "ar";
 
   const [employee, setEmployee] = useState<EmployeeData | null>(null);
-  const [loading, setLoading]   = useState(true);
+  const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
-  const [saving, setSaving]     = useState(false);
-  const [form, setForm]         = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<"personal" | "job" | "salary" | "contract">("personal");
+  const [form, setForm] = useState<Record<string, string>>({});
 
   const [departments, setDepartments] = useState<Lookup[]>([]);
-  const [branches, setBranches]       = useState<Lookup[]>([]);
-  const [jobTitles, setJobTitles]     = useState<Lookup[]>([]);
-  const [managers, setManagers]       = useState<Manager[]>([]);
+  const [branches, setBranches] = useState<Lookup[]>([]);
+  const [jobTitles, setJobTitles] = useState<Lookup[]>([]);
+  const [managers, setManagers] = useState<Manager[]>([]);
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authH = token?.startsWith("Token") ? token : `Token ${token}`;
 
   const pick = (obj: any, keys: string[]) => {
-    for (const k of keys) { if (typeof obj?.[k] === "string" && obj[k].trim()) return obj[k]; }
+    for (const k of keys) {
+      if (typeof obj?.[k] === "string" && obj[k].trim()) return obj[k];
+    }
     return "";
+  };
+
+  const dLabel = (item: Lookup) =>
+    ar ? pick(item, ["name", "name_ar", "name_en"]) : pick(item, ["name_en", "name", "name_ar"]);
+
+  const jLabel = (item: Lookup) =>
+    ar ? pick(item, ["title", "name", "title_ar", "name_ar", "title_en", "name_en"]) : pick(item, ["title_en", "name_en", "title", "name"]);
+
+  const mLabel = (m: Manager) => m.full_name || m.name || `#${m.id}`;
+
+  const fillForm = (emp: EmployeeData) => {
+    setForm({
+      first_name_ar: emp.first_name_ar || "",
+      middle_name_ar: emp.middle_name_ar || "",
+      last_name_ar: emp.last_name_ar || "",
+      first_name_en: emp.first_name_en || "",
+      last_name_en: emp.last_name_en || "",
+      phone: emp.phone || "",
+      phone2: emp.phone2 || "",
+      email: emp.email || "",
+      address: emp.address || "",
+      city: emp.city || "",
+      national_id: emp.national_id || "",
+      birth_date: emp.birth_date || "",
+      gender: emp.gender || "male",
+      marital_status: normalizeMaritalStatus(emp.marital_status),
+      hire_date: emp.hire_date || "",
+      branch_id: String(emp.branch_id || ""),
+      department_id: String(emp.department_id || ""),
+      job_title_id: String(emp.job_title_id || ""),
+      direct_manager_id: String(emp.direct_manager_id || ""),
+      worker_type: emp.worker_type || "office",
+      contract_type: emp.contract_type || "permanent",
+      contract_end_date: emp.contract_end_date || "",
+      basic_salary: String(emp.basic_salary ?? ""),
+      currency: emp.currency || "EGP",
+      salary_payment_method: normalizePaymentMethod(emp.salary_payment_method),
+      bank_name: emp.bank_name || "",
+      bank_account: emp.bank_account || "",
+      iban: emp.iban || "",
+      instapay_phone: emp.instapay_phone || "",
+      wallet_phone: emp.wallet_phone || "",
+      wallet_provider: emp.wallet_provider || "",
+      has_insurance: emp.has_insurance ? "true" : "false",
+      insurance_number: emp.insurance_number || "",
+      country: emp.country || "EG",
+      language: emp.language || "ar",
+    });
+  };
+
+  const loadEmployee = async () => {
+    const res = await fetch(`/api/employees/${params.id}`, {
+      headers: { Authorization: authH },
+      cache: "no-store",
+    });
+    const data = await res.json();
+    const emp: EmployeeData = data.employee || data;
+    setEmployee(emp);
+    fillForm(emp);
+    return emp;
   };
 
   useEffect(() => {
     if (!token || !params.id) return;
 
-    fetch(`/api/employees/${params.id}`, { headers: { Authorization: authH } })
-      .then(r => r.json())
-      .then(data => {
-        const emp: EmployeeData = data.employee || data;
-        setEmployee(emp);
-        setForm({
-          first_name_ar:        emp.first_name_ar        || "",
-          middle_name_ar:       emp.middle_name_ar        || "",
-          last_name_ar:         emp.last_name_ar          || "",
-          first_name_en:        emp.first_name_en         || "",
-          last_name_en:         emp.last_name_en          || "",
-          phone:                emp.phone                 || "",
-          phone2:               emp.phone2                || "",
-          email:                emp.email                 || "",
-          address:              emp.address               || "",
-          city:                 emp.city                  || "",
-          national_id:          emp.national_id           || "",
-          birth_date:           emp.birth_date            || "",
-          gender:               emp.gender                || "male",
-          marital_status:       emp.marital_status        || "single",
-          hire_date:            emp.hire_date             || "",
-          employee_code:        emp.employee_code         || "",
-          branch_id:            String(emp.branch_id      || ""),
-          department_id:        String(emp.department_id  || ""),
-          job_title_id:         String(emp.job_title_id   || ""),
-          direct_manager_id:    String(emp.direct_manager_id || ""),
-          worker_type:          emp.worker_type           || "office",
-          contract_type:        emp.contract_type         || "permanent",
-          contract_end_date:    emp.contract_end_date     || "",
-          basic_salary:         String(emp.basic_salary ?? emp.base_salary ?? ""),
-          currency:             emp.currency              || "EGP",
-          salary_payment_method: emp.salary_payment_method || "none",
-          bank_name:            emp.bank_name             || "",
-          bank_account:         emp.bank_account          || "",
-          iban:                 emp.iban                  || "",
-          instapay_phone:       emp.instapay_phone || emp.instapay_transfer_id || "",
-          wallet_phone:         emp.wallet_phone  || emp.wallet_transfer_number || "",
-          wallet_provider:      emp.wallet_provider       || "",
-          has_insurance:        emp.has_insurance ? "true" : "false",
-          insurance_number:     emp.insurance_number      || "",
-        });
+    Promise.all([
+      loadEmployee(),
+      fetch("/api/departments", { headers: { Authorization: authH } }).then(r => r.json()),
+      fetch("/api/branches", { headers: { Authorization: authH } }).then(r => r.json()),
+      fetch("/api/job-titles", { headers: { Authorization: authH } }).then(r => r.json()),
+      fetch(`/api/employees/managers?exclude_employee_id=${params.id}`, { headers: { Authorization: authH } }).then(r => r.json()),
+    ])
+      .then(([, d, b, j, m]) => {
+        setDepartments(extractArray(d, ["departments", "results", "data"]));
+        setBranches(extractArray(b, ["branches", "results", "data"]));
+        setJobTitles(extractArray(j, ["job_titles", "jobTitles", "results", "data"]));
+        setManagers(extractArray(m, ["results", "data"]));
       })
       .catch(() => toast.error(ar ? "فشل تحميل بيانات الموظف" : "Failed to load employee"))
       .finally(() => setLoading(false));
-
-    Promise.all([
-      fetch("/api/departments",       { headers: { Authorization: authH } }).then(r => r.json()),
-      fetch("/api/branches",          { headers: { Authorization: authH } }).then(r => r.json()),
-      fetch("/api/job-titles",        { headers: { Authorization: authH } }).then(r => r.json()),
-      fetch(`/api/employees/managers?exclude_employee_id=${params.id}`, { headers: { Authorization: authH } }).then(r => r.json()),
-    ]).then(([d, b, j, m]) => {
-      const extractArr = (payload: any, keys: string[]) => {
-        if (Array.isArray(payload)) return payload;
-        for (const k of keys) { if (Array.isArray(payload?.[k])) return payload[k]; }
-        return [];
-      };
-      setDepartments(extractArr(d, ["departments", "results", "data"]));
-      setBranches(extractArr(b, ["branches", "results", "data"]));
-      setJobTitles(extractArr(j, ["job_titles", "jobTitles", "results", "data"]));
-      setManagers(extractArr(m, ["results", "data"]));
-    }).catch(() => {});
   }, [params.id]);
 
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
@@ -198,28 +331,32 @@ export default function EmployeeDetailPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const payload: any = { ...form };
-      ["branch_id", "department_id", "job_title_id", "direct_manager_id"].forEach(k => {
-        payload[k] = form[k] ? Number(form[k]) : null;
-      });
-      ["basic_salary"].forEach(k => {
-        payload[k] = form[k] ? Number(form[k]) : 0;
-      });
-      payload.has_insurance = form.has_insurance === "true";
+      const payload: any = {
+        ...form,
+        branch_id: form.branch_id ? Number(form.branch_id) : null,
+        department_id: form.department_id ? Number(form.department_id) : null,
+        job_title_id: form.job_title_id ? Number(form.job_title_id) : null,
+        direct_manager_id: form.direct_manager_id ? Number(form.direct_manager_id) : null,
+        basic_salary: form.basic_salary ? Number(form.basic_salary) : 0,
+        has_insurance: form.has_insurance === "true",
+      };
 
       const res = await fetch(`/api/employees/${params.id}`, {
         method: "PUT",
         headers: { Authorization: authH, "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
       const data = await res.json();
-      if (res.ok && data.success !== false) {
-        toast.success(ar ? "تم حفظ التعديلات بنجاح" : "Saved successfully");
-        setEmployee(data.employee || { ...employee, ...form } as any);
-        setEditMode(false);
-      } else {
+
+      if (!res.ok || data.success === false) {
         toast.error(data.error || data.message || JSON.stringify(data));
+        return;
       }
+
+      await loadEmployee();
+      setEditMode(false);
+      toast.success(ar ? "تم حفظ التعديلات بنجاح" : "Saved successfully");
     } catch {
       toast.error(ar ? "خطأ في الشبكة" : "Network error");
     } finally {
@@ -227,41 +364,43 @@ export default function EmployeeDetailPage() {
     }
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center py-24">
-      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
-  if (!employee) return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <h2 className="text-xl font-semibold mb-2">{ar ? "الموظف غير موجود" : "Employee not found"}</h2>
-      <Button variant="outline" onClick={() => router.push("/hr/employees")} className="mt-4 gap-2">
-        <ArrowLeft className="w-4 h-4" />
-        {ar ? "رجوع للقائمة" : "Back to list"}
-      </Button>
-    </div>
-  );
+  if (!employee) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <h2 className="text-xl font-semibold mb-2">{ar ? "الموظف غير موجود" : "Employee not found"}</h2>
+        <Button variant="outline" onClick={() => router.push("/hr/employees")} className="mt-4 gap-2">
+          <ArrowLeft className="w-4 h-4" />
+          {ar ? "رجوع للقائمة" : "Back to list"}
+        </Button>
+      </div>
+    );
+  }
 
-  const displayName = employee.full_name_ar || employee.full_name ||
+  const displayName =
+    employee.full_name_ar ||
+    employee.full_name ||
     `${employee.first_name_ar || ""} ${employee.last_name_ar || ""}`.trim();
 
   const tabs = [
     { key: "personal" as const, label: ar ? "بيانات شخصية" : "Personal", icon: User },
-    { key: "job"      as const, label: ar ? "بيانات وظيفية" : "Job",      icon: Briefcase },
-    { key: "salary"   as const, label: ar ? "الراتب"        : "Salary",   icon: DollarSign },
-    { key: "contract" as const, label: ar ? "العقد"         : "Contract", icon: FileText },
+    { key: "job" as const, label: ar ? "بيانات وظيفية" : "Job", icon: Briefcase },
+    { key: "salary" as const, label: ar ? "الراتب" : "Salary", icon: DollarSign },
+    { key: "contract" as const, label: ar ? "العقد" : "Contract", icon: FileText },
   ];
 
-  const dLabel = (item: Lookup) => ar ? pick(item, ["name","name_ar","name_en"]) : pick(item, ["name_en","name","name_ar"]);
-  const jLabel = (item: Lookup) => ar ? pick(item, ["title","name","title_ar","name_ar","title_en","name_en"]) : pick(item, ["title_en","name_en","title","name"]);
-  const mLabel = (m: Manager) => m.full_name || m.name || `#${m.id}`;
-
-  const showBank     = form.salary_payment_method === "bank";
+  const showBank = form.salary_payment_method === "bank";
   const showInstapay = form.salary_payment_method === "instapay";
-  const showWallet   = form.salary_payment_method === "wallet";
+  const showWallet = form.salary_payment_method === "wallet";
   const showContractEnd = form.contract_type === "temporary" || form.contract_type === "training";
-  const showInsurance   = form.has_insurance === "true";
+  const showInsurance = form.has_insurance === "true";
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -281,7 +420,7 @@ export default function EmployeeDetailPage() {
               </Avatar>
               <div>
                 <h1 className="text-2xl font-bold text-white mb-1">{displayName}</h1>
-                <p className="text-white/80 text-sm">{employee.job_title || ""}</p>
+                <p className="text-white/80 text-sm">{employee.job_title || "—"}</p>
                 <div className="flex items-center gap-2 mt-2">
                   <Badge className="bg-white/20 text-white border-0">{employee.employee_code}</Badge>
                   {employee.status && (
@@ -294,20 +433,24 @@ export default function EmployeeDetailPage() {
             <div className="flex gap-2">
               {editMode ? (
                 <>
-                  <Button onClick={handleSave} disabled={saving}
-                    className="bg-white/20 border-white/30 text-white hover:bg-white/30 gap-2">
+                  <Button onClick={handleSave} disabled={saving} className="bg-white/20 border-white/30 text-white hover:bg-white/30 gap-2">
                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                     {ar ? "حفظ" : "Save"}
                   </Button>
-                  <Button variant="outline" onClick={() => setEditMode(false)}
-                    className="bg-white/10 border-white/20 text-white hover:bg-white/20 gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (employee) fillForm(employee);
+                      setEditMode(false);
+                    }}
+                    className="bg-white/10 border-white/20 text-white hover:bg-white/20 gap-2"
+                  >
                     <X className="w-4 h-4" />
                     {ar ? "إلغاء" : "Cancel"}
                   </Button>
                 </>
               ) : (
-                <Button variant="outline" onClick={() => setEditMode(true)}
-                  className="bg-white/10 border-white/20 text-white hover:bg-white/20 gap-2">
+                <Button variant="outline" onClick={() => setEditMode(true)} className="bg-white/10 border-white/20 text-white hover:bg-white/20 gap-2">
                   <Edit className="w-4 h-4" />
                   {ar ? "تعديل" : "Edit"}
                 </Button>
@@ -319,9 +462,15 @@ export default function EmployeeDetailPage() {
         <div className="border-b border-border bg-muted/30">
           <div className="flex gap-1 px-4">
             {tabs.map(tab => (
-              <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition
-                  ${activeTab === tab.key ? "border-brand-primary text-brand-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
+                  activeTab === tab.key
+                    ? "border-brand-primary text-brand-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
                 <tab.icon className="w-4 h-4" />
                 {tab.label}
               </button>
@@ -330,17 +479,17 @@ export default function EmployeeDetailPage() {
         </div>
 
         <CardContent className="p-6">
-
           {activeTab === "personal" && (
             <div className="space-y-6">
               <h3 className="text-lg font-semibold">{ar ? "البيانات الشخصية" : "Personal Info"}</h3>
+
               {editMode ? (
                 <div className="grid grid-cols-2 gap-4">
                   <FField label={ar ? "الاسم الأول (عربي) *" : "First Name (AR) *"} value={form.first_name_ar} onChange={v => set("first_name_ar", v)} />
                   <FField label={ar ? "الاسم الأوسط (عربي)" : "Middle Name (AR)"} value={form.middle_name_ar} onChange={v => set("middle_name_ar", v)} />
                   <FField label={ar ? "اسم العائلة (عربي) *" : "Last Name (AR) *"} value={form.last_name_ar} onChange={v => set("last_name_ar", v)} />
-                  <FField label={ar ? "الاسم الأول (إنجليزي)" : "First Name (EN)"} value={form.first_name_en} onChange={v => set("first_name_en", v)} />
-                  <FField label={ar ? "اسم العائلة (إنجليزي)" : "Last Name (EN)"} value={form.last_name_en} onChange={v => set("last_name_en", v)} />
+                  <FField label={ar ? "الاسم الأول (إنجليزي) *" : "First Name (EN) *"} value={form.first_name_en} onChange={v => set("first_name_en", v)} />
+                  <FField label={ar ? "اسم العائلة (إنجليزي) *" : "Last Name (EN) *"} value={form.last_name_en} onChange={v => set("last_name_en", v)} />
                   <FField label={ar ? "الرقم القومي *" : "National ID *"} value={form.national_id} onChange={v => set("national_id", v)} />
                   <FField label={ar ? "تاريخ الميلاد *" : "Birth Date *"} value={form.birth_date} onChange={v => set("birth_date", v)} type="date" />
                   <FSel label={ar ? "الجنس" : "Gender"} value={form.gender} onChange={v => set("gender", v)}>
@@ -361,13 +510,14 @@ export default function EmployeeDetailPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-6">
-                  <Field label={ar ? "الاسم بالعربي" : "Name (AR)"} value={employee.full_name_ar} />
-                  <Field label={ar ? "الاسم بالإنجليزي" : "Name (EN)"} value={employee.first_name_en ? `${employee.first_name_en} ${employee.last_name_en || ""}`.trim() : ""} />
+                  <Field label={ar ? "الاسم بالعربي" : "Name (AR)"} value={displayName} />
+                  <Field label={ar ? "الاسم بالإنجليزي" : "Name (EN)"} value={`${employee.first_name_en || ""} ${employee.last_name_en || ""}`.trim()} />
                   <Field label={ar ? "الرقم القومي" : "National ID"} value={employee.national_id} dir="ltr" />
                   <Field label={ar ? "تاريخ الميلاد" : "Birth Date"} value={employee.birth_date} />
-                  <Field label={ar ? "الجنس" : "Gender"} value={employee.gender} />
-                  <Field label={ar ? "الحالة الاجتماعية" : "Marital Status"} value={employee.marital_status} />
+                  <Field label={ar ? "الجنس" : "Gender"} value={genderLabel(employee.gender, ar)} />
+                  <Field label={ar ? "الحالة الاجتماعية" : "Marital Status"} value={maritalLabel(employee.marital_status, ar)} />
                   <Field label={ar ? "رقم الموبايل" : "Phone"} value={employee.phone} dir="ltr" />
+                  <Field label={ar ? "رقم موبايل 2" : "Phone 2"} value={employee.phone2} dir="ltr" />
                   <Field label={ar ? "البريد الإلكتروني" : "Email"} value={employee.email} dir="ltr" />
                   <Field label={ar ? "العنوان" : "Address"} value={employee.address} />
                   <Field label={ar ? "المدينة" : "City"} value={employee.city} />
@@ -379,9 +529,10 @@ export default function EmployeeDetailPage() {
           {activeTab === "job" && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">{ar ? "البيانات الوظيفية" : "Job Info"}</h3>
+
               {editMode ? (
                 <div className="grid grid-cols-2 gap-4">
-                  <FField label={ar ? "كود الموظف" : "Employee Code"} value={form.employee_code} onChange={v => set("employee_code", v)} />
+                  <Field label={ar ? "كود الموظف" : "Employee Code"} value={employee.employee_code} />
                   <FField label={ar ? "تاريخ التعيين *" : "Hire Date *"} value={form.hire_date} onChange={v => set("hire_date", v)} type="date" />
                   <FSel label={ar ? "الفرع" : "Branch"} value={form.branch_id} onChange={v => set("branch_id", v)}>
                     <option value="">{ar ? "اختر..." : "Select..."}</option>
@@ -412,8 +563,9 @@ export default function EmployeeDetailPage() {
                   <Field label={ar ? "الفرع" : "Branch"} value={employee.branch} />
                   <Field label={ar ? "القسم" : "Department"} value={employee.department} />
                   <Field label={ar ? "المسمى الوظيفي" : "Job Title"} value={employee.job_title} />
-                  <Field label={ar ? "المدير المباشر" : "Direct Manager"} value={employee.direct_manager?.name} />
-                  <Field label={ar ? "نوع الموظف" : "Worker Type"} value={employee.worker_type} />
+                  <Field label={ar ? "المدير المباشر" : "Direct Manager"} value={employee.direct_manager_name} />
+                  <Field label={ar ? "نوع الموظف" : "Worker Type"} value={workerTypeLabel(employee.worker_type, ar)} />
+                  <Field label={ar ? "الحالة" : "Status"} value={employee.status} />
                 </div>
               )}
             </div>
@@ -422,6 +574,7 @@ export default function EmployeeDetailPage() {
           {activeTab === "salary" && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">{ar ? "بيانات الراتب" : "Salary Info"}</h3>
+
               {editMode ? (
                 <div className="grid grid-cols-2 gap-4">
                   <FField label={ar ? "الراتب الأساسي" : "Basic Salary"} value={form.basic_salary} onChange={v => set("basic_salary", v)} type="number" />
@@ -431,14 +584,17 @@ export default function EmployeeDetailPage() {
                     <option value="instapay">{ar ? "انستاباي" : "InstaPay"}</option>
                     <option value="wallet">{ar ? "محفظة" : "Wallet"}</option>
                   </FSel>
+
                   {showBank && <>
                     <FField label={ar ? "اسم البنك" : "Bank Name"} value={form.bank_name} onChange={v => set("bank_name", v)} />
                     <FField label={ar ? "رقم الحساب" : "Account Number"} value={form.bank_account} onChange={v => set("bank_account", v)} />
                     <FField label="IBAN" value={form.iban} onChange={v => set("iban", v)} />
                   </>}
+
                   {showInstapay && (
                     <FField label={ar ? "رقم انستاباي" : "InstaPay Phone"} value={form.instapay_phone} onChange={v => set("instapay_phone", v)} />
                   )}
+
                   {showWallet && <>
                     <FField label={ar ? "رقم المحفظة" : "Wallet Phone"} value={form.wallet_phone} onChange={v => set("wallet_phone", v)} />
                     <FField label={ar ? "مزود المحفظة" : "Wallet Provider"} value={form.wallet_provider} onChange={v => set("wallet_provider", v)} />
@@ -446,11 +602,14 @@ export default function EmployeeDetailPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-6">
-                  <Field label={ar ? "الراتب الأساسي" : "Basic Salary"} value={employee.basic_salary ?? employee.base_salary} />
-                  <Field label={ar ? "طريقة القبض" : "Payment Method"} value={employee.salary_payment_method} />
+                  <Field label={ar ? "الراتب الأساسي" : "Basic Salary"} value={employee.basic_salary} />
+                  <Field label={ar ? "طريقة القبض" : "Payment Method"} value={paymentMethodLabel(employee.salary_payment_method, ar)} />
                   <Field label={ar ? "اسم البنك" : "Bank Name"} value={employee.bank_name} />
                   <Field label={ar ? "رقم الحساب" : "Account Number"} value={employee.bank_account} dir="ltr" />
                   <Field label="IBAN" value={employee.iban} dir="ltr" />
+                  <Field label={ar ? "رقم انستاباي" : "InstaPay Phone"} value={employee.instapay_phone} dir="ltr" />
+                  <Field label={ar ? "رقم المحفظة" : "Wallet Phone"} value={employee.wallet_phone} dir="ltr" />
+                  <Field label={ar ? "مزود المحفظة" : "Wallet Provider"} value={employee.wallet_provider} />
                 </div>
               )}
             </div>
@@ -459,35 +618,43 @@ export default function EmployeeDetailPage() {
           {activeTab === "contract" && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">{ar ? "بيانات العقد" : "Contract Info"}</h3>
+
               {editMode ? (
                 <div className="grid grid-cols-2 gap-4">
                   <FSel label={ar ? "نوع العقد" : "Contract Type"} value={form.contract_type} onChange={v => set("contract_type", v)}>
                     <option value="permanent">{ar ? "دائم" : "Permanent"}</option>
                     <option value="temporary">{ar ? "مؤقت" : "Temporary"}</option>
                     <option value="training">{ar ? "تدريب" : "Training"}</option>
+                    <option value="freelance">{ar ? "عمل حر" : "Freelance"}</option>
+                    <option value="part_time">{ar ? "دوام جزئي" : "Part Time"}</option>
                   </FSel>
+
                   {showContractEnd && (
                     <FField label={ar ? "تاريخ نهاية العقد" : "Contract End Date"} value={form.contract_end_date} onChange={v => set("contract_end_date", v)} type="date" />
                   )}
+
                   <FSel label={ar ? "مؤمن عليه؟" : "Has Insurance?"} value={form.has_insurance} onChange={v => set("has_insurance", v)}>
                     <option value="false">{ar ? "لا" : "No"}</option>
                     <option value="true">{ar ? "نعم" : "Yes"}</option>
                   </FSel>
+
                   {showInsurance && (
                     <FField label={ar ? "رقم التأمين" : "Insurance Number"} value={form.insurance_number} onChange={v => set("insurance_number", v)} />
                   )}
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-6">
-                  <Field label={ar ? "نوع العقد" : "Contract Type"} value={employee.contract_type} />
-                  <Field label={ar ? "تاريخ نهاية العقد" : "Contract End Date"} value={employee.contract_end_date} />
+                  <Field label={ar ? "نوع العقد" : "Contract Type"} value={contractTypeLabel(employee.contract_type, ar)} />
+                  <Field label={ar ? "بداية العقد" : "Contract Start Date"} value={employee.contract_start_date} />
+                  <Field label={ar ? "نهاية العقد" : "Contract End Date"} value={employee.contract_end_date} />
+                  <Field label={ar ? "مدة العقد بالشهور" : "Contract Duration (Months)"} value={employee.contract_duration_months} />
                   <Field label={ar ? "مؤمن عليه" : "Has Insurance"} value={employee.has_insurance ? (ar ? "نعم" : "Yes") : (ar ? "لا" : "No")} />
                   <Field label={ar ? "رقم التأمين" : "Insurance Number"} value={employee.insurance_number} />
+                  <Field label={ar ? "تاريخ التأمين" : "Insurance Date"} value={employee.insurance_date} />
                 </div>
               )}
             </div>
           )}
-
         </CardContent>
       </Card>
     </div>
