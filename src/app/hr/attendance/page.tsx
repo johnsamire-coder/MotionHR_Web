@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -68,11 +68,34 @@ function StatCard({
   active?: boolean;
   onClick?: () => void;
 }) {
+  return (
+    <Card
+      className={`border transition-all cursor-pointer hover:shadow-md ${
+        active ? "border-brand-primary shadow-md" : "border-border/50"
+      }`}
+      onClick={onClick}
+    >
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${color}`}>
+            <Icon className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="text-xl font-bold">{value}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function AttendancePage() {
   const handleExportAttendance = () => {
     const escapeCsv = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
 
     const header = lang === "ar"
-      ? ["الموظف", "القسم", "الفرع", "الحالة", "الحضور", "الانصراف", "ساعات العمل", "دقائق التأخير", "إضافي"]
+      ? ["Ø§Ù„Ù…ÙˆØ¸Ù", "Ø§Ù„Ù‚Ø³Ù…", "Ø§Ù„ÙØ±Ø¹", "Ø§Ù„Ø­Ø§Ù„Ø©", "Ø§Ù„Ø­Ø¶ÙˆØ±", "Ø§Ù„Ø§Ù†ØµØ±Ø§Ù", "Ø³Ø§Ø¹Ø§Øª Ø§Ù„Ø¹Ù…Ù„", "Ø¯Ù‚Ø§Ø¦Ù‚ Ø§Ù„ØªØ£Ø®ÙŠØ±", "Ø¥Ø¶Ø§ÙÙŠ"]
       : ["Employee", "Department", "Branch", "Status", "Check In", "Check Out", "Work Hours", "Late Minutes", "Overtime"];
 
     const rows = filtered.map(e => [
@@ -105,30 +128,6 @@ function StatCard({
   const handleMonthlyReport = () => {
     window.location.href = `/hr/reports/monthly-attendance?date=${selectedDate}`;
   };
-
-  return (
-    <Card
-      className={`border transition-all cursor-pointer hover:shadow-md ${
-        active ? "border-brand-primary shadow-md" : "border-border/50"
-      }`}
-      onClick={onClick}
-    >
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${color}`}>
-            <Icon className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="text-xl font-bold">{value}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-export default function AttendancePage() {
   const d = useDict();
   const lang = useLangStore((s) => s.lang);
 
@@ -195,7 +194,7 @@ export default function AttendancePage() {
   };
 
   const formatTime = (time: string | null) => {
-    if (!time) return "—";
+    if (!time) return "â€”";
     try {
       const parts = time.split("T")[1]?.split(":") || time.split(":");
       return `${parts[0]}:${parts[1]}`;
@@ -466,14 +465,14 @@ export default function AttendancePage() {
                     <TableCell className="font-mono text-sm">{formatTime(emp.check_out)}</TableCell>
                     <TableCell>
                       <span className="font-mono text-sm">
-                        {emp.work_hours ? emp.work_hours.toFixed(1) : "—"}
+                        {emp.work_hours ? emp.work_hours.toFixed(1) : "â€”"}
                       </span>
                     </TableCell>
                     <TableCell>
                       {emp.late_minutes > 0 ? (
                         <span className="text-amber-600 font-mono">{emp.late_minutes}</span>
                       ) : (
-                        <span className="text-muted-foreground">—</span>
+                        <span className="text-muted-foreground">â€”</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -492,3 +491,4 @@ export default function AttendancePage() {
     </div>
   );
 }
+
