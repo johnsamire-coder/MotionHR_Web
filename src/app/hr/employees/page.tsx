@@ -41,6 +41,7 @@ interface Employee {
 interface Department { id: number; name?: string; name_ar?: string; name_en?: string }
 interface Branch     { id: number; name?: string; name_ar?: string; name_en?: string }
 interface JobTitle   { id: number; title?: string; title_ar?: string; title_en?: string; name?: string; name_ar?: string; name_en?: string }
+interface Manager    { id: number; full_name?: string; name?: string }
 
 interface ListResponse {
   results: Employee[];
@@ -74,6 +75,7 @@ export default function EmployeesPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [branches, setBranches]       = useState<Branch[]>([]);
   const [jobTitles, setJobTitles]     = useState<JobTitle[]>([]);
+  const [managers, setManagers]       = useState<Manager[]>([]);
 
   const token = typeof window !== "undefined"
     ? localStorage.getItem(STORAGE_KEYS.token) : null;
@@ -435,4 +437,6 @@ export default function EmployeesPage() {
     </div>
   );
 }
+
+
 
