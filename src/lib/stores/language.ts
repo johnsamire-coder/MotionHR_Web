@@ -35,6 +35,7 @@ export const dict = {
     leaves: "الإجازات",
     requests: "الطلبات",
     payroll: "الرواتب",
+    payrollRuns: "تشغيل المرتبات",
     missions: "المهمات",
     locations: "المواقع المباشرة",
     announcements: "الإعلانات",
@@ -1785,4 +1786,5 @@ export function useDict() {
   const lang = useLangStore((s) => s.lang);
   return dict[lang];
 }
+
 

@@ -1,31 +1,30 @@
 import { NextResponse } from "next/server";
-const BACKEND = "https://jssolutions-eg.com";
-
+const B = "https://jssolutions-eg.com";
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = request.headers.get("authorization");
+  if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
-    const res = await fetch(`${BACKEND}/attendance/api/mobile/manager/payroll/runs/`, {
-      headers: { Authorization: authHeader }, cache: "no-store",
+    const res = await fetch(`${B}/attendance/api/mobile/manager/payroll/runs/`, {
+      headers: { Authorization: auth, "Host": "jssolutions-eg.com" },
+      cache: "no-store",
     });
-    return NextResponse.json(await res.json(), { status: res.status });
-  } catch {
-    return NextResponse.json({ error: "Network error" }, { status: 500 });
-  }
+    const text = await res.text();
+    try { return NextResponse.json(JSON.parse(text), { status: res.status }); }
+    catch { return NextResponse.json({ error: text.substring(0,200) }, { status: 500 }); }
+  } catch (e) { return NextResponse.json({ error: String(e) }, { status: 500 }); }
 }
-
 export async function POST(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = request.headers.get("authorization");
+  if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const body = await request.json();
-    const res = await fetch(`${BACKEND}/attendance/api/mobile/manager/payroll/run/create/`, {
+    const res = await fetch(`${B}/attendance/api/mobile/manager/payroll/run/create/`, {
       method: "POST",
-      headers: { Authorization: authHeader, "Content-Type": "application/json" },
+      headers: { Authorization: auth, "Content-Type": "application/json", "Host": "jssolutions-eg.com" },
       body: JSON.stringify(body),
     });
-    return NextResponse.json(await res.json(), { status: res.status });
-  } catch {
-    return NextResponse.json({ error: "Network error" }, { status: 500 });
-  }
+    const text = await res.text();
+    try { return NextResponse.json(JSON.parse(text), { status: res.status }); }
+    catch { return NextResponse.json({ error: text.substring(0,200) }, { status: 500 }); }
+  } catch (e) { return NextResponse.json({ error: String(e) }, { status: 500 }); }
 }

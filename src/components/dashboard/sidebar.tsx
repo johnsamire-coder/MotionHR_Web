@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
+import { Play,
   LayoutDashboard, Users, Clock, Calendar, FileText,
   DollarSign, MapPin, Settings, Building2, Upload,
   Briefcase, Bell, FileBarChart, Shield, BookOpen, GitBranch, UserMinus, Map, ScrollText, Zap,
@@ -23,6 +23,7 @@ export function Sidebar() {
     { key: "leaves",           href: "/hr/leaves",            icon: Calendar },
     { key: "requests",         href: "/hr/requests",          icon: FileText },
     { key: "payroll",          href: "/hr/payroll",           icon: DollarSign },
+    { key: "payrollRuns",     href: "/hr/payroll-runs",     icon: Play },
     { key: "missions",         href: "/hr/missions",          icon: Briefcase },
     { key: "locations",        href: "/hr/locations",         icon: MapPin },
     { key: "announcements",    href: "/hr/announcements",     icon: Bell },
@@ -95,3 +96,5 @@ export function Sidebar() {
     </aside>
   );
 }
+
+

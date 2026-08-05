@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 const B = "https://jssolutions-eg.com";
 
-export async function POST(
+export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -10,12 +10,12 @@ export async function POST(
   if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const res = await fetch(`${B}/attendance/api/mobile/manager/payroll/runs/${id}/approve/`, {
-      method: "POST",
+    const res = await fetch(`${B}/attendance/api/mobile/manager/payroll/runs/${id}/`, {
       headers: {
         Authorization: auth,
         "Host": "jssolutions-eg.com",
       },
+      cache: "no-store",
     });
     const text = await res.text();
     try {
