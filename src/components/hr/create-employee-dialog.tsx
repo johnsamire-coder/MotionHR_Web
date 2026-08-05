@@ -80,19 +80,6 @@ export function CreateEmployeeDialog({ open, onClose, onSuccess, departments, br
 
   const ar = lang === "ar";
 
-  const Field = ({ label, field, type = "text", placeholder = "" }: {
-    label: string; field: string; type?: string; placeholder?: string;
-  }) => (
-    <div>
-      <label className="text-sm font-medium mb-1 block">{label}</label>
-      <Input
-        type={type}
-        value={form[field as keyof typeof form]}
-        onChange={e => set(field, e.target.value)}
-        placeholder={placeholder}
-      />
-    </div>
-  );
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -111,10 +98,10 @@ export function CreateEmployeeDialog({ open, onClose, onSuccess, departments, br
               {ar ? "الاسم" : "Name"}
             </p>
             <div className="grid grid-cols-2 gap-3">
-              <Field label={ar ? "الاسم الأول (عربي) *" : "First Name (AR) *"} field="first_name" placeholder="محمد" />
-              <Field label={ar ? "اسم العائلة (عربي) *" : "Last Name (AR) *"} field="last_name" placeholder="أحمد" />
-              <Field label={ar ? "الاسم الأول (إنجليزي)" : "First Name (EN)"} field="first_name_en" placeholder="Mohamed" />
-              <Field label={ar ? "اسم العائلة (إنجليزي)" : "Last Name (EN)"} field="last_name_en" placeholder="Ahmed" />
+              <FormField label={ar ? "الاسم الأول (عربي) *" : "First Name (AR) *"} value={form.first_name} onChange={(v) => set("first_name", v)} placeholder="محمد" />
+              <FormField label={ar ? "اسم العائلة (عربي) *" : "Last Name (AR) *"} value={form.last_name} onChange={(v) => set("last_name", v)} placeholder="أحمد" />
+              <FormField label={ar ? "الاسم الأول (إنجليزي)" : "First Name (EN)"} value={form.first_name_en} onChange={(v) => set("first_name_en", v)} placeholder="Mohamed" />
+              <FormField label={ar ? "اسم العائلة (إنجليزي)" : "Last Name (EN)"} value={form.last_name_en} onChange={(v) => set("last_name_en", v)} placeholder="Ahmed" />
             </div>
           </div>
 
@@ -124,10 +111,10 @@ export function CreateEmployeeDialog({ open, onClose, onSuccess, departments, br
               {ar ? "البيانات الأساسية" : "Basic Info"}
             </p>
             <div className="grid grid-cols-2 gap-3">
-              <Field label={ar ? "الكود *" : "Code *"} field="employee_code" placeholder="EMP001" />
-              <Field label={ar ? "رقم الموبايل" : "Phone"} field="phone" placeholder="+20..." />
-              <Field label={ar ? "البريد الإلكتروني" : "Email"} field="email" type="email" placeholder="emp@co.com" />
-              <Field label={ar ? "تاريخ التعيين" : "Hire Date"} field="hire_date" type="date" />
+              <FormField label={ar ? "الكود *" : "Code *"} value={form.employee_code} onChange={(v) => set("employee_code", v)} placeholder="EMP001" />
+              <FormField label={ar ? "رقم الموبايل" : "Phone"} value={form.phone} onChange={(v) => set("phone", v)} placeholder="+20..." />
+              <FormField label={ar ? "البريد الإلكتروني" : "Email"} value={form.email} onChange={(v) => set("email", v)} type="email" placeholder="emp@co.com" />
+              <FormField label={ar ? "تاريخ التعيين" : "Hire Date"} value={form.hire_date} onChange={(v) => set("hire_date", v)} type="date" />
             </div>
           </div>
 
@@ -204,7 +191,7 @@ export function CreateEmployeeDialog({ open, onClose, onSuccess, departments, br
               {ar ? "المرتب والنوع" : "Salary & Gender"}
             </p>
             <div className="grid grid-cols-2 gap-3">
-              <Field label={ar ? "المرتب الأساسي" : "Basic Salary"} field="basic_salary" type="number" placeholder="0" />
+              <FormField label={ar ? "المرتب الأساسي" : "Basic Salary"} value={form.basic_salary} onChange={(v) => set("basic_salary", v)} type="number" placeholder="0" />
               <div>
                 <label className="text-sm font-medium mb-1 block">{ar ? "النوع" : "Gender"}</label>
                 <select
