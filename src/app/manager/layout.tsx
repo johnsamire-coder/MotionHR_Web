@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
@@ -9,6 +9,7 @@ import {
   Bell, Building2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { TrialBanner } from "@/components/dashboard/trial-banner";
 import { Header } from "@/components/dashboard/header";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useLangStore } from "@/lib/stores/language";

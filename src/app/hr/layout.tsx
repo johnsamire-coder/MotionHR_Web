@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import { ReactNode } from "react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { Sidebar } from "@/components/dashboard/sidebar";
+import { TrialBanner } from "@/components/dashboard/trial-banner";
 import { Header } from "@/components/dashboard/header";
 import { ROLES } from "@/lib/constants/config";
 
@@ -17,6 +18,7 @@ export default function HRLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background">
       <Sidebar />
       <div className="mr-64">
+        <TrialBanner />
         <Header />
         <main className="p-6">{children}</main>
       </div>
