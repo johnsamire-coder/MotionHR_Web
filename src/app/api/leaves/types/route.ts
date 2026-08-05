@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const url = `${BACKEND}/attendance/api/mobile/leave-types/`;
+    const url = `${BACKEND}/attendance/api/mobile/hr/leave-types/`;
     const res = await fetch(url, {
       headers: {
         Authorization: authHeader,
