@@ -4,7 +4,10 @@ export async function GET(request: Request) {
   const auth = request.headers.get("authorization");
   if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
-    const res = await fetch(`${B}/attendance/api/mobile/manager/branches/`, {
+    const url = new URL(request.url);
+    const search = url.searchParams.get("search") || "";
+    const backendUrl = `${B}/attendance/api/mobile/manager/employees/${search ? `?search=${encodeURIComponent(search)}` : ""}`;
+    const res = await fetch(backendUrl, {
       headers: { Authorization: auth, "Host": "jssolutions-eg.com" },
       cache: "no-store",
     });

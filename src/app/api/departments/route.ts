@@ -1,58 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
-
-const BACKEND = "https://jssolutions-eg.com/attendance/api/mobile/manager/departments/";
-
-export async function GET(request: NextRequest) {
+import { NextResponse } from "next/server";
+const B = "https://jssolutions-eg.com";
+export async function GET(request: Request) {
+  const auth = request.headers.get("authorization");
+  if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
-    const authHeader = request.headers.get("authorization");
-    const response = await fetch(BACKEND, {
-      method: "GET",
-      headers: {
-        ...(authHeader ? { Authorization: authHeader } : {}),
-        Accept: "application/json",
-      },
+    const res = await fetch(`${B}/attendance/api/mobile/manager/departments/`, {
+      headers: { Authorization: auth, "Host": "jssolutions-eg.com" },
+      cache: "no-store",
     });
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { success: false, message: `فشل تحميل الأقسام (${response.status})` },
-        { status: response.status }
-      );
-    }
-
-    const data = await response.json();
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error("Departments GET error:", error);
-    return NextResponse.json(
-      { success: false, message: "خطأ في الاتصال بالسيرفر" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const authHeader = request.headers.get("authorization");
-    const body = await request.json();
-
-    const response = await fetch(BACKEND, {
-      method: "POST",
-      headers: {
-        ...(authHeader ? { Authorization: authHeader } : {}),
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-
-    const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
-  } catch (error) {
-    console.error("Departments POST error:", error);
-    return NextResponse.json(
-      { success: false, message: "خطأ في إنشاء القسم" },
-      { status: 500 }
-    );
+    const text = await res.text();
+    try { return NextResponse.json(JSON.parse(text), { status: res.status }); }
+    catch { return NextResponse.json({ error: "Backend error", detail: text.substring(0,200) }, { status: 500 }); }
+  } catch (e) {
+    return NextResponse.json({ error: "Network error", detail: String(e) }, { status: 500 });
   }
 }
