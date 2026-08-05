@@ -13,7 +13,7 @@ import {
 
 const WHATSAPP_URL = "https://wa.me/201501551593?text=%D8%A3%D9%87%D9%84%D8%A7%D9%8B%D8%8C%20%D8%B9%D8%A7%D9%8A%D8%B2%20%D8%A3%D8%B9%D8%B1%D9%81%20%D8%AA%D9%81%D8%A7%D8%B5%D9%8A%D9%84%20MotionHR";
 const MAIL_URL  = "mailto:Jssolutions.eg@gmail.com";
-const DEMO_URL  = "/login";
+const DEMO_URL  = "/signup";
 
 export default function LandingPage() {
   const lang    = useLangStore((s) => s.lang);
