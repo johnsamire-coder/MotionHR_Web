@@ -19,7 +19,6 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Employees list failed:", response.status, errorText.substring(0, 200));
       return NextResponse.json(
         { success: false, message: `فشل تحميل الموظفين (${response.status})` },
         { status: response.status }
@@ -27,7 +26,20 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+
+    // normalize: backend returns 'employees', page expects 'results'
+    return NextResponse.json({
+      count:   data.count   ?? data.total   ?? (data.employees?.length ?? 0),
+      results: data.results ?? data.employees ?? [],
+      stats:   data.stats   ?? {
+        total:    data.count ?? 0,
+        active:   data.active_count   ?? 0,
+        inactive: data.inactive_count ?? 0,
+        on_leave: data.on_leave_count ?? 0,
+      },
+      next:     data.next     ?? null,
+      previous: data.previous ?? null,
+    });
   } catch (error) {
     console.error("Employees list error:", error);
     return NextResponse.json(
