@@ -101,9 +101,9 @@ function Field({
 }) {
   const display = value !== null && value !== undefined && value !== "" ? String(value) : "—";
   return (
-    <div className="space-y-1">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium" dir={dir}>{display}</p>
+    <div className="space-y-1 text-start">
+      <p className="text-xs text-muted-foreground text-start">{label}</p>
+      <p className="text-sm font-medium text-start break-words" dir={dir || "auto"}>{display}</p>
     </div>
   );
 }
@@ -385,7 +385,7 @@ export default function EmployeeDetailPage() {
   const showInsurance = form.has_insurance === "true";
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto" dir={ar ? "rtl" : "ltr"}>
       <Button variant="ghost" onClick={() => router.push("/hr/employees")} className="gap-2 -ml-2">
         <ArrowLeft className="w-4 h-4" />
         {ar ? "رجوع للموظفين" : "Back to Employees"}

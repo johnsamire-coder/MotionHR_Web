@@ -146,9 +146,12 @@ export default function EmployeesPage() {
 
   const stats = data?.stats;
   const totalPages = data?.total_pages || 1;
+  const tableHeaders = lang === "ar"
+    ? ["اسم الموظف", "الكود", "القسم", "المسمى الوظيفي", "الموبايل", "الحالة"]
+    : ["Employee Name", "Code", "Department", "Job Title", "Phone", "Status"];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir={lang === "ar" ? "rtl" : "ltr"}>
 
       {/* â”€â”€ Header â”€â”€ */}
       <div className="flex items-start justify-between flex-wrap gap-4">
@@ -299,20 +302,13 @@ export default function EmployeesPage() {
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full table-auto">
                 <thead>
                   <tr className="border-b bg-muted/30">
-                    {[
-                      d.employeeName,
-                      d.employeeCode,
-                      d.department,
-                      d.jobTitle,
-                      lang === "ar" ? "الموبايل" : "Phone",
-                      d.status,
-                    ].map((h, i) => (
+                    {tableHeaders.map((h, i) => (
                       <th
                         key={i}
-                        className="text-right p-4 text-sm font-semibold text-muted-foreground whitespace-nowrap"
+                        className="text-start align-middle px-4 py-3 text-sm font-semibold text-muted-foreground whitespace-nowrap"
                       >
                         {h}
                       </th>
@@ -329,7 +325,7 @@ export default function EmployeesPage() {
                       }`}
                     >
                       {/* Name + Avatar */}
-                      <td className="p-4">
+                      <td className="px-4 py-3 align-middle">
                         <div className="flex items-center gap-3">
                           <Avatar className="w-9 h-9">
                             <AvatarFallback className="bg-brand-primary/10 text-brand-primary text-sm font-semibold">
@@ -343,14 +339,14 @@ export default function EmployeesPage() {
                       </td>
 
                       {/* Code */}
-                      <td className="p-4">
+                      <td className="px-4 py-3 align-middle">
                         <span className="font-mono text-sm text-muted-foreground">
                           {emp.employee_code}
                         </span>
                       </td>
 
                       {/* Department */}
-                      <td className="p-4">
+                      <td className="px-4 py-3 align-middle">
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Building2 className="w-3 h-3" />
                           <span>{getDept(emp) || "â€”"}</span>
@@ -358,7 +354,7 @@ export default function EmployeesPage() {
                       </td>
 
                       {/* Job Title */}
-                      <td className="p-4">
+                      <td className="px-4 py-3 align-middle">
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Briefcase className="w-3 h-3" />
                           <span>{getJob(emp) || "â€”"}</span>
@@ -366,7 +362,7 @@ export default function EmployeesPage() {
                       </td>
 
                       {/* Phone */}
-                      <td className="p-4">
+                      <td className="px-4 py-3 align-middle">
                         <div className="flex items-center gap-1 text-sm text-muted-foreground" dir="ltr">
                           <Phone className="w-3 h-3" />
                           <span className="font-mono text-xs">{emp.phone || "â€”"}</span>
@@ -374,7 +370,7 @@ export default function EmployeesPage() {
                       </td>
 
                       {/* Status */}
-                      <td className="p-4">
+                      <td className="px-4 py-3 align-middle">
                         <Badge
                           className={`border-0 text-xs ${
                             STATUS_COLORS[emp.status_code] || "bg-slate-100 text-slate-600"
