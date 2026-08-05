@@ -7,7 +7,8 @@ import Link from "next/link";
 import { toast } from "sonner";
 import {
   ArrowLeft, Building2, User, Mail, Phone, Lock,
-  Loader2, CheckCircle2, MessageCircle,
+  Loader2, CheckCircle2, MessageCircle, Copy, KeyRound,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,23 @@ import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
 const WHATSAPP_URL = "https://wa.me/201501551593";
+
+interface SignupResult {
+  username: string;
+  password: string;
+  companyName: string;
+  daysRemaining: number;
+  maxEmployees: number;
+  token: string;
+  user: {
+    id: number;
+    username: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    role: string;
+  };
+}
 
 export default function SignupPage() {
   const router = useRouter();
@@ -25,6 +43,9 @@ export default function SignupPage() {
 
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<"form" | "success">("form");
+  const [result, setResult] = useState<SignupResult | null>(null);
+  const [copiedUser, setCopiedUser] = useState(false);
+  const [copiedPass, setCopiedPass] = useState(false);
 
   const [form, setForm] = useState({
     company_name: "",
@@ -51,8 +72,6 @@ export default function SignupPage() {
     backHome:       ar ? "العودة للرئيسية" : "Back to Home",
     orWhatsapp:     ar ? "أو تواصل معانا مباشرة" : "Or contact us directly",
     whatsappBtn:    ar ? "احجز ديمو على واتساب" : "Book WhatsApp Demo",
-    successTitle:   ar ? "🎉 مبروك! تم إنشاء حسابك" : "🎉 Congrats! Your account is ready",
-    successDesc:    ar ? "هيتم توجيهك للنظام خلال ثواني..." : "Redirecting to your dashboard...",
     passMismatch:   ar ? "كلمة السر غير متطابقة" : "Passwords don't match",
     passTooShort:   ar ? "كلمة السر يجب 6 حروف على الأقل" : "Password must be at least 6 chars",
     features: [
@@ -66,7 +85,6 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation
     if (form.password.length < 6) {
       toast.error(t.passTooShort);
       return;
@@ -92,15 +110,16 @@ export default function SignupPage() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        // Save token & redirect
-        localStorage.setItem(STORAGE_KEYS.token, `Token ${data.token}`);
-        localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(data.user));
-        localStorage.setItem("motionhr_subscription", JSON.stringify(data.subscription));
-
+        setResult({
+          username: data.user.username,
+          password: form.password,
+          companyName: data.company.name_ar,
+          daysRemaining: data.subscription.days_remaining,
+          maxEmployees: data.subscription.max_employees,
+          token: data.token,
+          user: data.user,
+        });
         setStep("success");
-        setTimeout(() => {
-          router.push("/hr/dashboard");
-        }, 2000);
       } else {
         toast.error(data.error || (ar ? "فشل إنشاء الحساب" : "Signup failed"));
       }
@@ -111,24 +130,170 @@ export default function SignupPage() {
     }
   };
 
-  if (step === "success") {
+  const copyToClipboard = async (text: string, type: "user" | "pass") => {
+    try {
+      await navigator.clipboard.writeText(text);
+      if (type === "user") {
+        setCopiedUser(true);
+        setTimeout(() => setCopiedUser(false), 2000);
+      } else {
+        setCopiedPass(true);
+        setTimeout(() => setCopiedPass(false), 2000);
+      }
+      toast.success(ar ? "تم النسخ ✓" : "Copied ✓");
+    } catch {
+      toast.error(ar ? "فشل النسخ" : "Copy failed");
+    }
+  };
+
+  const handleGoToDashboard = () => {
+    if (!result) return;
+    localStorage.setItem(STORAGE_KEYS.token, `Token ${result.token}`);
+    localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(result.user));
+    router.push("/hr/dashboard");
+  };
+
+  // ── SUCCESS SCREEN ─────────────────────────────
+  if (step === "success" && result) {
     return (
-      <div dir={dir} className="min-h-screen bg-background flex items-center justify-center p-6">
-        <div className="max-w-md w-full text-center">
-          <div className="w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-6">
-            <CheckCircle2 className="w-12 h-12 text-emerald-600" />
+      <div dir={dir} className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-brand-primary/5 flex items-center justify-center p-4">
+        <div className="max-w-2xl w-full">
+          <div className="bg-white rounded-3xl shadow-2xl border border-emerald-200 overflow-hidden">
+
+            {/* Header */}
+            <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 p-8 text-center text-white">
+              <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 className="w-12 h-12" />
+              </div>
+              <h1 className="text-3xl font-bold mb-2">
+                🎉 {ar ? "مبروك! تم إنشاء حسابك" : "Congrats! Account Created"}
+              </h1>
+              <p className="text-white/90">
+                {ar
+                  ? `شركة "${result.companyName}" جاهزة للاستخدام`
+                  : `Company "${result.companyName}" is ready`}
+              </p>
+            </div>
+
+            {/* Warning */}
+            <div className="bg-amber-50 border-b border-amber-200 p-4 flex items-start gap-3">
+              <AlertTriangle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-amber-900 mb-1">
+                  {ar ? "⚠️ مهم جداً - احفظ بيانات الدخول" : "⚠️ Important - Save Your Credentials"}
+                </p>
+                <p className="text-sm text-amber-800">
+                  {ar
+                    ? "دي بياناتك اللي هتستخدمها كل مرة تدخل بيها. احفظها في مكان آمن أو انسخها دلوقتي."
+                    : "These are your login credentials. Save them somewhere safe or copy them now."}
+                </p>
+              </div>
+            </div>
+
+            {/* Credentials */}
+            <div className="p-6 space-y-4">
+              {/* Username */}
+              <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-2">
+                    <User className="w-3.5 h-3.5" />
+                    {ar ? "اسم المستخدم (Username)" : "Username"}
+                  </label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => copyToClipboard(result.username, "user")}
+                    className="h-8 gap-1"
+                  >
+                    {copiedUser ? (
+                      <><CheckCircle2 className="w-3 h-3 text-emerald-600" /> {ar ? "تم النسخ" : "Copied"}</>
+                    ) : (
+                      <><Copy className="w-3 h-3" /> {ar ? "نسخ" : "Copy"}</>
+                    )}
+                  </Button>
+                </div>
+                <div className="bg-white border border-slate-300 rounded-lg px-4 py-3 font-mono text-lg font-bold text-brand-primary select-all" dir="ltr">
+                  {result.username}
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-2">
+                    <KeyRound className="w-3.5 h-3.5" />
+                    {ar ? "كلمة السر (Password)" : "Password"}
+                  </label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => copyToClipboard(result.password, "pass")}
+                    className="h-8 gap-1"
+                  >
+                    {copiedPass ? (
+                      <><CheckCircle2 className="w-3 h-3 text-emerald-600" /> {ar ? "تم النسخ" : "Copied"}</>
+                    ) : (
+                      <><Copy className="w-3 h-3" /> {ar ? "نسخ" : "Copy"}</>
+                    )}
+                  </Button>
+                </div>
+                <div className="bg-white border border-slate-300 rounded-lg px-4 py-3 font-mono text-lg font-bold text-brand-primary select-all" dir="ltr">
+                  {result.password}
+                </div>
+              </div>
+
+              {/* Trial Info */}
+              <div className="bg-gradient-to-r from-brand-primary/10 to-brand-accent/10 border border-brand-primary/20 rounded-2xl p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-brand-primary">{result.daysRemaining}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {ar ? "يوم تجربة مجانية" : "Days Free Trial"}
+                    </p>
+                  </div>
+                  <div className="text-center border-r border-brand-primary/20">
+                    <p className="text-3xl font-bold text-brand-primary">{result.maxEmployees}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {ar ? "موظفين متاحين" : "Available Employees"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="pt-2 space-y-2">
+                <Button
+                  onClick={handleGoToDashboard}
+                  className="w-full h-12 text-base bg-brand-primary hover:bg-brand-secondary gap-2"
+                >
+                  {ar ? "ابدأ استخدام النظام الآن" : "Start Using MotionHR Now"}
+                  <ArrowLeft className={`w-4 h-4 ${ar ? "" : "rotate-180"}`} />
+                </Button>
+
+                <Link href={WHATSAPP_URL} target="_blank">
+                  <Button variant="outline" className="w-full gap-2 h-11 border-green-500/30 text-green-700 hover:bg-green-500/5">
+                    <MessageCircle className="w-4 h-4" />
+                    {ar ? "احتاج مساعدة؟ اتواصل معانا" : "Need help? Contact us"}
+                  </Button>
+                </Link>
+              </div>
+            </div>
           </div>
-          <h1 className="text-3xl font-bold mb-3">{t.successTitle}</h1>
-          <p className="text-muted-foreground mb-8">{t.successDesc}</p>
-          <Loader2 className="w-6 h-6 animate-spin text-brand-primary mx-auto" />
+
+          <p className="text-center text-xs text-muted-foreground mt-4">
+            {ar
+              ? "💡 نصيحة: اعمل screenshot لبيانات الدخول أو ابعتها لنفسك على إيميل"
+              : "💡 Tip: Take a screenshot or email these credentials to yourself"}
+          </p>
         </div>
       </div>
     );
   }
 
+  // ── FORM SCREEN ────────────────────────────────
   return (
     <div dir={dir} className="min-h-screen grid lg:grid-cols-2 relative">
-      {/* Left: Brand */}
+      {/* Left */}
       <div className="hidden lg:flex relative overflow-hidden gradient-brand items-center justify-center p-12">
         <div className="absolute inset-0 opacity-30">
           <div className="absolute top-20 left-20 w-72 h-72 rounded-full bg-brand-accent/40 blur-3xl" />
@@ -141,15 +306,9 @@ export default function SignupPage() {
             <span className="text-sm">{t.backHome}</span>
           </Link>
 
-          <Image
-            src="/brand/logo/logo-white.png"
-            alt="MotionHR"
-            width={200}
-            height={60}
-            style={{ width: "auto", height: "auto" }}
-            className="mb-8"
-            priority
-          />
+          <Image src="/brand/logo/logo-white.png" alt="MotionHR"
+            width={200} height={60} style={{ width: "auto", height: "auto" }}
+            className="mb-8" priority />
 
           <h1 className="text-4xl font-bold mb-4 leading-tight">
             {ar ? "جرّب MotionHR" : "Try MotionHR"}
@@ -174,17 +333,13 @@ export default function SignupPage() {
         </div>
       </div>
 
-      {/* Right: Form */}
+      {/* Right */}
       <div className="flex items-center justify-center p-6 lg:p-12 relative">
         <div className="w-full max-w-md">
-          {/* Language toggle */}
           <div className="flex justify-end mb-4">
-            <Button
-              variant="outline"
-              size="sm"
+            <Button variant="outline" size="sm"
               onClick={() => setLang(ar ? "en" : "ar")}
-              className="min-w-[60px] font-semibold"
-            >
+              className="min-w-[60px] font-semibold">
               {ar ? "EN" : "عربي"}
             </Button>
           </div>
@@ -195,122 +350,79 @@ export default function SignupPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Company Name */}
             <div>
-              <label className="text-sm font-medium mb-1.5 block flex items-center gap-2">
+              <label className="text-sm font-medium mb-1.5 flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-brand-primary" />
                 {t.companyName} *
               </label>
-              <Input
-                required
-                value={form.company_name}
+              <Input required value={form.company_name}
                 onChange={(e) => setForm({ ...form, company_name: e.target.value })}
-                placeholder={ar ? "مثال: شركة النور للتجارة" : "e.g. Al Noor Trading Co."}
-                disabled={loading}
-              />
+                placeholder={ar ? "مثال: شركة النور للتجارة" : "e.g. Al Noor Trading"}
+                disabled={loading} />
             </div>
 
-            {/* Owner Name */}
             <div>
-              <label className="text-sm font-medium mb-1.5 block flex items-center gap-2">
+              <label className="text-sm font-medium mb-1.5 flex items-center gap-2">
                 <User className="w-4 h-4 text-brand-primary" />
                 {t.ownerName} *
               </label>
-              <Input
-                required
-                value={form.owner_name}
+              <Input required value={form.owner_name}
                 onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
                 placeholder={ar ? "الاسم الأول والأخير" : "First and last name"}
-                disabled={loading}
-              />
+                disabled={loading} />
             </div>
 
-            {/* Email */}
             <div>
-              <label className="text-sm font-medium mb-1.5 block flex items-center gap-2">
+              <label className="text-sm font-medium mb-1.5 flex items-center gap-2">
                 <Mail className="w-4 h-4 text-brand-primary" />
                 {t.email} *
               </label>
-              <Input
-                required
-                type="email"
-                value={form.email}
+              <Input required type="email" value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                placeholder="example@company.com"
-                dir="ltr"
-                disabled={loading}
-              />
+                placeholder="example@company.com" dir="ltr" disabled={loading} />
             </div>
 
-            {/* Phone */}
             <div>
-              <label className="text-sm font-medium mb-1.5 block flex items-center gap-2">
+              <label className="text-sm font-medium mb-1.5 flex items-center gap-2">
                 <Phone className="w-4 h-4 text-brand-primary" />
                 {t.phone} *
               </label>
-              <Input
-                required
-                type="tel"
-                value={form.phone}
+              <Input required type="tel" value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="01xxxxxxxxx"
-                dir="ltr"
-                disabled={loading}
-              />
+                placeholder="01xxxxxxxxx" dir="ltr" disabled={loading} />
             </div>
 
-            {/* Password */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-sm font-medium mb-1.5 block flex items-center gap-2">
+                <label className="text-sm font-medium mb-1.5 flex items-center gap-2">
                   <Lock className="w-4 h-4 text-brand-primary" />
                   {t.password} *
                 </label>
-                <Input
-                  required
-                  type="password"
-                  value={form.password}
+                <Input required type="password" value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  minLength={6}
-                  disabled={loading}
-                />
+                  minLength={6} disabled={loading} />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1.5 block flex items-center gap-2">
+                <label className="text-sm font-medium mb-1.5 flex items-center gap-2">
                   <Lock className="w-4 h-4 text-brand-primary" />
                   {t.confirmPass} *
                 </label>
-                <Input
-                  required
-                  type="password"
-                  value={form.confirm_password}
+                <Input required type="password" value={form.confirm_password}
                   onChange={(e) => setForm({ ...form, confirm_password: e.target.value })}
-                  minLength={6}
-                  disabled={loading}
-                />
+                  minLength={6} disabled={loading} />
               </div>
             </div>
 
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full h-12 text-base gap-2 bg-brand-primary hover:bg-brand-secondary mt-2"
-            >
+            <Button type="submit" disabled={loading}
+              className="w-full h-12 text-base gap-2 bg-brand-primary hover:bg-brand-secondary mt-2">
               {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  {t.creating}
-                </>
+                <><Loader2 className="w-5 h-5 animate-spin" /> {t.creating}</>
               ) : (
-                <>
-                  {t.submit}
-                  <ArrowLeft className={`w-4 h-4 ${ar ? "" : "rotate-180"}`} />
-                </>
+                <>{t.submit} <ArrowLeft className={`w-4 h-4 ${ar ? "" : "rotate-180"}`} /></>
               )}
             </Button>
           </form>
 
-          {/* Or WhatsApp */}
           <div className="mt-6 pt-6 border-t">
             <p className="text-center text-sm text-muted-foreground mb-3">{t.orWhatsapp}</p>
             <Link href={WHATSAPP_URL} target="_blank">
