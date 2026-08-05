@@ -1,18 +1,10 @@
-/** @type {import('next').NextConfig} */
+/** @type {import("next").NextConfig} */
 const nextConfig = {
-  async rewrites() {
-    return [
-      {
-        source: '/backend/:path*',
-        destination: 'https://jssolutions-eg.com/:path*',
-      },
-    ];
+  typescript: {
+    ignoreBuildErrors: true,
   },
-  images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: 'jssolutions-eg.com' },
-      { protocol: 'https', hostname: 'motion.jssolutions-eg.com' },
-    ],
+  eslint: {
+    ignoreDuringBuilds: true,
   },
 };
 

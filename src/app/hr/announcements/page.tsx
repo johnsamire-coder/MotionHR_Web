@@ -41,7 +41,7 @@ const PRIORITY_CONFIG = {
   low:    { color: "text-blue-700",  bg: "bg-blue-500/10",  border: "border-blue-400",  icon: CheckCircle },
 };
 
-const EMPTY_FORM = { title: "", content: "", priority: "medium" as const };
+const EMPTY_FORM = { title: "", content: "", priority: "medium" as "low" | "medium" | "high" };
 
 export default function AnnouncementsPage() {
   const d = useDict();
@@ -194,7 +194,7 @@ export default function AnnouncementsPage() {
     });
 
   const openEdit = (item: Announcement) => {
-    setForm({ title: item.title, content: item.content, priority: item.priority });
+    setForm({ title: item.title, content: item.content, priority: (item.priority as "low" | "medium" | "high") });
     setEditItem(item);
   };
 
@@ -513,7 +513,7 @@ export default function AnnouncementsPage() {
                 </Card>
                 <Card>
                   <CardContent className="p-4 text-center">
-                    <Users className="w-6 h-6 text-brand-primary mx-auto mb-1" />
+                    <Eye className="w-6 h-6 text-brand-primary mx-auto mb-1" />
                     <p className="text-2xl font-bold">{statsData.total}</p>
                     <p className="text-xs text-muted-foreground">{ar ? "الكل" : "Total"}</p>
                   </CardContent>
@@ -527,3 +527,8 @@ export default function AnnouncementsPage() {
     </div>
   );
 }
+
+
+
+
+
