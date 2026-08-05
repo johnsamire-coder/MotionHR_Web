@@ -34,7 +34,7 @@ const EMPTY = {
   worker_type: "office",
   contract_type: "permanent", contract_end_date: "",
   basic_salary: "",
-  salary_payment_method: "none",
+  salary_payment_method: "cash",
   bank_name: "", bank_account: "",
   instapay_phone: "", wallet_phone: "", wallet_provider: "",
   has_insurance: "false", insurance_number: "",
@@ -242,7 +242,7 @@ export function CreateEmployeeDialog({ open, onClose, onSuccess, departments, br
           <div className="grid grid-cols-2 gap-3">
             <Field label={ar ? "الراتب الأساسي" : "Basic Salary"} value={form.basic_salary} onChange={v => set("basic_salary", v)} type="number" placeholder="0" />
             <Sel label={ar ? "طريقة القبض" : "Payment Method"} value={form.salary_payment_method} onChange={v => set("salary_payment_method", v)}>
-              <option value="none">{ar ? "كاش" : "Cash"}</option>
+              <option value="cash">{ar ? "كاش" : "Cash"}</option>
               <option value="bank">{ar ? "بنك" : "Bank"}</option>
               <option value="instapay">{ar ? "انستاباي" : "InstaPay"}</option>
               <option value="wallet">{ar ? "محفظة" : "Wallet"}</option>
@@ -288,5 +288,10 @@ export function CreateEmployeeDialog({ open, onClose, onSuccess, departments, br
     </Dialog>
   );
 }
+
+
+
+
+
 
 

@@ -153,29 +153,11 @@ function FSel({
   );
 }
 
-const normalizeMaritalStatus = (value?: string) => {
-  const v = (value || "").trim().toLowerCase();
-  if (!v) return "single";
-  if (["single", "أعزب", "اعزب"].includes(v)) return "single";
-  if (["married", "متزوج"].includes(v)) return "married";
-  if (["divorced", "مطلق"].includes(v)) return "divorced";
-  if (["widowed", "أرمل", "ارمل"].includes(v)) return "widowed";
-  return "single";
-};
-
-const normalizePaymentMethod = (value?: string) => {
-  const v = (value || "").trim().toLowerCase();
-  if (!v) return "none";
-  if (v === "cash") return "none";
-  if (["none", "bank", "instapay", "wallet"].includes(v)) return v;
-  return "none";
-};
-
 const paymentMethodLabel = (value?: string, ar = true) => {
-  const v = normalizePaymentMethod(value);
+  const v = ((value || "").trim().toLowerCase() || "cash");
   const map: Record<string, string> = ar
-    ? { none: "كاش", bank: "بنك", instapay: "انستاباي", wallet: "محفظة" }
-    : { none: "Cash", bank: "Bank", instapay: "InstaPay", wallet: "Wallet" };
+    ? { cash: "كاش", bank: "بنك", instapay: "انستاباي", wallet: "محفظة" }
+    : { cash: "Cash", bank: "Bank", instapay: "InstaPay", wallet: "Wallet" };
   return map[v] || (ar ? "كاش" : "Cash");
 };
 
@@ -203,7 +185,7 @@ const genderLabel = (value?: string, ar = true) => {
 };
 
 const maritalLabel = (value?: string, ar = true) => {
-  const v = normalizeMaritalStatus(value);
+  const v = ((value || "").trim().toLowerCase() || "single");
   const map: Record<string, string> = ar
     ? { single: "أعزب", married: "متزوج", divorced: "مطلق", widowed: "أرمل" }
     : { single: "Single", married: "Married", divorced: "Divorced", widowed: "Widowed" };
@@ -269,7 +251,7 @@ export default function EmployeeDetailPage() {
       national_id: emp.national_id || "",
       birth_date: emp.birth_date || "",
       gender: emp.gender || "male",
-      marital_status: normalizeMaritalStatus(emp.marital_status),
+      marital_status: emp.marital_status || "single",
       hire_date: emp.hire_date || "",
       branch_id: String(emp.branch_id || ""),
       department_id: String(emp.department_id || ""),
@@ -280,7 +262,7 @@ export default function EmployeeDetailPage() {
       contract_end_date: emp.contract_end_date || "",
       basic_salary: String(emp.basic_salary ?? ""),
       currency: emp.currency || "EGP",
-      salary_payment_method: normalizePaymentMethod(emp.salary_payment_method),
+      salary_payment_method: emp.salary_payment_method || "cash",
       bank_name: emp.bank_name || "",
       bank_account: emp.bank_account || "",
       iban: emp.iban || "",
@@ -510,8 +492,8 @@ export default function EmployeeDetailPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-6">
-                  <Field label={ar ? "الاسم بالعربي" : "Name (AR)"} value={displayName} />
-                  <Field label={ar ? "الاسم بالإنجليزي" : "Name (EN)"} value={`${employee.first_name_en || ""} ${employee.last_name_en || ""}`.trim()} />
+                  <div className="col-span-2"><Field label={ar ? "الاسم بالعربي" : "Name (AR)"} value={displayName} /></div>
+                  <div className="col-span-2"><Field label={ar ? "الاسم بالإنجليزي" : "Name (EN)"} value={`${employee.first_name_en || ""} ${employee.last_name_en || ""}`.trim()} /></div>
                   <Field label={ar ? "الرقم القومي" : "National ID"} value={employee.national_id} dir="ltr" />
                   <Field label={ar ? "تاريخ الميلاد" : "Birth Date"} value={employee.birth_date} />
                   <Field label={ar ? "الجنس" : "Gender"} value={genderLabel(employee.gender, ar)} />
@@ -579,7 +561,7 @@ export default function EmployeeDetailPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <FField label={ar ? "الراتب الأساسي" : "Basic Salary"} value={form.basic_salary} onChange={v => set("basic_salary", v)} type="number" />
                   <FSel label={ar ? "طريقة القبض" : "Payment Method"} value={form.salary_payment_method} onChange={v => set("salary_payment_method", v)}>
-                    <option value="none">{ar ? "كاش" : "Cash"}</option>
+                    <option value="cash">{ar ? "كاش" : "Cash"}</option>
                     <option value="bank">{ar ? "بنك" : "Bank"}</option>
                     <option value="instapay">{ar ? "انستاباي" : "InstaPay"}</option>
                     <option value="wallet">{ar ? "محفظة" : "Wallet"}</option>

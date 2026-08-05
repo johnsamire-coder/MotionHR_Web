@@ -262,13 +262,13 @@ export default function EmployeesPage() {
               <SelectContent>
                 <SelectItem value="all">{d.allStatuses}</SelectItem>
                 <SelectItem value="active">
-                  {lang === "ar" ? "Ù†Ø´Ø·" : "Active"}
+                  {lang === "ar" ? "نشط" : "Active"}
                 </SelectItem>
                 <SelectItem value="inactive">
-                  {lang === "ar" ? "ØºÙŠØ± Ù†Ø´Ø·" : "Inactive"}
+                  {lang === "ar" ? "غير نشط" : "Inactive"}
                 </SelectItem>
                 <SelectItem value="on_leave">
-                  {lang === "ar" ? "ÙÙŠ Ø¥Ø¬Ø§Ø²Ø©" : "On Leave"}
+                  {lang === "ar" ? "في إجازة" : "On Leave"}
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -276,7 +276,7 @@ export default function EmployeesPage() {
             {/* Results count */}
             <span className="text-sm text-muted-foreground whitespace-nowrap">
               {data?.count
-                ? `${Number(data.count).toLocaleString(lang === "ar" ? "ar-EG" : "en-US")} ${lang === "ar" ? "Ù…ÙˆØ¸Ù" : "employees"}`
+                ? `${Number(data.count).toLocaleString(lang === "ar" ? "ar-EG" : "en-US")} ${lang === "ar" ? "موظف" : "employees"}`
                 : ""}
             </span>
           </div>
@@ -307,7 +307,7 @@ export default function EmployeesPage() {
                       d.employeeCode,
                       d.department,
                       d.jobTitle,
-                      lang === "ar" ? "Ø§Ù„Ù…ÙˆØ¨Ø§ÙŠÙ„" : "Phone",
+                      lang === "ar" ? "الموبايل" : "Phone",
                       d.status,
                     ].map((h, i) => (
                       <th
@@ -399,13 +399,13 @@ export default function EmployeesPage() {
                   className="gap-1"
                 >
                   <ChevronRight className="w-4 h-4" />
-                  {lang === "ar" ? "Ø§Ù„Ø³Ø§Ø¨Ù‚" : "Prev"}
+                  {lang === "ar" ? "السابق" : "Prev"}
                 </Button>
 
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">
                     {lang === "ar"
-                      ? `ØµÙØ­Ø© ${page} Ù…Ù† ${totalPages}`
+                      ? `صفحة ${page} من ${totalPages}`
                       : `Page ${page} of ${totalPages}`}
                   </span>
                 </div>
@@ -416,7 +416,7 @@ export default function EmployeesPage() {
                   disabled={page >= totalPages}
                   className="gap-1"
                 >
-                  {lang === "ar" ? "Ø§Ù„ØªØ§Ù„ÙŠ" : "Next"}
+                  {lang === "ar" ? "التالي" : "Next"}
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
               </div>
