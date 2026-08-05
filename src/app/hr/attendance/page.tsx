@@ -68,6 +68,44 @@ function StatCard({
   active?: boolean;
   onClick?: () => void;
 }) {
+  const handleExportAttendance = () => {
+    const escapeCsv = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+
+    const header = lang === "ar"
+      ? ["الموظف", "القسم", "الفرع", "الحالة", "الحضور", "الانصراف", "ساعات العمل", "دقائق التأخير", "إضافي"]
+      : ["Employee", "Department", "Branch", "Status", "Check In", "Check Out", "Work Hours", "Late Minutes", "Overtime"];
+
+    const rows = filtered.map(e => [
+      e.employee_name,
+      e.department,
+      e.branch,
+      e.status,
+      e.check_in || "",
+      e.check_out || "",
+      e.work_hours,
+      e.late_minutes,
+      e.overtime_hours,
+    ]);
+
+    const csv = "\uFEFF" + [header, ...rows]
+      .map(row => row.map(escapeCsv).join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `attendance_${selectedDate}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleMonthlyReport = () => {
+    window.location.href = `/hr/reports/monthly-attendance?date=${selectedDate}`;
+  };
+
   return (
     <Card
       className={`border transition-all cursor-pointer hover:shadow-md ${
@@ -207,11 +245,11 @@ export default function AttendancePage() {
             <Calendar className="w-4 h-4" />
             {d.today}
           </Button>
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" onClick={handleExportAttendance} className="gap-2">
             <Download className="w-4 h-4" />
             {d.exportAttendance}
           </Button>
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" onClick={handleMonthlyReport} className="gap-2">
             <FileText className="w-4 h-4" />
             {d.monthlyReport}
           </Button>
