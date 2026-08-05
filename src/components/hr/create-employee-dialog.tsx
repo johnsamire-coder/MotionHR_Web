@@ -32,6 +32,32 @@ const EMPTY = {
   gender: "male", worker_type: "employee",
 };
 
+
+function FormField({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder = "",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="text-sm font-medium mb-1 block">{label}</label>
+      <Input
+        type={type}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+}
 export function CreateEmployeeDialog({ open, onClose, onSuccess, departments, branches, jobTitles }: Props) {
   const lang = useLangStore((s) => s.lang);
   const [form, setForm] = useState({ ...EMPTY });
