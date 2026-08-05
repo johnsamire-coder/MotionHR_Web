@@ -1,19 +1,18 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Plus, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
-interface Dept  { id: number; name: string; name_en?: string }
-interface Branch { id: number; name: string; name_en?: string }
-interface JobTitle { id: number; title: string; title_en?: string }
+interface Dept     { id: number; name?: string; name_ar?: string; name_en?: string }
+interface Branch   { id: number; name?: string; name_ar?: string; name_en?: string }
+interface JobTitle { id: number; title?: string; title_ar?: string; title_en?: string; name?: string; name_ar?: string; name_en?: string }
+interface Manager  { id: number; full_name?: string; name?: string }
 
 interface Props {
   open: boolean;
@@ -22,66 +21,114 @@ interface Props {
   departments: Dept[];
   branches: Branch[];
   jobTitles: JobTitle[];
+  managers?: Manager[];
 }
 
 const EMPTY = {
-  first_name: "", last_name: "", first_name_en: "", last_name_en: "",
-  employee_code: "", phone: "", email: "",
-  department_id: "", branch_id: "", job_title_id: "",
-  basic_salary: "", hire_date: "",
-  gender: "male", worker_type: "employee",
+  first_name_ar: "", middle_name_ar: "", last_name_ar: "",
+  first_name_en: "", last_name_en: "",
+  phone: "", email: "", national_id: "", birth_date: "",
+  gender: "male", marital_status: "single",
+  employee_code: "", hire_date: "",
+  branch_id: "", department_id: "", job_title_id: "", direct_manager_id: "",
+  worker_type: "office",
+  contract_type: "permanent", contract_end_date: "",
+  basic_salary: "",
+  salary_payment_method: "none",
+  bank_name: "", bank_account: "",
+  instapay_phone: "", wallet_phone: "", wallet_provider: "",
+  has_insurance: "false", insurance_number: "",
+  address: "",
 };
 
-
-function FormField({
-  label,
-  value,
-  onChange,
-  type = "text",
-  placeholder = "",
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-  placeholder?: string;
+function Field({ label, value, onChange, type = "text", placeholder = "" }: {
+  label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string;
 }) {
   return (
     <div>
       <label className="text-sm font-medium mb-1 block">{label}</label>
-      <Input
-        type={type}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-      />
+      <Input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
     </div>
   );
 }
-export function CreateEmployeeDialog({ open, onClose, onSuccess, departments, branches, jobTitles }: Props) {
+
+function Sel({ label, value, onChange, children }: {
+  label: string; value: string; onChange: (v: string) => void; children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label className="text-sm font-medium mb-1 block">{label}</label>
+      <select value={value} onChange={e => onChange(e.target.value)}
+        className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background">
+        {children}
+      </select>
+    </div>
+  );
+}
+
+function Section({ title }: { title: string }) {
+  return <p className="text-xs font-semibold text-muted-foreground uppercase mb-3 mt-2">{title}</p>;
+}
+
+export function CreateEmployeeDialog({ open, onClose, onSuccess, departments, branches, jobTitles, managers = [] }: Props) {
   const lang = useLangStore((s) => s.lang);
   const [form, setForm] = useState({ ...EMPTY });
   const [loading, setLoading] = useState(false);
+  const ar = lang === "ar";
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
-
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
 
+  const pick = (obj: any, keys: string[]) => {
+    for (const k of keys) { if (typeof obj?.[k] === "string" && obj[k].trim()) return obj[k]; }
+    return "";
+  };
+  const dLabel = (d: Dept)     => ar ? pick(d, ["name","name_ar","name_en"]) : pick(d, ["name_en","name","name_ar"]);
+  const bLabel = (b: Branch)   => ar ? pick(b, ["name","name_ar","name_en"]) : pick(b, ["name_en","name","name_ar"]);
+  const jLabel = (j: JobTitle) => ar ? pick(j, ["title","name","title_ar","name_ar","title_en","name_en"]) : pick(j, ["title_en","name_en","title","name"]);
+  const mLabel = (m: Manager)  => m.full_name || m.name || String(m.id);
+
   const handleSubmit = async () => {
-    if (!form.first_name || !form.last_name || !form.employee_code) {
-      toast.error(lang === "ar" ? "الاسم والكود مطلوبين" : "Name and code are required");
+    if (!form.first_name_ar || !form.last_name_ar || !form.phone || !form.national_id || !form.birth_date || !form.hire_date) {
+      toast.error(ar ? "يرجى ملء الحقول المطلوبة" : "Please fill required fields");
       return;
     }
     setLoading(true);
     try {
-      const payload = {
-        ...form,
+      const payload: any = {
+        first_name_ar: form.first_name_ar,
+        middle_name_ar: form.middle_name_ar || undefined,
+        last_name_ar: form.last_name_ar,
+        first_name_en: form.first_name_en || undefined,
+        last_name_en: form.last_name_en || undefined,
+        phone: form.phone,
+        email: form.email || undefined,
+        national_id: form.national_id,
+        birth_date: form.birth_date,
+        gender: form.gender,
+        marital_status: form.marital_status,
+        hire_date: form.hire_date,
+        employee_code: form.employee_code || undefined,
+        branch_id: form.branch_id ? Number(form.branch_id) : undefined,
         department_id: form.department_id ? Number(form.department_id) : undefined,
-        branch_id:     form.branch_id     ? Number(form.branch_id)     : undefined,
-        job_title_id:  form.job_title_id  ? Number(form.job_title_id)  : undefined,
-        basic_salary:  form.basic_salary  ? Number(form.basic_salary)  : 0,
+        job_title_id: form.job_title_id ? Number(form.job_title_id) : undefined,
+        direct_manager_id: form.direct_manager_id ? Number(form.direct_manager_id) : undefined,
+        worker_type: form.worker_type,
+        contract_type: form.contract_type,
+        contract_end_date: form.contract_end_date || undefined,
+        basic_salary: form.basic_salary ? Number(form.basic_salary) : 0,
+        salary_payment_method: form.salary_payment_method,
+        bank_name: form.bank_name || undefined,
+        bank_account: form.bank_account || undefined,
+        instapay_phone: form.instapay_phone || undefined,
+        wallet_phone: form.wallet_phone || undefined,
+        wallet_provider: form.wallet_provider || undefined,
+        has_insurance: form.has_insurance === "true",
+        insurance_number: form.insurance_number || undefined,
+        address: form.address || undefined,
       };
+
       const res = await fetch("/api/hr/employees/create", {
         method: "POST",
         headers: { Authorization: authHeader, "Content-Type": "application/json" },
@@ -89,27 +136,29 @@ export function CreateEmployeeDialog({ open, onClose, onSuccess, departments, br
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(lang === "ar" ? "تم إضافة الموظف" : "Employee added");
+        toast.success(ar ? "تم إضافة الموظف بنجاح" : "Employee added");
         setForm({ ...EMPTY });
         onSuccess();
         onClose();
       } else {
-        const msg = data.message || data.detail || JSON.stringify(data);
-        toast.error(msg);
+        toast.error(data.error || data.message || data.detail || JSON.stringify(data));
       }
     } catch {
-      toast.error(lang === "ar" ? "خطأ في الشبكة" : "Network error");
+      toast.error(ar ? "خطأ في الشبكة" : "Network error");
     } finally {
       setLoading(false);
     }
   };
 
-  const ar = lang === "ar";
-
+  const showBank      = form.salary_payment_method === "bank";
+  const showInstapay  = form.salary_payment_method === "instapay";
+  const showWallet    = form.salary_payment_method === "wallet";
+  const showInsurance = form.has_insurance === "true";
+  const showContractEnd = form.contract_type === "temporary" || form.contract_type === "training";
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="w-5 h-5 text-brand-primary" />
@@ -117,128 +166,117 @@ export function CreateEmployeeDialog({ open, onClose, onSuccess, departments, br
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-5 pt-2">
-          {/* Name */}
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase mb-3">
-              {ar ? "الاسم" : "Name"}
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label={ar ? "الاسم الأول (عربي) *" : "First Name (AR) *"} value={form.first_name} onChange={(v) => set("first_name", v)} placeholder="محمد" />
-              <FormField label={ar ? "اسم العائلة (عربي) *" : "Last Name (AR) *"} value={form.last_name} onChange={(v) => set("last_name", v)} placeholder="أحمد" />
-              <FormField label={ar ? "الاسم الأول (إنجليزي)" : "First Name (EN)"} value={form.first_name_en} onChange={(v) => set("first_name_en", v)} placeholder="Mohamed" />
-              <FormField label={ar ? "اسم العائلة (إنجليزي)" : "Last Name (EN)"} value={form.last_name_en} onChange={(v) => set("last_name_en", v)} placeholder="Ahmed" />
-            </div>
+        <div className="space-y-4 pt-2">
+
+          {/* الاسم */}
+          <Section title={ar ? "الاسم" : "Name"} />
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={ar ? "الاسم الأول (عربي) *" : "First Name (AR) *"} value={form.first_name_ar} onChange={v => set("first_name_ar", v)} placeholder="محمد" />
+            <Field label={ar ? "الاسم الأوسط (عربي)" : "Middle Name (AR)"} value={form.middle_name_ar} onChange={v => set("middle_name_ar", v)} placeholder="أحمد" />
+            <Field label={ar ? "اسم العائلة (عربي) *" : "Last Name (AR) *"} value={form.last_name_ar} onChange={v => set("last_name_ar", v)} placeholder="علي" />
+            <Field label={ar ? "الاسم الأول (إنجليزي)" : "First Name (EN)"} value={form.first_name_en} onChange={v => set("first_name_en", v)} placeholder="Mohamed" />
+            <Field label={ar ? "اسم العائلة (إنجليزي)" : "Last Name (EN)"} value={form.last_name_en} onChange={v => set("last_name_en", v)} placeholder="Ali" />
           </div>
 
-          {/* Basic Info */}
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase mb-3">
-              {ar ? "البيانات الأساسية" : "Basic Info"}
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label={ar ? "الكود *" : "Code *"} value={form.employee_code} onChange={(v) => set("employee_code", v)} placeholder="EMP001" />
-              <FormField label={ar ? "رقم الموبايل" : "Phone"} value={form.phone} onChange={(v) => set("phone", v)} placeholder="+20..." />
-              <FormField label={ar ? "البريد الإلكتروني" : "Email"} value={form.email} onChange={(v) => set("email", v)} type="email" placeholder="emp@co.com" />
-              <FormField label={ar ? "تاريخ التعيين" : "Hire Date"} value={form.hire_date} onChange={(v) => set("hire_date", v)} type="date" />
-            </div>
+          {/* البيانات الأساسية */}
+          <Section title={ar ? "البيانات الأساسية" : "Basic Info"} />
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={ar ? "رقم الموبايل / واتساب *" : "Phone / WhatsApp *"} value={form.phone} onChange={v => set("phone", v)} placeholder="01012345678" />
+            <Field label={ar ? "البريد الإلكتروني" : "Email"} value={form.email} onChange={v => set("email", v)} type="email" placeholder="emp@co.com" />
+            <Field label={ar ? "الرقم القومي *" : "National ID *"} value={form.national_id} onChange={v => set("national_id", v)} placeholder="29501011234567" />
+            <Field label={ar ? "تاريخ الميلاد *" : "Birth Date *"} value={form.birth_date} onChange={v => set("birth_date", v)} type="date" />
+            <Sel label={ar ? "الجنس" : "Gender"} value={form.gender} onChange={v => set("gender", v)}>
+              <option value="male">{ar ? "ذكر" : "Male"}</option>
+              <option value="female">{ar ? "أنثى" : "Female"}</option>
+            </Sel>
+            <Sel label={ar ? "الحالة الاجتماعية" : "Marital Status"} value={form.marital_status} onChange={v => set("marital_status", v)}>
+              <option value="single">{ar ? "أعزب" : "Single"}</option>
+              <option value="married">{ar ? "متزوج" : "Married"}</option>
+              <option value="divorced">{ar ? "مطلق" : "Divorced"}</option>
+              <option value="widowed">{ar ? "أرمل" : "Widowed"}</option>
+            </Sel>
+            <Field label={ar ? "العنوان" : "Address"} value={form.address} onChange={v => set("address", v)} placeholder={ar ? "القاهرة، مصر" : "Cairo, Egypt"} />
           </div>
 
-          {/* Org */}
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase mb-3">
-              {ar ? "الهيكل التنظيمي" : "Organization"}
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium mb-1 block">{ar ? "القسم" : "Department"}</label>
-                <select
-                  value={form.department_id}
-                  onChange={e => set("department_id", e.target.value)}
-                  className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background"
-                >
-                  <option value="">{ar ? "اختر..." : "Select..."}</option>
-                  {departments.map(d => (
-                    <option key={d.id} value={d.id}>
-                      {lang === "en" && d.name_en ? d.name_en : d.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">{ar ? "الفرع" : "Branch"}</label>
-                <select
-                  value={form.branch_id}
-                  onChange={e => set("branch_id", e.target.value)}
-                  className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background"
-                >
-                  <option value="">{ar ? "اختر..." : "Select..."}</option>
-                  {branches.map(b => (
-                    <option key={b.id} value={b.id}>
-                      {lang === "en" && b.name_en ? b.name_en : b.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">{ar ? "المسمى الوظيفي" : "Job Title"}</label>
-                <select
-                  value={form.job_title_id}
-                  onChange={e => set("job_title_id", e.target.value)}
-                  className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background"
-                >
-                  <option value="">{ar ? "اختر..." : "Select..."}</option>
-                  {jobTitles.map(j => (
-                    <option key={j.id} value={j.id}>
-                      {lang === "en" && j.title_en ? j.title_en : j.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">{ar ? "نوع الموظف" : "Type"}</label>
-                <select
-                  value={form.worker_type}
-                  onChange={e => set("worker_type", e.target.value)}
-                  className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background"
-                >
-                  <option value="employee">{ar ? "موظف" : "Employee"}</option>
-                  <option value="manager">{ar ? "مدير" : "Manager"}</option>
-                  <option value="driver">{ar ? "سائق" : "Driver"}</option>
-                  <option value="field_worker">{ar ? "عامل ميداني" : "Field Worker"}</option>
-                </select>
-              </div>
-            </div>
+          {/* بيانات وظيفية */}
+          <Section title={ar ? "البيانات الوظيفية" : "Job Info"} />
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={ar ? "كود الموظف" : "Employee Code"} value={form.employee_code} onChange={v => set("employee_code", v)} placeholder="EMP001" />
+            <Field label={ar ? "تاريخ التعيين *" : "Hire Date *"} value={form.hire_date} onChange={v => set("hire_date", v)} type="date" />
+            <Sel label={ar ? "الفرع" : "Branch"} value={form.branch_id} onChange={v => set("branch_id", v)}>
+              <option value="">{ar ? "اختر..." : "Select..."}</option>
+              {branches.map(b => <option key={b.id} value={b.id}>{bLabel(b)}</option>)}
+            </Sel>
+            <Sel label={ar ? "القسم" : "Department"} value={form.department_id} onChange={v => set("department_id", v)}>
+              <option value="">{ar ? "اختر..." : "Select..."}</option>
+              {departments.map(d => <option key={d.id} value={d.id}>{dLabel(d)}</option>)}
+            </Sel>
+            <Sel label={ar ? "المسمى الوظيفي" : "Job Title"} value={form.job_title_id} onChange={v => set("job_title_id", v)}>
+              <option value="">{ar ? "اختر..." : "Select..."}</option>
+              {jobTitles.map(j => <option key={j.id} value={j.id}>{jLabel(j)}</option>)}
+            </Sel>
+            <Sel label={ar ? "المدير المباشر" : "Direct Manager"} value={form.direct_manager_id} onChange={v => set("direct_manager_id", v)}>
+              <option value="">{ar ? "بدون مدير" : "No Manager"}</option>
+              {managers.map(m => <option key={m.id} value={m.id}>{mLabel(m)}</option>)}
+            </Sel>
+            <Sel label={ar ? "نوع الموظف" : "Worker Type"} value={form.worker_type} onChange={v => set("worker_type", v)}>
+              <option value="office">{ar ? "مكتبي" : "Office"}</option>
+              <option value="field_free">{ar ? "ميداني حر" : "Field Free"}</option>
+              <option value="field_assigned">{ar ? "ميداني محدد" : "Field Assigned"}</option>
+            </Sel>
           </div>
 
-          {/* Salary + Gender */}
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase mb-3">
-              {ar ? "المرتب والنوع" : "Salary & Gender"}
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label={ar ? "المرتب الأساسي" : "Basic Salary"} value={form.basic_salary} onChange={(v) => set("basic_salary", v)} type="number" placeholder="0" />
-              <div>
-                <label className="text-sm font-medium mb-1 block">{ar ? "النوع" : "Gender"}</label>
-                <select
-                  value={form.gender}
-                  onChange={e => set("gender", e.target.value)}
-                  className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background"
-                >
-                  <option value="male">{ar ? "ذكر" : "Male"}</option>
-                  <option value="female">{ar ? "أنثى" : "Female"}</option>
-                </select>
-              </div>
-            </div>
+          {/* العقد */}
+          <Section title={ar ? "العقد" : "Contract"} />
+          <div className="grid grid-cols-2 gap-3">
+            <Sel label={ar ? "نوع العقد" : "Contract Type"} value={form.contract_type} onChange={v => set("contract_type", v)}>
+              <option value="permanent">{ar ? "دائم" : "Permanent"}</option>
+              <option value="temporary">{ar ? "مؤقت" : "Temporary"}</option>
+              <option value="training">{ar ? "تدريب" : "Training"}</option>
+            </Sel>
+            {showContractEnd && (
+              <Field label={ar ? "تاريخ نهاية العقد" : "Contract End Date"} value={form.contract_end_date} onChange={v => set("contract_end_date", v)} type="date" />
+            )}
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-2 border-t">
-            <Button
-              onClick={handleSubmit}
-              disabled={loading}
-              className="flex-1 bg-brand-primary hover:bg-brand-secondary gap-2"
-            >
+          {/* المرتب */}
+          <Section title={ar ? "المرتب وطريقة القبض" : "Salary & Payment"} />
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={ar ? "الراتب الأساسي" : "Basic Salary"} value={form.basic_salary} onChange={v => set("basic_salary", v)} type="number" placeholder="0" />
+            <Sel label={ar ? "طريقة القبض" : "Payment Method"} value={form.salary_payment_method} onChange={v => set("salary_payment_method", v)}>
+              <option value="none">{ar ? "كاش" : "Cash"}</option>
+              <option value="bank">{ar ? "بنك" : "Bank"}</option>
+              <option value="instapay">{ar ? "انستاباي" : "InstaPay"}</option>
+              <option value="wallet">{ar ? "محفظة" : "Wallet"}</option>
+            </Sel>
+            {showBank && <>
+              <Field label={ar ? "اسم البنك" : "Bank Name"} value={form.bank_name} onChange={v => set("bank_name", v)} placeholder={ar ? "البنك الأهلي" : "National Bank"} />
+              <Field label={ar ? "رقم الحساب" : "Account Number"} value={form.bank_account} onChange={v => set("bank_account", v)} placeholder="1234567890" />
+            </>}
+            {showInstapay && (
+              <Field label={ar ? "رقم انستاباي" : "InstaPay Phone"} value={form.instapay_phone} onChange={v => set("instapay_phone", v)} placeholder="01012345678" />
+            )}
+            {showWallet && <>
+              <Field label={ar ? "رقم المحفظة" : "Wallet Phone"} value={form.wallet_phone} onChange={v => set("wallet_phone", v)} placeholder="01012345678" />
+              <Field label={ar ? "مزود المحفظة" : "Wallet Provider"} value={form.wallet_provider} onChange={v => set("wallet_provider", v)} placeholder="Vodafone Cash" />
+            </>}
+          </div>
+
+          {/* التأمين */}
+          <Section title={ar ? "التأمين" : "Insurance"} />
+          <div className="grid grid-cols-2 gap-3">
+            <Sel label={ar ? "مؤمن عليه؟" : "Has Insurance?"} value={form.has_insurance} onChange={v => set("has_insurance", v)}>
+              <option value="false">{ar ? "لا" : "No"}</option>
+              <option value="true">{ar ? "نعم" : "Yes"}</option>
+            </Sel>
+            {showInsurance && (
+              <Field label={ar ? "رقم التأمين" : "Insurance Number"} value={form.insurance_number} onChange={v => set("insurance_number", v)} placeholder="123456789" />
+            )}
+          </div>
+
+          {/* أزرار */}
+          <div className="flex gap-3 pt-3 border-t">
+            <Button onClick={handleSubmit} disabled={loading} className="flex-1 bg-brand-primary hover:bg-brand-secondary gap-2">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               {ar ? "إضافة الموظف" : "Add Employee"}
             </Button>
@@ -246,6 +284,7 @@ export function CreateEmployeeDialog({ open, onClose, onSuccess, departments, br
               {ar ? "إلغاء" : "Cancel"}
             </Button>
           </div>
+
         </div>
       </DialogContent>
     </Dialog>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -38,9 +38,9 @@ interface Employee {
   basic_salary?: number;
 }
 
-interface Department { id: number; name: string; name_en?: string }
-interface Branch     { id: number; name: string; name_en?: string }
-interface JobTitle   { id: number; title: string; title_en?: string }
+interface Department { id: number; name?: string; name_ar?: string; name_en?: string }
+interface Branch     { id: number; name?: string; name_ar?: string; name_en?: string }
+interface JobTitle   { id: number; title?: string; title_ar?: string; title_en?: string; name?: string; name_ar?: string; name_en?: string }
 
 interface ListResponse {
   results: Employee[];
@@ -79,7 +79,14 @@ export default function EmployeesPage() {
     ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
 
-  // ── Load Lookup Data ───────────────────────────────────
+  const extractArray = <T,>(payload: any, keys: string[]): T[] => {
+    if (Array.isArray(payload)) return payload as T[];
+    for (const key of keys) {
+      if (Array.isArray(payload?.[key])) return payload[key] as T[];
+    }
+    return [];
+  };
+  // â”€â”€ Load Lookup Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (!token) return;
     Promise.all([
@@ -87,13 +94,13 @@ export default function EmployeesPage() {
       fetch("/api/branches",    { headers: { Authorization: authHeader } }).then(r => r.json()),
       fetch("/api/job-titles",  { headers: { Authorization: authHeader } }).then(r => r.json()),
     ]).then(([depts, brs, jts]) => {
-      setDepartments(depts?.departments || depts || []);
-      setBranches(brs?.branches || brs || []);
-      setJobTitles(jts?.job_titles || jts || []);
+      setDepartments(extractArray<Department>(depts, ["departments", "results", "data"]));
+      setBranches(extractArray<Branch>(brs, ["branches", "results", "data"]));
+      setJobTitles(extractArray<JobTitle>(jts, ["job_titles", "jobTitles", "results", "data"]));
     }).catch(() => {});
   }, []);
 
-  // ── Load Employees ─────────────────────────────────────
+  // â”€â”€ Load Employees â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const loadEmployees = useCallback(() => {
     if (!token) return;
     setLoading(true);
@@ -119,7 +126,7 @@ export default function EmployeesPage() {
   // reset page on filter change
   useEffect(() => { setPage(1); }, [search, deptFilter, statusFilter]);
 
-  // ── Helpers ────────────────────────────────────────────
+  // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const getName = (emp: Employee) =>
     lang === "en" && emp.full_name_en ? emp.full_name_en : emp.full_name;
 
@@ -141,7 +148,7 @@ export default function EmployeesPage() {
   return (
     <div className="space-y-6">
 
-      {/* ── Header ── */}
+      {/* â”€â”€ Header â”€â”€ */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{d.employeesTitle}</h1>
@@ -167,7 +174,7 @@ export default function EmployeesPage() {
         </div>
       </div>
 
-      {/* ── Stats Cards ── */}
+      {/* â”€â”€ Stats Cards â”€â”€ */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           {
@@ -215,7 +222,7 @@ export default function EmployeesPage() {
         ))}
       </div>
 
-      {/* ── Filters ── */}
+      {/* â”€â”€ Filters â”€â”€ */}
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-3 items-center">
@@ -239,7 +246,7 @@ export default function EmployeesPage() {
                 <SelectItem value="all">{d.allDepartments}</SelectItem>
                 {departments.map(dep => (
                   <SelectItem key={dep.id} value={String(dep.id)}>
-                    {lang === "en" && dep.name_en ? dep.name_en : dep.name}
+                    {lang === "en" ? (dep.name_en || dep.name || dep.name_ar || "") : (dep.name || dep.name_ar || dep.name_en || "")}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -253,13 +260,13 @@ export default function EmployeesPage() {
               <SelectContent>
                 <SelectItem value="all">{d.allStatuses}</SelectItem>
                 <SelectItem value="active">
-                  {lang === "ar" ? "نشط" : "Active"}
+                  {lang === "ar" ? "Ù†Ø´Ø·" : "Active"}
                 </SelectItem>
                 <SelectItem value="inactive">
-                  {lang === "ar" ? "غير نشط" : "Inactive"}
+                  {lang === "ar" ? "ØºÙŠØ± Ù†Ø´Ø·" : "Inactive"}
                 </SelectItem>
                 <SelectItem value="on_leave">
-                  {lang === "ar" ? "في إجازة" : "On Leave"}
+                  {lang === "ar" ? "ÙÙŠ Ø¥Ø¬Ø§Ø²Ø©" : "On Leave"}
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -267,14 +274,14 @@ export default function EmployeesPage() {
             {/* Results count */}
             <span className="text-sm text-muted-foreground whitespace-nowrap">
               {data?.count
-                ? `${Number(data.count).toLocaleString(lang === "ar" ? "ar-EG" : "en-US")} ${lang === "ar" ? "موظف" : "employees"}`
+                ? `${Number(data.count).toLocaleString(lang === "ar" ? "ar-EG" : "en-US")} ${lang === "ar" ? "Ù…ÙˆØ¸Ù" : "employees"}`
                 : ""}
             </span>
           </div>
         </CardContent>
       </Card>
 
-      {/* ── Table ── */}
+      {/* â”€â”€ Table â”€â”€ */}
       {loading ? (
         <div className="flex items-center justify-center py-24">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -298,7 +305,7 @@ export default function EmployeesPage() {
                       d.employeeCode,
                       d.department,
                       d.jobTitle,
-                      lang === "ar" ? "الموبايل" : "Phone",
+                      lang === "ar" ? "Ø§Ù„Ù…ÙˆØ¨Ø§ÙŠÙ„" : "Phone",
                       d.status,
                     ].map((h, i) => (
                       <th
@@ -344,7 +351,7 @@ export default function EmployeesPage() {
                       <td className="p-4">
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Building2 className="w-3 h-3" />
-                          <span>{getDept(emp) || "—"}</span>
+                          <span>{getDept(emp) || "â€”"}</span>
                         </div>
                       </td>
 
@@ -352,7 +359,7 @@ export default function EmployeesPage() {
                       <td className="p-4">
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Briefcase className="w-3 h-3" />
-                          <span>{getJob(emp) || "—"}</span>
+                          <span>{getJob(emp) || "â€”"}</span>
                         </div>
                       </td>
 
@@ -360,7 +367,7 @@ export default function EmployeesPage() {
                       <td className="p-4">
                         <div className="flex items-center gap-1 text-sm text-muted-foreground" dir="ltr">
                           <Phone className="w-3 h-3" />
-                          <span className="font-mono text-xs">{emp.phone || "—"}</span>
+                          <span className="font-mono text-xs">{emp.phone || "â€”"}</span>
                         </div>
                       </td>
 
@@ -380,7 +387,7 @@ export default function EmployeesPage() {
               </table>
             </div>
 
-            {/* ── Pagination ── */}
+            {/* â”€â”€ Pagination â”€â”€ */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between p-4 border-t">
                 <Button
@@ -390,13 +397,13 @@ export default function EmployeesPage() {
                   className="gap-1"
                 >
                   <ChevronRight className="w-4 h-4" />
-                  {lang === "ar" ? "السابق" : "Prev"}
+                  {lang === "ar" ? "Ø§Ù„Ø³Ø§Ø¨Ù‚" : "Prev"}
                 </Button>
 
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">
                     {lang === "ar"
-                      ? `صفحة ${page} من ${totalPages}`
+                      ? `ØµÙØ­Ø© ${page} Ù…Ù† ${totalPages}`
                       : `Page ${page} of ${totalPages}`}
                   </span>
                 </div>
@@ -407,7 +414,7 @@ export default function EmployeesPage() {
                   disabled={page >= totalPages}
                   className="gap-1"
                 >
-                  {lang === "ar" ? "التالي" : "Next"}
+                  {lang === "ar" ? "Ø§Ù„ØªØ§Ù„ÙŠ" : "Next"}
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
               </div>
@@ -416,7 +423,7 @@ export default function EmployeesPage() {
         </Card>
       )}
 
-      {/* ── Create Employee Dialog ── */}
+      {/* â”€â”€ Create Employee Dialog â”€â”€ */}
       <CreateEmployeeDialog
         open={showCreate}
         onClose={() => setShowCreate(false)}
@@ -428,3 +435,4 @@ export default function EmployeesPage() {
     </div>
   );
 }
+
