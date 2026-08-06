@@ -242,16 +242,25 @@ export default function MissionsPage() {
         id: number;
         first_name_ar?: string;
         last_name_ar?: string;
+        full_name?: string;
+        full_name_ar?: string;
         name?: string;
+        name_ar?: string;
         job_title_name?: string;
+        job_title_name_ar?: string;
         department_name?: string;
+        department_name_ar?: string;
       }) => ({
         id: e.id,
-        name: e.first_name_ar && e.last_name_ar
-          ? `${e.first_name_ar} ${e.last_name_ar}`
-          : e.name || `موظف #${e.id}`,
-        job_title: e.job_title_name || "",
-        department: e.department_name || "",
+name:
+  e.full_name ||
+  e.full_name_ar ||
+  (e.first_name_ar && e.last_name_ar ? `${e.first_name_ar} ${e.last_name_ar}` : "") ||
+  e.name ||
+  e.name_ar ||
+  `موظف #${e.id}`,
+job_title: e.job_title_name || e.job_title_name_ar || "",
+department: e.department_name || e.department_name_ar || "",
       }));
       setEmployees(empList);
     })
@@ -1108,3 +1117,4 @@ export default function MissionsPage() {
     </div>
   );
 }
+
