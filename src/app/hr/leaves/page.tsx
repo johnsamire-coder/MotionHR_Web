@@ -21,6 +21,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import { AddLeaveDialog } from "@/components/hr/add-leave-dialog";
 
 interface LeaveBalance {
   leave_type: string;
@@ -115,6 +116,7 @@ export default function LeavesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState("all");
+  const [showAddLeave, setShowAddLeave] = useState(false);
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
@@ -160,6 +162,23 @@ export default function LeavesPage() {
 
   const employees = data?.employees || [];
   const departments = [...new Set(employees.map(e => e.department))].sort();
+
+  const handleExportLeaves = () => {
+    const header = ["الموظف","القسم","إجمالي الأيام","غير مدفوعة","نصف يوم","عدد الطلبات"];
+    const rows = filtered.map(e => [e.employee_name, e.department, e.total_approved_days, e.unpaid_days, e.half_day_count, e.leaves_count]);
+    const csv = "\uFEFF" + [header,...rows].map(r=>r.join(",")).join("\n");
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "leaves_" + year + "_" + month + ".csv";
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  };
+
+  const reloadData = () => {
+    setLoading(true);
+    fetch("/api/leaves/enhanced?year=" + year + "&month=" + month, { headers: { Authorization: authHeader } })
+      .then(r => r.json()).then(d => setData(d)).finally(() => setLoading(false));
+  };
 
   const filtered = employees.filter(emp => {
     const matchSearch = !search || emp.employee_name.toLowerCase().includes(search.toLowerCase());
@@ -207,11 +226,11 @@ export default function LeavesPage() {
             </Select>
           </div>
 
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" onClick={handleExportLeaves} className="gap-2">
             <Download className="w-4 h-4" />
             {d.exportExcel}
           </Button>
-          <Button className="gap-2 bg-brand-primary hover:bg-brand-primary/90">
+          <Button onClick={() => setShowAddLeave(true)} className="gap-2 bg-brand-primary hover:bg-brand-primary/90">
             <Plus className="w-4 h-4" />
             {d.addLeave}
           </Button>
@@ -398,6 +417,9 @@ export default function LeavesPage() {
           </Table>
         )}
       </Card>
+    </div>
+  
+      <AddLeaveDialog open={showAddLeave} onClose={() => setShowAddLeave(false)} onSuccess={reloadData} />
     </div>
   );
 }
