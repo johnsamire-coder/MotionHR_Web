@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { MapPin, Users, Activity, Clock, Calendar, Search, Loader2, ChevronLeft, ChevronRight, Navigation, LogIn, LogOut, Download } from "lucide-react";
+import { MapPin, Users, Activity, Clock, Calendar, Search, Loader2, ChevronLeft, ChevronRight, Navigation, LogIn, LogOut, Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -325,3 +325,4 @@ export default function LocationTrackingPage() {
     </div>
   );
 }
+
