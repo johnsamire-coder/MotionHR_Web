@@ -32,8 +32,13 @@ interface LocationItem {
   latitude?: number;
   longitude?: number;
   last_update?: string;
+  address?: string;
+  timestamp?: string;
   department?: string;
   status?: string;
+  address?: string;
+  timestamp?: string;
+  has_location?: boolean;
 }
 
 interface LocationsData {
@@ -95,7 +100,9 @@ export default function LocationsPage() {
       name: item.employee_name,
       lat: item.latitude!,
       lng: item.longitude!,
-      lastSeen: item.last_update,
+      lastSeen: item.last_update || item.timestamp,
+      address: item.address,
+      department: item.department,
     }));
 
   const getTimeAgo = (dateStr?: string) => {

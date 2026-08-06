@@ -9,6 +9,7 @@ export interface LocationMarker {
   lat: number;
   lng: number;
   lastSeen?: string;
+  address?: string;
   color?: string;
 }
 
@@ -74,11 +75,12 @@ export default function LiveMap({
       markersLayerRef.current.clearLayers();
 
       markers.forEach(marker => {
-        const m = L.marker([marker.lat, marker.lng]).bindPopup(
-          `<div style="font-size:13px"><strong>${marker.name}</strong>${
-            marker.lastSeen ? `<br/><small style="color:#666">${marker.lastSeen}</small>` : ""
-          }</div>`
-        );
+        const m = L.marker([marker.lat, marker.lng]).bindPopup(`<div style="font-size:13px;min-width:200px">
+            <strong>${marker.name}</strong>
+            ${marker.department ? `<br/><span style="color:#555">🏢 ${marker.department}</span>` : ""}
+            ${marker.address ? `<br/><span style="color:#333">📍 ${marker.address}</span>` : ""}
+            ${marker.lastSeen ? `<br/><small style="color:#666">🕐 ${marker.lastSeen}</small>` : ""}
+          </div>`);
         markersLayerRef.current!.addLayer(m);
       });
     });
