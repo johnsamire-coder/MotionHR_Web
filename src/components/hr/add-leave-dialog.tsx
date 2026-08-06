@@ -35,6 +35,15 @@ export function AddLeaveDialog({ open, onClose, onSuccess }: { open: boolean; on
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
 
   const handleSubmit = async () => {
+    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+    if (form.start_date && !dateRe.test(form.start_date)) {
+      toast.error(ar ? "تاريخ البداية غير صحيح" : "Invalid start date");
+      return;
+    }
+    if (form.end_date && !dateRe.test(form.end_date)) {
+      toast.error(ar ? "تاريخ النهاية غير صحيح" : "Invalid end date");
+      return;
+    }
     if (!form.employee_id || !form.leave_type_id || !form.start_date || !form.end_date || !form.reason) {
       toast.error(ar ? "كل الحقول مطلوبة" : "All fields required");
       return;
