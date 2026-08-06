@@ -48,13 +48,13 @@ const cards = [
   },
   {
     key: "export",
-    href: "/hr/reports/permissions",
+    href: "/hr/permissions/export",
     icon: Download,
     color: "bg-emerald-500/10 text-emerald-600",
-    title_ar: "تقرير الصلاحيات",
-    desc_ar: "تحميل PDF و Excel للصلاحيات",
-    title_en: "Permissions Report",
-    desc_en: "Download PDF and Excel",
+    title_ar: "تصدير الصلاحيات",
+    desc_ar: "صدّر تقرير الصلاحيات كـ PDF أو Excel",
+    title_en: "Export Permissions",
+    desc_en: "Export permissions report as PDF or Excel",
   },
 ];
 
@@ -121,3 +121,4 @@ export default function PermissionsHubPage() {
     </div>
   );
 }
+
