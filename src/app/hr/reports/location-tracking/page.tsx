@@ -1,8 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { MapPin, Users, Activity, Clock, Calendar, Search, Loader2, ChevronLeft, ChevronRight, Navigation, LogIn, LogOut } from "lucide-react";
+import { MapPin, Users, Activity, Clock, Calendar, Search, Loader2, ChevronLeft, ChevronRight, Navigation, LogIn, LogOut, Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -68,6 +69,7 @@ function StatCard({ icon: Icon, label, value, color }: { icon: React.ComponentTy
 }
 
 export default function LocationTrackingPage() {
+  const router = useRouter();
   const lang = useLangStore((s) => s.lang);
   const ar = lang === "ar";
 
@@ -103,12 +105,79 @@ export default function LocationTrackingPage() {
 
   const formatDate = (s: string) => new Date(s).toLocaleDateString(ar ? "ar-EG" : "en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
+  const handleExportCSV = () => {
+    if (!filtered.length) {
+      toast.error(ar ? "لا توجد بيانات للتصدير" : "No data to export");
+      return;
+    }
+
+    const headers = [
+      ar ? "كود الموظف" : "Employee Code",
+      ar ? "اسم الموظف" : "Employee Name",
+      ar ? "القسم" : "Department",
+      ar ? "الفرع" : "Branch",
+      ar ? "نوع العامل" : "Worker Type",
+      ar ? "الحضور" : "Check In",
+      ar ? "الانصراف" : "Check Out",
+      ar ? "نقاط التتبع" : "Track Points",
+      ar ? "آخر موقع" : "Last Location",
+      ar ? "الحالة" : "Status",
+    ];
+
+    const rows = filtered.map(emp => [
+      emp.employee_code || "",
+      emp.employee_name || "",
+      emp.department || "",
+      emp.branch || "",
+      emp.worker_type || "",
+      emp.checkin_time || "",
+      emp.checkout_time || "",
+      String(emp.total_logs || 0),
+      emp.last_location?.address || "",
+      !emp.has_attendance
+        ? (ar ? "لم يحضر" : "Absent")
+        : emp.total_logs > 0
+          ? (ar ? "متتبع" : "Tracked")
+          : (ar ? "بدون تتبع" : "No tracking"),
+    ]);
+
+    const csv = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `location_tracking_${date}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="space-y-6" dir={ar ? "rtl" : "ltr"}>
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{ar ? "تتبع مواقع الموظفين" : "Location Tracking"}</h1>
           <p className="text-muted-foreground mt-1">{ar ? "تقرير يومي بمواقع كل موظف من الحضور حتى الانصراف" : "Daily tracking report from check-in to check-out"}</p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => router.push("/hr/reports")}>
+            {ar ? "رجوع للتقارير" : "Back to Reports"}
+          </Button>
+          <Button variant="outline" onClick={handleExportCSV} className="gap-2">
+            <Download className="w-4 h-4" />
+            {ar ? "تصدير CSV" : "Export CSV"}
+          </Button>
+          <Button onClick={handlePrint} className="gap-2">
+            <Printer className="w-4 h-4" />
+            {ar ? "طباعة PDF" : "Print PDF"}
+          </Button>
         </div>
       </div>
 
