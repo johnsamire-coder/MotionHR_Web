@@ -48,12 +48,12 @@ export default function ExportPage() {
     try {
       const res = await fetch("/api/employees/list", { headers: { Authorization: authH }, cache: "no-store" });
       const data = await res.json();
-      const list = data.employees || data.data || data || [];
+      const list = data.results || data.employees || data.data || [];
       setUsers(list.map((e: any) => ({
         id: e.user_id || e.id,
-        username: e.username || `emp${e.id}`,
-        first_name: e.first_name_ar || e.first_name,
-        last_name: e.last_name_ar || e.last_name,
+        username: e.employee_code || e.username || `emp${e.id}`,
+        first_name: e.full_name || e.first_name_ar || e.first_name || "",
+        last_name: "",
       })));
     } catch {
       toast.error(ar ? "فشل تحميل المستخدمين" : "Failed to load users");
@@ -247,3 +247,6 @@ export default function ExportPage() {
     </div>
   );
 }
+
+
+
