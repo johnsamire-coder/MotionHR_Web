@@ -2,12 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import {
-  FileBarChart, Clock, UserX, Calendar, FileText, Timer,
+import {FileBarChart, Clock, UserX, Calendar, FileText, Timer,
   DollarSign, ShieldCheck, Users, Download, Sparkles,
   ChevronLeft, ChevronRight, TrendingUp, Zap,
-  UserCheck, Activity, Wallet,
-} from "lucide-react";
+  UserCheck, Activity, Wallet, MapPin } from "lucide-react";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
