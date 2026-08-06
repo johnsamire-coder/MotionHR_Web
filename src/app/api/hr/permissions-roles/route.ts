@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = request.headers.get("authorization");
     if (!auth) {
-      return NextResponse.json({ success: false, message: "Missing authorization header" }, { status: 401 });
+      return NextResponse.json({ success: false, message: "Missing authorization" }, { status: 401 });
     }
 
     const res = await fetch(`${API}/attendance/api/mobile/manager/permissions/roles/`, {
@@ -18,8 +18,14 @@ export async function GET(request: NextRequest) {
     });
 
     const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  } catch (error) {
+
+    // normalize — الباك بيرجع { roles: [...] } بدون success
+    return NextResponse.json({
+      success: true,
+      roles: data.roles ?? data.data ?? data ?? [],
+    }, { status: 200 });
+
+  } catch {
     return NextResponse.json({ success: false, message: "Proxy error" }, { status: 500 });
   }
 }
