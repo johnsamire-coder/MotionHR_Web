@@ -100,16 +100,16 @@ export default function RolesPage() {
         body: JSON.stringify({ name: newRoleName.trim() }),
       });
       const data = await res.json();
-      if (data.success && data.role) {
+      if (res.ok && (data.success || data.role_id || data.role)) {
         toast.success(ar ? "تم إنشاء الدور" : "Role created");
         setCreateDialog(false);
         setNewRoleName("");
         // إعادة تحميل القائمة + فتح شاشة التعديل مباشرة
         await load();
         const newRole: Role = {
-          id: data.role.id,
-          name: data.role.name,
-          permissions: data.role.permissions || [],
+          id: data.role?.id ?? data.role_id,
+          name: data.role?.name ?? newRoleName.trim(),
+          permissions: data.role?.permissions ?? [],
           is_system: false,
         };
         openEdit(newRole);
@@ -461,5 +461,6 @@ export default function RolesPage() {
     </div>
   );
 }
+
 
 
