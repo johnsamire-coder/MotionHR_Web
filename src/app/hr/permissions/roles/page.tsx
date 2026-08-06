@@ -420,7 +420,7 @@ export default function RolesPage() {
                           )}
                         </div>
                         <p className="text-sm font-medium mt-0.5">
-                          {ar ? (perm.name_ar || perm.name) : perm.name}
+                          {ar ? (perm.label_ar || perm.name_ar || perm.name || perm.code) : (perm.label_en || perm.name || perm.code)}
                         </p>
                       </div>
                     </div>
@@ -461,6 +461,7 @@ export default function RolesPage() {
     </div>
   );
 }
+
 
 
 
