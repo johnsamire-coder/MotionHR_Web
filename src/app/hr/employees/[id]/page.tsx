@@ -492,8 +492,8 @@ export default function EmployeeDetailPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-6">
-                  <Field label={ar ? "الاسم بالعربي" : "Name (AR)"} value={displayName} />
-                  <Field label={ar ? "الاسم بالإنجليزي" : "Name (EN)"} value={`${employee.first_name_en || ""} ${employee.last_name_en || ""}`.trim()} dir="ltr" />
+                  <div className="col-span-2"><Field label={ar ? "الاسم بالعربي" : "Name (AR)"} value={displayName} /></div>
+                  <div className="col-span-2"><Field label={ar ? "الاسم بالإنجليزي" : "Name (EN)"} value={`${employee.first_name_en || ""} ${employee.last_name_en || ""}`.trim()} dir="ltr" /></div>
                   <Field label={ar ? "الرقم القومي" : "National ID"} value={employee.national_id} dir="ltr" />
                   <Field label={ar ? "تاريخ الميلاد" : "Birth Date"} value={employee.birth_date} />
                   <Field label={ar ? "الجنس" : "Gender"} value={genderLabel(employee.gender, ar)} />
