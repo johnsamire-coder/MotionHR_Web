@@ -417,8 +417,7 @@ export default function LeavesPage() {
           </Table>
         )}
       </Card>
-    </div>
-  
+
       <AddLeaveDialog open={showAddLeave} onClose={() => setShowAddLeave(false)} onSuccess={reloadData} />
     </div>
   );
