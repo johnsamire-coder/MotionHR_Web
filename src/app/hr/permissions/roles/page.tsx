@@ -1,58 +1,62 @@
 ﻿"use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { Key, Plus, Loader2, Crown, Trash2, Edit2, ChevronRight, ChevronLeft, Shield } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Key, Users as UsersIcon, AlertCircle, Loader2, Shield, Check } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import { useLangStore } from "@/lib/stores/language";
-import { STORAGE_KEYS } from "@/lib/constants/config";
+
+const API = "https://jssolutions-eg.com";
+const STORAGE_KEYS = { token: "motionhr_token" };
+
+type Scope = "company" | "department" | "branch" | "self";
 
 interface Permission {
   code: string;
-  label_ar: string;
-  scope?: string;
-  scope_label_ar?: string;
+  name: string;
+  name_ar?: string;
+  category?: string;
+  scopes?: Scope[];
 }
 
 interface Role {
   id: number;
   name: string;
-  permissions: Permission[];
-  users_count: number;
+  permissions: { code: string; scope: string }[];
+  is_system?: boolean;
+  user_count?: number;
 }
 
-interface AvailablePerm {
-  code: string;
-  label_ar: string;
-  label_en: string;
-}
-
-const SCOPE_OPTIONS = [
-  { value: "company", label_ar: "الشركة كلها", label_en: "Company" },
-  { value: "self", label_ar: "نفسه", label_en: "Self" },
-  { value: "department", label_ar: "القسم", label_en: "Department" },
-  { value: "branch", label_ar: "الفرع", label_en: "Branch" },
-];
+const SCOPE_LABELS: Record<Scope, { ar: string; en: string; color: string }> = {
+  company:    { ar: "الشركة",        en: "Company",    color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+  department: { ar: "القسم",         en: "Department", color: "bg-purple-500/10 text-purple-600 border-purple-500/20" },
+  branch:     { ar: "الفرع",         en: "Branch",     color: "bg-orange-500/10 text-orange-600 border-orange-500/20" },
+  self:       { ar: "الموظف نفسه",   en: "Self",       color: "bg-gray-500/10 text-gray-600 border-gray-500/20" },
+};
 
 export default function RolesPage() {
   const router = useRouter();
-  const lang = useLangStore((s) => s.lang);
+  const { lang } = useLangStore();
   const ar = lang === "ar";
 
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [availablePerms, setAvailablePerms] = useState<AvailablePerm[]>([]);
   const [loading, setLoading] = useState(true);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [availablePerms, setAvailablePerms] = useState<Permission[]>([]);
+  const [search, setSearch] = useState("");
+
+  // ديالوج إنشاء (اسم فقط)
   const [createDialog, setCreateDialog] = useState(false);
+  const [newRoleName, setNewRoleName] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  // ديالوج تعديل الصلاحيات
   const [editRole, setEditRole] = useState<Role | null>(null);
-  const [roleName, setRoleName] = useState("");
   const [selectedPerms, setSelectedPerms] = useState<{ code: string; scope: string }[]>([]);
-  const [submitting, setSubmitting] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authH = token?.startsWith("Token") ? token : `Token ${token}`;
@@ -61,13 +65,15 @@ export default function RolesPage() {
     setLoading(true);
     try {
       const [rolesRes, permsRes] = await Promise.all([
-        fetch("/api/hr/permissions-roles", { headers: { Authorization: authH } }).then(r => r.json()),
-        fetch("/api/hr/permissions-available", { headers: { Authorization: authH } }).then(r => r.json()),
+        fetch(`${API}/attendance/api/mobile/manager/permissions/roles/`, { headers: { Authorization: authH } }),
+        fetch(`${API}/attendance/api/mobile/manager/permissions/available/`, { headers: { Authorization: authH } }),
       ]);
-      setRoles(rolesRes?.roles || []);
-      setAvailablePerms(permsRes?.permissions || []);
-    } catch {
-      toast.error(ar ? "فشل تحميل البيانات" : "Failed to load");
+      const rolesData = await rolesRes.json();
+      const permsData = await permsRes.json();
+      if (rolesData.success) setRoles(rolesData.roles || rolesData.data || []);
+      if (permsData.success) setAvailablePerms(permsData.permissions || permsData.data || []);
+    } catch (e) {
+      toast.error(ar ? "فشل تحميل البيانات" : "Failed to load data");
     } finally {
       setLoading(false);
     }
@@ -75,18 +81,57 @@ export default function RolesPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // ─────────── إنشاء دور (اسم فقط) ───────────
   const openCreate = () => {
-    setRoleName("");
-    setSelectedPerms([]);
-    setEditRole(null);
+    setNewRoleName("");
     setCreateDialog(true);
   };
 
+  const handleCreate = async () => {
+    if (!newRoleName.trim()) {
+      toast.error(ar ? "اسم الدور مطلوب" : "Role name required");
+      return;
+    }
+    setCreating(true);
+    try {
+      const res = await fetch(`${API}/attendance/api/mobile/manager/permissions/roles/create/`, {
+        method: "POST",
+        headers: { Authorization: authH, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newRoleName.trim() }),
+      });
+      const data = await res.json();
+      if (data.success && data.role) {
+        toast.success(ar ? "تم إنشاء الدور" : "Role created");
+        setCreateDialog(false);
+        setNewRoleName("");
+        // إعادة تحميل القائمة + فتح شاشة التعديل مباشرة
+        await load();
+        const newRole: Role = {
+          id: data.role.id,
+          name: data.role.name,
+          permissions: data.role.permissions || [],
+          is_system: false,
+        };
+        openEdit(newRole);
+      } else {
+        toast.error(data.message || (ar ? "فشل إنشاء الدور" : "Failed to create role"));
+      }
+    } catch (e) {
+      toast.error(ar ? "خطأ في الاتصال" : "Network error");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  // ─────────── تعديل صلاحيات دور ───────────
   const openEdit = (role: Role) => {
-    setRoleName(role.name);
-    setSelectedPerms(role.permissions.map(p => ({ code: p.code, scope: p.scope || "company" })));
     setEditRole(role);
-    setCreateDialog(true);
+    setSelectedPerms((role.permissions || []).map(p => ({ code: p.code, scope: p.scope || "company" })));
+  };
+
+  const closeEdit = () => {
+    setEditRole(null);
+    setSelectedPerms([]);
   };
 
   const togglePerm = (code: string) => {
@@ -101,45 +146,39 @@ export default function RolesPage() {
     setSelectedPerms(prev => prev.map(p => p.code === code ? { ...p, scope } : p));
   };
 
-  const handleSave = async () => {
-    if (!roleName.trim()) {
-      toast.error(ar ? "اسم الدور مطلوب" : "Role name required");
-      return;
-    }
-    setSubmitting(true);
+  const handleSavePerms = async () => {
+    if (!editRole) return;
+    setSaving(true);
     try {
-      const isEdit = !!editRole;
-      const url = isEdit
-        ? `/api/hr/permissions-role-update/${editRole!.id}`
-        : "/api/hr/permissions-role-create";
-      const method = isEdit ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
+      const res = await fetch(`${API}/attendance/api/mobile/manager/permissions/roles/${editRole.id}/update/`, {
+        method: "PUT",
         headers: { Authorization: authH, "Content-Type": "application/json" },
-        body: JSON.stringify({ name: roleName, permissions: selectedPerms }),
+        body: JSON.stringify({ permissions: selectedPerms }),
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(isEdit
-          ? (ar ? "تم تحديث الدور" : "Role updated")
-          : (ar ? "تم إنشاء الدور" : "Role created"));
-        setCreateDialog(false);
+        toast.success(ar ? "تم حفظ الصلاحيات" : "Permissions saved");
+        closeEdit();
         load();
       } else {
-        toast.error(data.error || data.message || (ar ? "فشل" : "Failed"));
+        toast.error(data.message || (ar ? "فشل الحفظ" : "Failed to save"));
       }
-    } catch {
-      toast.error(ar ? "خطأ في الاتصال" : "Connection error");
+    } catch (e) {
+      toast.error(ar ? "خطأ في الاتصال" : "Network error");
     } finally {
-      setSubmitting(false);
+      setSaving(false);
     }
   };
 
-  const handleDelete = async (roleId: number) => {
-    if (!confirm(ar ? "هتحذف الدور ده؟" : "Delete this role?")) return;
+  // ─────────── حذف دور ───────────
+  const handleDelete = async (role: Role) => {
+    if (role.is_system) {
+      toast.error(ar ? "لا يمكن حذف دور نظامي" : "Cannot delete system role");
+      return;
+    }
+    if (!confirm(ar ? `هل تريد حذف الدور "${role.name}"؟` : `Delete role "${role.name}"?`)) return;
     try {
-      const res = await fetch(`/api/hr/permissions-role-update/${roleId}`, {
+      const res = await fetch(`${API}/attendance/api/mobile/manager/permissions/roles/${role.id}/delete/`, {
         method: "DELETE",
         headers: { Authorization: authH },
       });
@@ -148,27 +187,44 @@ export default function RolesPage() {
         toast.success(ar ? "تم الحذف" : "Deleted");
         load();
       } else {
-        toast.error(data.error || (ar ? "فشل" : "Failed"));
+        toast.error(data.message || (ar ? "فشل الحذف" : "Failed to delete"));
       }
-    } catch {
-      toast.error(ar ? "خطأ" : "Error");
+    } catch (e) {
+      toast.error(ar ? "خطأ في الاتصال" : "Network error");
     }
   };
 
+  const filteredRoles = useMemo(() => {
+    if (!search.trim()) return roles;
+    const q = search.toLowerCase();
+    return roles.filter(r => r.name?.toLowerCase().includes(q));
+  }, [roles, search]);
+
+  const filteredPerms = useMemo(() => {
+    if (!search.trim()) return availablePerms;
+    const q = search.toLowerCase();
+    return availablePerms.filter(p =>
+      p.code?.toLowerCase().includes(q) ||
+      p.name?.toLowerCase().includes(q) ||
+      p.name_ar?.includes(q)
+    );
+  }, [availablePerms, search]);
+
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6" dir={ar ? "rtl" : "ltr"}>
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => router.push("/hr/permissions")}>
-            {ar ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+            <span className="text-xl">→</span>
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              {ar ? "الأدوار" : "Roles"}
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Key className="w-6 h-6 text-brand-primary" />
+              {ar ? "إدارة الأدوار" : "Roles Management"}
             </h1>
-            <p className="text-muted-foreground mt-1">
-              {ar ? "إنشاء وتعديل الأدوار المخصصة وصلاحياتها" : "Create and manage custom roles and their permissions"}
+            <p className="text-sm text-muted-foreground mt-1">
+              {ar ? "أنشئ أدواراً مخصصة وحدد صلاحياتها" : "Create custom roles and define their permissions"}
             </p>
           </div>
         </div>
@@ -178,70 +234,82 @@ export default function RolesPage() {
         </Button>
       </div>
 
-      {/* Info Card */}
-      <Card className="border-0 bg-gradient-to-br from-brand-primary/10 to-brand-primary/5">
-        <CardContent className="p-4">
-          <p className="text-sm text-muted-foreground">
-            {ar
-              ? "اضغط على أي دور عشان تفتح صلاحياته وتعدلها"
-              : "Click on any role to view and edit its permissions"}
-          </p>
-        </CardContent>
-      </Card>
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder={ar ? "ابحث عن دور..." : "Search roles..."}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pr-10"
+        />
+      </div>
 
-      {/* List */}
+      {/* Roles Grid */}
       {loading ? (
-        <div className="flex justify-center py-24">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
         </div>
-      ) : roles.length === 0 ? (
+      ) : filteredRoles.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-              <Key className="w-8 h-8 text-muted-foreground/50" />
-            </div>
-            <p className="font-semibold mb-2">
-              {ar ? "مفيش أدوار لسه" : "No roles yet"}
+          <CardContent className="p-10 text-center">
+            <Key className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
+            <p className="text-muted-foreground mb-4">
+              {ar ? "لا توجد أدوار بعد" : "No roles yet"}
             </p>
-            <p className="text-sm text-muted-foreground mb-4">
-              {ar ? 'اضغط "إضافة دور جديد" لإنشاء أول دور' : 'Click "Add New Role" to create the first role'}
-            </p>
-            <Button variant="outline" onClick={openCreate} className="gap-2">
+            <Button onClick={openCreate} variant="outline" className="gap-2">
               <Plus className="w-4 h-4" />
               {ar ? "إضافة دور جديد" : "Add New Role"}
             </Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {roles.map(role => (
-            <Card key={role.id} className="border-border/50 hover:shadow-md transition-all">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
-                    <Crown className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">{role.name}</p>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <Badge variant="outline" className="text-[10px]">
-                        <Shield className="w-3 h-3 mr-1" />
-                        {role.permissions.length} {ar ? "صلاحية" : "permissions"}
-                      </Badge>
-                      <Badge variant="outline" className="text-[10px]">
-                        <Users className="w-3 h-3 mr-1" />
-                        {role.users_count} {ar ? "مستخدم" : "users"}
-                      </Badge>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredRoles.map(role => (
+            <Card key={role.id} className="hover:shadow-md transition cursor-pointer" onClick={() => openEdit(role)}>
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-10 h-10 rounded-lg bg-brand-primary/10 flex items-center justify-center shrink-0">
+                      <Shield className="w-5 h-5 text-brand-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-semibold truncate">{role.name}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {(role.permissions?.length || 0)} {ar ? "صلاحية" : "permissions"}
+                      </p>
                     </div>
                   </div>
-                  <div className="flex gap-1 shrink-0">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(role)}>
-                      <Edit2 className="w-4 h-4 text-muted-foreground" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(role.id)}>
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
+                  {role.is_system && (
+                    <Badge variant="secondary" className="text-[10px]">{ar ? "نظامي" : "System"}</Badge>
+                  )}
+                </div>
+                {role.user_count !== undefined && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
+                    <UsersIcon className="w-3.5 h-3.5" />
+                    {role.user_count} {ar ? "مستخدم" : "users"}
                   </div>
+                )}
+                <div className="flex gap-2 pt-3 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 gap-1.5"
+                    onClick={(e) => { e.stopPropagation(); openEdit(role); }}
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                    {ar ? "تعديل الصلاحيات" : "Edit Permissions"}
+                  </Button>
+                  {!role.is_system && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700"
+                      onClick={(e) => { e.stopPropagation(); handleDelete(role); }}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -249,86 +317,147 @@ export default function RolesPage() {
         </div>
       )}
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={createDialog} onOpenChange={open => { if (!open) setCreateDialog(false); }}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Crown className="w-5 h-5 text-brand-primary" />
-              {editRole
-                ? (ar ? "تعديل الدور" : "Edit Role")
-                : (ar ? "إنشاء دور جديد" : "Create New Role")}
-            </DialogTitle>
-          </DialogHeader>
+      {/* ──────── ديالوج إنشاء دور (اسم فقط) ──────── */}
+      {createDialog && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setCreateDialog(false)}>
+          <Card className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <Plus className="w-5 h-5 text-brand-primary" />
+                <h2 className="text-lg font-semibold">
+                  {ar ? "إنشاء دور جديد" : "Create New Role"}
+                </h2>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {ar ? "أدخل اسم الدور. بعد الإنشاء ستتمكن من تحديد صلاحياته." : "Enter the role name. After creation, you can define its permissions."}
+              </p>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">
+                  {ar ? "اسم الدور" : "Role Name"} <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  autoFocus
+                  value={newRoleName}
+                  onChange={(e) => setNewRoleName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); }}
+                  placeholder={ar ? "مثال: مدير مهندسين" : "e.g. Engineering Manager"}
+                />
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  {ar ? "أمثلة: مدير مالي، مدير حسابات، مدير عمليات..." : "Examples: Finance Manager, HR Manager, Ops Manager..."}
+                </p>
+              </div>
+              <div className="flex gap-2 justify-end pt-2 border-t">
+                <Button variant="outline" onClick={() => setCreateDialog(false)} disabled={creating}>
+                  {ar ? "إلغاء" : "Cancel"}
+                </Button>
+                <Button onClick={handleCreate} disabled={creating} className="gap-2 bg-brand-primary hover:bg-brand-primary/90">
+                  {creating && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {creating ? (ar ? "جاري الإنشاء..." : "Creating...") : (ar ? "إنشاء ومتابعة" : "Create & Continue")}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-          <div className="space-y-5 pt-2">
-            {/* Role Name */}
-            <div className="space-y-1.5">
-              <Label>{ar ? "اسم الدور *" : "Role Name *"}</Label>
-              <Input
-                value={roleName}
-                onChange={e => setRoleName(e.target.value)}
-                placeholder={ar ? "مثال: مدير مالي" : "e.g. Finance Manager"}
-              />
+      {/* ──────── ديالوج تعديل الصلاحيات ──────── */}
+      {editRole && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={closeEdit}>
+          <Card className="w-full max-w-3xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 border-b flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <Shield className="w-5 h-5 text-brand-primary shrink-0" />
+                <div className="min-w-0">
+                  <h2 className="text-lg font-semibold truncate">
+                    {ar ? "صلاحيات:" : "Permissions for:"} {editRole.name}
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedPerms.length} {ar ? "صلاحية مختارة" : "permissions selected"}
+                  </p>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" onClick={closeEdit}>✕</Button>
             </div>
 
-            {/* Permissions */}
-            <div className="space-y-2">
-              <Label>{ar ? "الصلاحيات" : "Permissions"}</Label>
-              <div className="border border-border rounded-lg max-h-96 overflow-y-auto divide-y divide-border/50">
-                {availablePerms.map(perm => {
-                  const selected = selectedPerms.find(p => p.code === perm.code);
-                  return (
-                    <div key={perm.code} className={`p-3 transition ${selected ? "bg-brand-primary/5" : "hover:bg-muted/30"}`}>
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => togglePerm(perm.code)}
-                          className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition ${
-                            selected ? "bg-brand-primary border-brand-primary" : "border-border"
-                          }`}
-                        >
-                          {selected && <span className="text-white text-xs">✓</span>}
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium">{ar ? perm.label_ar : perm.label_en}</p>
-                          <code className="text-[10px] text-muted-foreground">{perm.code}</code>
+            <div className="p-4 border-b shrink-0">
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder={ar ? "ابحث عن صلاحية..." : "Search permissions..."}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pr-10"
+                />
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-1">
+              {filteredPerms.map(perm => {
+                const selected = selectedPerms.find(p => p.code === perm.code);
+                return (
+                  <div
+                    key={perm.code}
+                    className={`p-3 rounded-lg border transition ${
+                      selected ? "bg-brand-primary/5 border-brand-primary/30" : "border-border hover:bg-muted/30"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <button
+                        onClick={() => togglePerm(perm.code)}
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition ${
+                          selected
+                            ? "bg-brand-primary border-brand-primary"
+                            : "border-border hover:border-brand-primary/50"
+                        }`}
+                      >
+                        {selected && <Check className="w-3 h-3 text-white" />}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <code className="text-xs font-mono text-muted-foreground">{perm.code}</code>
+                          {perm.category && (
+                            <Badge variant="outline" className="text-[10px]">{perm.category}</Badge>
+                          )}
                         </div>
-                        {selected && (
-                          <select
-                            value={selected.scope}
-                            onChange={e => setScope(perm.code, e.target.value)}
-                            className="text-xs border border-border rounded px-2 py-1 bg-background"
-                          >
-                            {SCOPE_OPTIONS.map(s => (
-                              <option key={s.value} value={s.value}>
-                                {ar ? s.label_ar : s.label_en}
-                              </option>
-                            ))}
-                          </select>
-                        )}
+                        <p className="text-sm font-medium mt-0.5">
+                          {ar ? (perm.name_ar || perm.name) : perm.name}
+                        </p>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {selectedPerms.length} {ar ? "صلاحية مختارة" : "permissions selected"}
-              </p>
+                    {selected && perm.scopes && perm.scopes.length > 0 && (
+                      <div className="flex gap-1.5 mt-2 mr-8 flex-wrap">
+                        {perm.scopes.map(scope => (
+                          <button
+                            key={scope}
+                            onClick={() => setScope(perm.code, scope)}
+                            className={`text-[10px] px-2 py-1 rounded-full border transition ${
+                              selected.scope === scope
+                                ? SCOPE_LABELS[scope].color + " font-semibold"
+                                : "bg-transparent border-border text-muted-foreground hover:border-brand-primary/30"
+                            }`}
+                          >
+                            {ar ? SCOPE_LABELS[scope].ar : SCOPE_LABELS[scope].en}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Buttons */}
-            <div className="flex gap-2 justify-end pt-2 border-t">
-              <Button variant="outline" onClick={() => setCreateDialog(false)} disabled={submitting}>
+            <div className="p-4 border-t flex gap-2 justify-end shrink-0">
+              <Button variant="outline" onClick={closeEdit} disabled={saving}>
                 {ar ? "إلغاء" : "Cancel"}
               </Button>
-              <Button onClick={handleSave} disabled={submitting} className="bg-brand-primary hover:bg-brand-primary/90 gap-2">
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                {editRole ? (ar ? "حفظ التعديلات" : "Save Changes") : (ar ? "إنشاء الدور" : "Create Role")}
+              <Button onClick={handleSavePerms} disabled={saving} className="gap-2 bg-brand-primary hover:bg-brand-primary/90">
+                {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                {saving ? (ar ? "جاري الحفظ..." : "Saving...") : (ar ? "حفظ الصلاحيات" : "Save Permissions")}
               </Button>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
