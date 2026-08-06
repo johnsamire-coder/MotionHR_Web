@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useLangStore } from "@/lib/stores/language";
 
-const API = "https://jssolutions-eg.com";
+
 const STORAGE_KEYS = { token: "motionhr_token" };
 
 type Scope = "company" | "department" | "branch" | "self";
@@ -65,8 +65,8 @@ export default function RolesPage() {
     setLoading(true);
     try {
       const [rolesRes, permsRes] = await Promise.all([
-        fetch(`${API}/attendance/api/mobile/manager/permissions/roles/`, { headers: { Authorization: authH } }),
-        fetch(`${API}/attendance/api/mobile/manager/permissions/available/`, { headers: { Authorization: authH } }),
+        fetch(`/api/hr/permissions-roles`, { headers: { Authorization: authH } }),
+        fetch(`/api/hr/permissions-available`, { headers: { Authorization: authH } }),
       ]);
       const rolesData = await rolesRes.json();
       const permsData = await permsRes.json();
@@ -94,7 +94,7 @@ export default function RolesPage() {
     }
     setCreating(true);
     try {
-      const res = await fetch(`${API}/attendance/api/mobile/manager/permissions/roles/create/`, {
+      const res = await fetch(`/api/hr/permissions-role-create`, {
         method: "POST",
         headers: { Authorization: authH, "Content-Type": "application/json" },
         body: JSON.stringify({ name: newRoleName.trim() }),
@@ -150,7 +150,7 @@ export default function RolesPage() {
     if (!editRole) return;
     setSaving(true);
     try {
-      const res = await fetch(`${API}/attendance/api/mobile/manager/permissions/roles/${editRole.id}/update/`, {
+      const res = await fetch(`/api/hr/permissions-role-update/${editRole.id}`, {
         method: "PUT",
         headers: { Authorization: authH, "Content-Type": "application/json" },
         body: JSON.stringify({ permissions: selectedPerms }),
@@ -178,7 +178,7 @@ export default function RolesPage() {
     }
     if (!confirm(ar ? `هل تريد حذف الدور "${role.name}"؟` : `Delete role "${role.name}"?`)) return;
     try {
-      const res = await fetch(`${API}/attendance/api/mobile/manager/permissions/roles/${role.id}/delete/`, {
+      const res = await fetch(`/api/hr/permissions-role-delete/${role.id}`, {
         method: "DELETE",
         headers: { Authorization: authH },
       });
@@ -461,3 +461,5 @@ export default function RolesPage() {
     </div>
   );
 }
+
+

@@ -1,20 +1,25 @@
-import { NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND = "https://jssolutions-eg.com";
+export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+const API = "https://jssolutions-eg.com";
 
+export async function GET(request: NextRequest) {
   try {
-    const url = `${BACKEND}/attendance/api/mobile/manager/permissions/roles/`;
-    const res = await fetch(url, {
-      headers: { Authorization: authHeader, "Accept-Language": "ar" },
+    const auth = request.headers.get("authorization");
+    if (!auth) {
+      return NextResponse.json({ success: false, message: "Missing authorization header" }, { status: 401 });
+    }
+
+    const res = await fetch(`${API}/attendance/api/mobile/manager/permissions/roles/`, {
+      method: "GET",
+      headers: { Authorization: auth },
       cache: "no-store",
     });
-    if (!res.ok) return NextResponse.json({ error: "Backend error" }, { status: res.status });
-    return NextResponse.json(await res.json());
-  } catch {
-    return NextResponse.json({ error: "Network error" }, { status: 500 });
+
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch (error) {
+    return NextResponse.json({ success: false, message: "Proxy error" }, { status: 500 });
   }
 }
