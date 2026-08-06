@@ -205,8 +205,13 @@ export default function LeavesPage() {
 
   const reloadData = () => {
     setLoading(true);
-    fetch("/api/leaves/enhanced?year=" + year + "&month=" + month, { headers: { Authorization: authHeader } })
-      .then(r => r.json()).then(d => setData(d)).finally(() => setLoading(false));
+    Promise.all([
+      fetch("/api/leaves/enhanced?year=" + year + "&month=" + month, { headers: { Authorization: authHeader } }).then(r => r.json()),
+      fetch("/api/leaves/types", { headers: { Authorization: authHeader } }).then(r => r.json()),
+    ]).then(([leavesData, typesData]) => {
+      setData(leavesData);
+      setLeaveTypes(typesData?.leave_types || []);
+    }).finally(() => setLoading(false));
   };
 
   const filtered = employees.filter(emp => {
