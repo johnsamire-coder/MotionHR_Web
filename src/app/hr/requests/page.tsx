@@ -154,31 +154,20 @@ export default function RequestsPage() {
   });
 
   const handleExportExcel = () => {
-    if (!filtered.length) {
-      toast.error(lang === "ar" ? "لا توجد بيانات" : "No data");
-      return;
-    }
-
-    const header = lang === "ar"
-      ? "الموظف,النوع,التاريخ,الحالة`n"
-      : "Employee,Type,Date,Status`n";
-
-    const rows = filtered.map((r) => [
-      """$((r.employee_name || "").Replace('"', '""'))""",
-      """$((((lang === "en" && r.request_type_en) ? r.request_type_en : (r.request_type || "")) || "").Replace('"', '""'))""",
-      """$((r.submitted_at || r.created_at) ? new Date(r.submitted_at || r.created_at || "").toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US") : "")""",
-      """$((r.status || "").Replace('"', '""'))"""
-    ].join(",")).join("`n");
-
+    if (!filtered.length) { toast.error(lang === "ar" ? "لا توجد بيانات" : "No data"); return; }
+    const header = lang === "ar" ? "الموظف,النوع,التاريخ,الحالة\n" : "Employee,Type,Date,Status\n";
+    const rows = filtered.map(r => [
+      r.employee_name || "",
+      r.request_type || "",
+      (r.submitted_at || r.created_at) ? new Date(r.submitted_at || r.created_at || "").toLocaleDateString() : "",
+      r.status || ""
+    ].join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + header + rows], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `requests_${year}_${String(month).padStart(2, "0")}.csv`;
-    document.body.appendChild(a);
+    a.download = "requests.csv";
     a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
   };
 
   const handleAction = async (requestId: number, action: "approve" | "reject") => {
