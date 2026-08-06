@@ -187,7 +187,7 @@ export default function ReportsHubPage() {
       icon: FileText,
       color: "text-purple-600",
       bgColor: "bg-purple-500/10",
-      href: "/hr/reports/requests",
+      href: "/hr/requests",
       status: "ready",
     },
     {
@@ -234,7 +234,7 @@ export default function ReportsHubPage() {
       icon: DollarSign,
       color: "text-emerald-600",
       bgColor: "bg-emerald-500/10",
-      href: "/hr/reports/payroll",
+      href: "/hr/payroll",
       status: "ready",
     },
     {
@@ -244,7 +244,7 @@ export default function ReportsHubPage() {
       icon: TrendingUp,
       color: "text-orange-600",
       bgColor: "bg-orange-500/10",
-      href: "/hr/reports/work-hours",
+      href: "/hr/shifts",
       status: "ready",
     },
     {
