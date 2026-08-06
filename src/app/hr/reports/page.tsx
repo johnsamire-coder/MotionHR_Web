@@ -203,6 +203,29 @@ export default function ReportsHubPage() {
   ];
 
   // Payroll & Others (4)
+  const locationReports: ReportItem[] = [
+    {
+      key: "location-tracking",
+      title: lang === "ar" ? "تقرير المواقع الحية" : "Live Location Tracking",
+      description: lang === "ar" ? "تتبع مواقع الموظفين ومراجعة خطوط السير" : "Track employee locations and review routes",
+      icon: MapPin,
+      color: "text-rose-600",
+      bgColor: "bg-rose-500/10",
+      href: "/hr/reports/location-tracking",
+      status: "ready",
+    },
+    {
+      key: "missions",
+      title: lang === "ar" ? "تقرير المهمات" : "Missions Report",
+      description: lang === "ar" ? "ملخص المهمات وحالاتها والفيدباك" : "Missions summary, statuses and feedback",
+      icon: Zap,
+      color: "text-violet-600",
+      bgColor: "bg-violet-500/10",
+      href: "/hr/missions",
+      status: "ready",
+    },
+  ];
+
   const payrollReports: ReportItem[] = [
     {
       key: "payroll",
@@ -260,7 +283,7 @@ export default function ReportsHubPage() {
             <div className="text-xs text-muted-foreground">
               {lang === "ar" ? "إجمالي التقارير" : "Total Reports"}
             </div>
-            <div className="text-lg font-bold text-brand-primary">12</div>
+            <div className="text-lg font-bold text-brand-primary">14</div>
           </div>
         </div>
       </div>
@@ -404,6 +427,22 @@ export default function ReportsHubPage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {leavesReports.map(report => (
+            <ReportCard key={report.key} report={report} lang={lang} />
+          ))}
+        </div>
+      </div>
+
+      {/* Location & Missions */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <MapPin className="w-5 h-5 text-rose-600" />
+          <h2 className="text-lg font-semibold">
+            {lang === "ar" ? "المواقع والمهمات" : "Location & Missions"}
+          </h2>
+          <Badge variant="outline" className="text-xs">{locationReports.length}</Badge>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {locationReports.map(report => (
             <ReportCard key={report.key} report={report} lang={lang} />
           ))}
         </div>
