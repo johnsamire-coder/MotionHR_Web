@@ -92,13 +92,16 @@ export default function EmployeesPage() {
   useEffect(() => {
     if (!token) return;
     Promise.all([
-      fetch("/api/departments", { headers: { Authorization: authHeader } }).then(r => r.json()),
-      fetch("/api/branches",    { headers: { Authorization: authHeader } }).then(r => r.json()),
-      fetch("/api/job-titles",  { headers: { Authorization: authHeader } }).then(r => r.json()),
-    ]).then(([depts, brs, jts]) => {
+      fetch("/api/departments",        { headers: { Authorization: authHeader } }).then(r => r.json()),
+      fetch("/api/branches",           { headers: { Authorization: authHeader } }).then(r => r.json()),
+      fetch("/api/job-titles",         { headers: { Authorization: authHeader } }).then(r => r.json()),
+      fetch("/api/employees/managers", { headers: { Authorization: authHeader } }).then(r => r.json()),
+    ]).then(([depts, brs, jts, mgrs]) => {
       setDepartments(extractArray<Department>(depts, ["departments", "results", "data"]));
       setBranches(extractArray<Branch>(brs, ["branches", "results", "data"]));
       setJobTitles(extractArray<JobTitle>(jts, ["job_titles", "jobTitles", "results", "data"]));
+    
+      setManagers(extractArray<Manager>(mgrs, ["results", "data"]));
     }).catch(() => {});
   }, []);
 
@@ -429,6 +432,7 @@ export default function EmployeesPage() {
         departments={departments}
         branches={branches}
         jobTitles={jobTitles}
+        managers={managers}
       />
     </div>
   );
