@@ -1,13 +1,13 @@
 // src/app/hr/missions/page.tsx
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import {
   Briefcase, Users, Activity, CheckCircle2, Clock, XCircle,
   Search, Loader2, Plus, MapPin, DollarSign, TrendingUp,
   Calendar, Star, Heart, FileText, Bell, Filter, Download,
-  AlertTriangle, User, ChevronDown,
+  AlertTriangle, User, ChevronDown, Navigation,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,6 +100,8 @@ interface MissionForm {
   planned_start_time: string;
   planned_end_time: string;
   location_name: string;
+  location_lat: string;
+  location_lng: string;
   client_name: string;
   client_phone: string;
   client_company: string;
@@ -107,6 +109,18 @@ interface MissionForm {
   client_address: string;
   assignees: Array<{ employee_id: number; employee_name: string; is_lead: boolean }>;
 }
+
+interface SearchResult {
+  lat: string;
+  lon: string;
+  display_name: string;
+}
+
+const EGYPT_CENTER: [number, number] = [26.8206, 30.8025];
+const EGYPT_BOUNDS: [[number, number], [number, number]] = [
+  [22.0, 24.7],
+  [31.6, 36.9],
+];
 
 function StatCard({
   icon: Icon, label, value, subtitle, color, active, onClick,
@@ -194,6 +208,8 @@ export default function MissionsPage() {
     planned_start_time: "",
     planned_end_time: "",
     location_name: "",
+    location_lat: "",
+    location_lng: "",
     client_name: "",
     client_phone: "",
     client_company: "",
@@ -206,6 +222,13 @@ export default function MissionsPage() {
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const mapInst = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [gettingLoc, setGettingLoc] = useState(false);
 
   const loadData = useCallback(() => {
     if (!token) return;
@@ -269,6 +292,116 @@ department: e.department_name || e.department_name_ar || "",
   }, [token, authHeader]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    if (!createDialog) return;
+    const t = window.setTimeout(() => {
+      void initMap();
+    }, 250);
+    return () => window.clearTimeout(t);
+  }, [createDialog]);
+
+  const initMap = async () => {
+    if (!mapRef.current || mapInst.current) return;
+    try {
+      await import("leaflet/dist/leaflet.css");
+      const L = await import("leaflet");
+      const map = L.map(mapRef.current, {
+        maxBounds: L.latLngBounds(EGYPT_BOUNDS[0], EGYPT_BOUNDS[1]),
+        maxBoundsViscosity: 1.0,
+        minZoom: 5,
+      }).setView(EGYPT_CENTER, 6);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap",
+      }).addTo(map);
+
+      const marker = L.marker(EGYPT_CENTER, { draggable: true }).addTo(map);
+
+      const update = (lat: number, lng: number) => {
+        setMissionForm(p => ({
+          ...p,
+          location_lat: lat.toFixed(6),
+          location_lng: lng.toFixed(6),
+        }));
+      };
+
+      marker.on("dragend", () => {
+        const pos = marker.getLatLng();
+        update(pos.lat, pos.lng);
+      });
+
+      map.on("click", (e: any) => {
+        marker.setLatLng([e.latlng.lat, e.latlng.lng]);
+        update(e.latlng.lat, e.latlng.lng);
+      });
+
+      mapInst.current = map;
+      markerRef.current = marker;
+    } catch (e) {
+      console.error("INIT_MAP_FAILED", e);
+    }
+  };
+
+  const doSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    try {
+      const res = await fetch(`/api/geocode?q=${encodeURIComponent(searchQuery)}`);
+      const data: SearchResult[] = await res.json();
+      setSearchResults(data || []);
+      if (!data?.length) toast.error("لم يتم العثور على نتائج");
+    } catch {
+      toast.error("فشل البحث");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const selectResult = (item: SearchResult) => {
+    const lat = parseFloat(item.lat);
+    const lng = parseFloat(item.lon);
+
+    setMissionForm(p => ({
+      ...p,
+      location_lat: lat.toFixed(6),
+      location_lng: lng.toFixed(6),
+      location_name: item.display_name,
+    }));
+
+    setSearchQuery("");
+    setSearchResults([]);
+
+    if (mapInst.current) mapInst.current.setView([lat, lng], 15);
+    if (markerRef.current) markerRef.current.setLatLng([lat, lng]);
+  };
+
+  const getGPS = async () => {
+    setGettingLoc(true);
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 })
+      );
+
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      setMissionForm(p => ({
+        ...p,
+        location_lat: lat.toFixed(6),
+        location_lng: lng.toFixed(6),
+      }));
+
+      if (mapInst.current) mapInst.current.setView([lat, lng], 15);
+      if (markerRef.current) markerRef.current.setLatLng([lat, lng]);
+
+      toast.success("تم تحديد موقعك");
+    } catch {
+      toast.error("فشل تحديد الموقع");
+    } finally {
+      setGettingLoc(false);
+    }
+  };
 
   // تصدير CSV
   const handleExport = () => {
@@ -371,6 +504,8 @@ department: e.department_name || e.department_name_ar || "",
         planned_start_time: missionForm.planned_start_time,
         planned_end_time: missionForm.planned_end_time,
         location_name: missionForm.location_name,
+        location_lat: missionForm.location_lat,
+        location_lng: missionForm.location_lng,
         client_name: missionForm.client_name,
         client_phone: missionForm.client_phone,
         client_company: missionForm.client_company,
@@ -857,7 +992,15 @@ department: e.department_name || e.department_name_ar || "",
       {/* Create Mission Dialog */}
       <Dialog open={createDialog} onOpenChange={open => {
         setCreateDialog(open);
-        if (!open) { setMissionForm(emptyForm); setEmployeeSearch(""); setShowEmployeeDropdown(false); }
+        if (!open) {
+          setMissionForm(emptyForm);
+          setEmployeeSearch("");
+          setShowEmployeeDropdown(false);
+          setSearchQuery("");
+          setSearchResults([]);
+          mapInst.current = null;
+          markerRef.current = null;
+        }
       }}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -934,18 +1077,65 @@ department: e.department_name || e.department_name_ar || "",
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label>الموقع</Label>
-                <div className="relative">
-                  <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <div className="space-y-2">
+              <Label>الموقع</Label>
+
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    value={missionForm.location_name}
-                    onChange={e => setMissionForm(p => ({ ...p, location_name: e.target.value }))}
-                    placeholder="مثال: مقر شركة النيل، وسط البلد"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && doSearch()}
+                    placeholder="ابحث عن مكان في مصر..."
                     className="pr-10"
                   />
                 </div>
+                <Button type="button" variant="secondary" onClick={doSearch} disabled={isSearching}>
+                  {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : "بحث"}
+                </Button>
+                <Button type="button" variant="outline" onClick={getGPS} disabled={gettingLoc} className="gap-1">
+                  {gettingLoc ? <Loader2 className="w-4 h-4 animate-spin" /> : <Navigation className="w-4 h-4" />}
+                  GPS
+                </Button>
               </div>
+
+              {searchResults.length > 0 && (
+                <div className="border border-border rounded-lg max-h-32 overflow-y-auto bg-background">
+                  {searchResults.map((item, i) => (
+                    <div
+                      key={i}
+                      onClick={() => selectResult(item)}
+                      className="p-2 text-sm border-b last:border-0 hover:bg-brand-primary/5 cursor-pointer flex items-start gap-2"
+                    >
+                      <MapPin className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
+                      <span className="line-clamp-2">{item.display_name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div
+                ref={mapRef}
+                className="w-full rounded-xl overflow-hidden border border-border"
+                style={{ height: "220px" }}
+              />
+
+              <Input
+                value={missionForm.location_name}
+                onChange={e => setMissionForm(p => ({ ...p, location_name: e.target.value }))}
+                placeholder="اسم المكان المختار"
+              />
+
+              {missionForm.location_lat && missionForm.location_lng && (
+                <div className="flex items-center gap-2 text-emerald-700">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span className="text-xs font-mono" dir="ltr">
+                    {missionForm.location_lat}, {missionForm.location_lng}
+                  </span>
+                </div>
+              )}
+            </div>
             </div>
 
             {/* Section: بيانات العميل */}
