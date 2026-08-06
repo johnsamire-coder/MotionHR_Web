@@ -224,6 +224,25 @@ export default function PayrollPage() {
   const toggleSort = (col: "name" | "net" | "basic") => {
     if (sortBy === col) setSortDir(d => d === "asc" ? "desc" : "asc");
     else { setSortBy(col); setSortDir("desc"); }
+
+  const [selectedEmp, setSelectedEmp] = useState<PayrollEmployee | null>(null);
+
+  const handleExportExcel = () => {
+    if (!sorted.length) { toast.error(lang === "ar" ? "لا توجد بيانات" : "No data"); return; }
+    const header = lang === "ar" ? ["الموظف","الكود","القسم","الأساسي","البدلات","الخصومات","الصافي"] : ["Employee","Code","Department","Basic","Allowances","Deductions","Net"];
+    const rows = sorted.map(e => [e.employee_name, e.employee_code, e.department_name, e.basic_salary, (e.allowances_total + e.bonuses_total + e.overtime_bonus).toFixed(2), e.total_deductions.toFixed(2), e.net_salary.toFixed(2)].join(","));
+    const csv = "\uFEFF" + header.join(",") + "\n" + rows.join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "payroll_" + year + "_" + String(month).padStart(2, "0") + ".csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    toast.success(lang === "ar" ? "تم التصدير" : "Exported");
+  };
   };
 
   return (
@@ -261,7 +280,7 @@ export default function PayrollPage() {
             </Select>
           </div>
 
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={handleExportExcel}>
             <Download className="w-4 h-4" />
             {d.exportExcel}
           </Button>
@@ -306,7 +325,7 @@ export default function PayrollPage() {
           <StatCard
             icon={TrendingUp}
             label={d.grandTotalAllowances}
-            value={formatCurrency(summary?.grand_total_allowances || 0)}
+            value={formatCurrency((summary?.grand_total_allowances || 0) + (summary?.grand_total_overtime || 0) + (summary?.grand_total_bonuses || 0))}
             color="bg-purple-500/10 text-purple-600"
           />
           <StatCard
@@ -485,7 +504,7 @@ export default function PayrollPage() {
                 </TableRow>
               ) : (
                 sorted.map(emp => (
-                  <TableRow key={emp.employee_id} className="hover:bg-muted/30 cursor-pointer">
+                  <TableRow key={emp.employee_id} className="hover:bg-muted/30 cursor-pointer" onClick={() => setSelectedEmp(emp)}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="w-9 h-9">
@@ -546,3 +565,5 @@ export default function PayrollPage() {
     </div>
   );
 }
+
+

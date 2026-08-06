@@ -154,20 +154,51 @@ export default function RequestsPage() {
   });
 
   const handleExportExcel = () => {
-    if (!filtered.length) { toast.error(lang === "ar" ? "لا توجد بيانات" : "No data"); return; }
-    const header = lang === "ar" ? "الموظف,النوع,التاريخ,الحالة\n" : "Employee,Type,Date,Status\n";
-    const rows = filtered.map(r => [
-      r.employee_name || "",
-      r.request_type || "",
-      (r.submitted_at || r.created_at) ? new Date(r.submitted_at || r.created_at || "").toLocaleDateString() : "",
-      r.status || ""
-    ].join(",")).join("\n");
-    const blob = new Blob(["\uFEFF" + header + rows], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "requests.csv";
-    a.click();
+    if (!filtered.length) {
+      toast.error(lang === "ar" ? "لا توجد بيانات" : "No data");
+      return;
+    }
+
+    const csvCell = (value: unknown) => {
+      const text = String(value ?? "").replace(/"/g, '""');
+      return `"${text}"`;
+    };
+
+    const header = lang === "ar"
+      ? ["الموظف", "النوع", "التاريخ", "الحالة"]
+      : ["Employee", "Type", "Date", "Status"];
+
+    const rows = filtered.map((r) => {
+      const typeLabel =
+        lang === "en" && r.request_type_en
+          ? r.request_type_en
+          : (r.request_type || "");
+
+      const dateValue = (r.submitted_at || r.created_at)
+        ? new Date(r.submitted_at || r.created_at || "").toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US")
+        : "";
+
+      return [
+        csvCell(r.employee_name || ""),
+        csvCell(typeLabel),
+        csvCell(dateValue),
+        csvCell(r.status || ""),
+      ].join(",");
+    });
+
+    const csvText = "\uFEFF" + header.map(csvCell).join(",") + "\n" + rows.join("\n");
+    const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
+    const url = window.URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "requests_" + year + "_" + String(month).padStart(2, "0") + ".csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+    toast.success(lang === "ar" ? "تم التصدير" : "Exported");
   };
 
   const handleAction = async (requestId: number, action: "approve" | "reject") => {
@@ -526,6 +557,7 @@ export default function RequestsPage() {
     </div>
   );
 }
+
 
 
 
