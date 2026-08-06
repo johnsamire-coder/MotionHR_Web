@@ -57,6 +57,7 @@ export default function LocationsPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [resolvedAddresses, setResolvedAddresses] = useState<Record<number, string>>({});
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
@@ -89,6 +90,36 @@ export default function LocationsPage() {
   }, [autoRefresh, fetchData]);
 
   const items = data?.items || [];
+
+  useEffect(() => {
+    const targets = items.filter(item => item.latitude && item.longitude);
+    if (!targets.length) return;
+
+    let cancelled = false;
+
+    (async () => {
+      const entries = await Promise.all(
+        targets.map(async item => {
+          try {
+            const res = await fetch(`/api/reverse-geocode?lat=${item.latitude}&lng=${item.longitude}`);
+            const data = await res.json();
+            return [item.employee_id, data?.display_name || item.address || ""] as const;
+          } catch {
+            return [item.employee_id, item.address || ""] as const;
+          }
+        })
+      );
+
+      if (!cancelled) {
+        setResolvedAddresses(Object.fromEntries(entries));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [items]);
+
   const filtered = items.filter(item =>
     !search || (item.employee_name || "").toLowerCase().includes(search.toLowerCase())
   );
@@ -101,7 +132,7 @@ export default function LocationsPage() {
       lat: item.latitude!,
       lng: item.longitude!,
       lastSeen: item.last_update || item.timestamp,
-      address: item.address,
+      address: resolvedAddresses[item.employee_id] || item.address,
       department: item.department,
     }));
 
@@ -268,6 +299,9 @@ export default function LocationsPage() {
                             <div className="text-xs text-muted-foreground flex items-center gap-1">
                               <Clock className="w-3 h-3" />
                               {getTimeAgo(item.last_update)}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground truncate mt-1">
+                              {resolvedAddresses[item.employee_id] || item.address || "—"}
                             </div>
                           </div>
 
