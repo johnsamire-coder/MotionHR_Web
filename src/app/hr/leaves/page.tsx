@@ -19,6 +19,8 @@ import {
   TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { XCircle as XIcon } from "lucide-react";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 import { AddLeaveDialog } from "@/components/hr/add-leave-dialog";
@@ -117,6 +119,8 @@ export default function LeavesPage() {
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState("all");
   const [showAddLeave, setShowAddLeave] = useState(false);
+  const [selectedEmp, setSelectedEmp] = useState<EmployeeLeaves | null>(null);
+  const [cancelling, setCancelling] = useState<number | null>(null);
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
@@ -162,6 +166,31 @@ export default function LeavesPage() {
 
   const employees = data?.employees || [];
   const departments = [...new Set(employees.map(e => e.department))].sort();
+
+  const handleCancelLeave = async (leaveId: number) => {
+    const reason = window.prompt("سبب الإلغاء:");
+    if (!reason || !reason.trim()) return;
+    setCancelling(leaveId);
+    try {
+      const res = await fetch("/api/leaves/" + leaveId + "/cancel", {
+        method: "POST",
+        headers: { Authorization: authHeader, "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: reason.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success !== false) {
+        toast.success(data.message || "تم الإلغاء");
+        setSelectedEmp(null);
+        reloadData();
+      } else {
+        toast.error(data.error || data.message || "فشل الإلغاء");
+      }
+    } catch {
+      toast.error("خطأ في الشبكة");
+    } finally {
+      setCancelling(null);
+    }
+  };
 
   const handleExportLeaves = () => {
     const header = ["الموظف","القسم","إجمالي الأيام","غير مدفوعة","نصف يوم","عدد الطلبات"];
@@ -378,7 +407,7 @@ export default function LeavesPage() {
                           {emp.employee_name?.[0]}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="font-medium">{emp.employee_name}</span>
+                      <button onClick={() => setSelectedEmp(emp)} className="font-medium text-brand-primary hover:underline text-right">{emp.employee_name}</button>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -417,6 +446,45 @@ export default function LeavesPage() {
           </Table>
         )}
       </Card>
+
+      {selectedEmp && (
+        <Dialog open={!!selectedEmp} onOpenChange={v => !v && setSelectedEmp(null)}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>إجازات {selectedEmp.employee_name}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2 pt-2">
+              {selectedEmp.leaves && selectedEmp.leaves.length > 0 ? (
+                selectedEmp.leaves.map((lv: any) => (
+                  <div key={lv.id} className="border rounded p-3 flex items-center justify-between gap-3">
+                    <div className="flex-1">
+                      <div className="font-medium">{lv.leave_type}</div>
+                      <div className="text-xs text-muted-foreground">من {lv.start_date} إلى {lv.end_date} ({lv.days_count} يوم)</div>
+                      {lv.reason && <div className="text-xs mt-1">{lv.reason}</div>}
+                    </div>
+                    <Badge className={
+                      lv.status === "approved" ? "bg-emerald-100 text-emerald-700" :
+                      lv.status === "pending" ? "bg-amber-100 text-amber-700" :
+                      lv.status === "rejected" ? "bg-red-100 text-red-700" :
+                      "bg-slate-100 text-slate-700"
+                    }>
+                      {lv.status === "approved" ? "موافق" : lv.status === "pending" ? "معلق" : lv.status === "rejected" ? "مرفوض" : "ملغي"}
+                    </Badge>
+                    {(lv.status === "approved" || lv.status === "pending") && (
+                      <Button size="sm" variant="outline" disabled={cancelling === lv.id} onClick={() => handleCancelLeave(lv.id)} className="text-red-600 border-red-200 hover:bg-red-50">
+                        {cancelling === lv.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <XIcon className="w-3 h-3" />}
+                        إلغاء
+                      </Button>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground py-8">لا توجد إجازات</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <AddLeaveDialog open={showAddLeave} onClose={() => setShowAddLeave(false)} onSuccess={reloadData} />
     </div>
