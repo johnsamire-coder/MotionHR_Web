@@ -59,6 +59,7 @@ interface RequestReport {
     request_type_en?: string;
     status?: string;
     submitted_at?: string;
+    created_at?: string;
     reason?: string;
   }>;
 }
@@ -108,6 +109,7 @@ export default function RequestsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeTab, setActiveTab] = useState<"all" | "pending">("all");
+  const [selectedReq, setSelectedReq] = useState<RequestReport["details"][number] | null>(null);
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
@@ -150,6 +152,23 @@ export default function RequestsPage() {
 
     return matchSearch && matchStatus && matchTab;
   });
+
+  const handleExportExcel = () => {
+    if (!filtered.length) { toast.error(lang === "ar" ? "لا توجد بيانات" : "No data"); return; }
+    const header = lang === "ar" ? "الموظف,النوع,التاريخ,الحالة\n" : "Employee,Type,Date,Status\n";
+    const rows = filtered.map(r => [
+      r.employee_name || "",
+      r.request_type || "",
+      (r.submitted_at || r.created_at) ? new Date(r.submitted_at || r.created_at || "").toLocaleDateString() : "",
+      r.status || ""
+    ].join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + header + rows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "requests.csv";
+    a.click();
+  };
 
   const handleAction = async (requestId: number, action: "approve" | "reject") => {
     const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
@@ -247,7 +266,7 @@ export default function RequestsPage() {
             value={report?.total_requests || 0}
             color="bg-blue-500/10 text-blue-600"
             active={statusFilter === "all"}
-            onClick={() => setStatusFilter("all")}
+            onClick={handleExportExcel}
           />
           <StatCard
             icon={CheckCircle2}
@@ -369,6 +388,48 @@ export default function RequestsPage() {
         </CardContent>
       </Card>
 
+      {selectedReq && (
+        <Card className="border-brand-primary/20 bg-brand-primary/5">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <h3 className="font-semibold">{lang === "ar" ? "تفاصيل الطلب" : "Request details"}</h3>
+                <p className="text-sm text-muted-foreground">{selectedReq.employee_name || "—"}</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setSelectedReq(null)}>
+                {lang === "ar" ? "إغلاق" : "Close"}
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div>
+                <span className="text-muted-foreground">{lang === "ar" ? "النوع: " : "Type: "}</span>
+                {lang === "en" && selectedReq.request_type_en ? selectedReq.request_type_en : selectedReq.request_type || "—"}
+              </div>
+              <div>
+                <span className="text-muted-foreground">{lang === "ar" ? "الحالة: " : "Status: "}</span>
+                {selectedReq.status || "—"}
+              </div>
+              <div>
+                <span className="text-muted-foreground">{lang === "ar" ? "القسم: " : "Department: "}</span>
+                {selectedReq.department || "—"}
+              </div>
+              <div>
+                <span className="text-muted-foreground">{lang === "ar" ? "التاريخ: " : "Date: "}</span>
+                {(selectedReq.submitted_at || selectedReq.created_at)
+                  ? new Date(selectedReq.submitted_at || selectedReq.created_at || "").toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US")
+                  : "—"}
+              </div>
+            </div>
+
+            <div className="text-sm">
+              <span className="text-muted-foreground">{lang === "ar" ? "السبب: " : "Reason: "}</span>
+              {selectedReq.reason || "—"}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Requests Table */}
       <Card className="border-border/50">
         <div className="p-4 border-b border-border flex items-center justify-between">
@@ -424,16 +485,14 @@ export default function RequestsPage() {
                     </span>
                   </TableCell>
                   <TableCell className="font-mono text-xs">
-                    {req.submitted_at ? new Date(req.submitted_at).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US") : "—"}
+                    {(req.submitted_at || req.created_at) ? new Date(req.submitted_at || req.created_at || "").toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US") : "—"}
                   </TableCell>
                   <TableCell>
                     {getStatusBadge(req.status)}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" className="h-8 px-2">
-                        <Eye className="w-4 h-4" />
-                      </Button>
+                      <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => setSelectedReq(req)}><Eye className="w-4 h-4" /></Button>
                       {req.status === "pending" && (
                         <>
                           <Button onClick={() => handleAction(req.id, "approve")} variant="ghost" size="sm" className="h-8 px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
@@ -455,3 +514,10 @@ export default function RequestsPage() {
     </div>
   );
 }
+
+
+
+
+
+
+
