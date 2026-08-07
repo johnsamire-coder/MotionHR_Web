@@ -58,7 +58,7 @@ export default function CompanySettingsPage() {
   const d = useDict();
   const lang = useLangStore((s) => s.lang);
 
-  const [activeTab, setActiveTab] = useState<"info" | "stats">("info");
+  const [activeTab, setActiveTab] = useState<"info" | "stats" | "payroll">("info");
   const [company, setCompany] = useState<CompanyInfo | null>(null);
   const [payroll, setPayroll] = useState<PayrollSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -160,7 +160,7 @@ export default function CompanySettingsPage() {
   const tabs = [
     { key: "info" as const, label: d.tabCompanyInfo, icon: Info },
     { key: "stats" as const, label: d.tabStats, icon: BarChart3 },
-
+    { key: "payroll" as const, label: d.tabPayrollSettings, icon: DollarSign },
   ];
 
   if (loading) {
@@ -418,6 +418,166 @@ export default function CompanySettingsPage() {
             </div>
           )}
 
+          {/* ================ PAYROLL SETTINGS TAB ================ */}
+          {activeTab === "payroll" && payroll && (
+            <div className="space-y-6">
+              {/* Deductions */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-red-600">
+                  <DollarSign className="w-5 h-5" />
+                  {lang === "ar" ? "Ø§Ù„Ø®ØµÙˆÙ…Ø§Øª" : "Deductions"}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>{d.lateDeductionRate}</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={payroll.late_deduction_per_minute}
+                        onChange={e => setPayroll({ ...payroll, late_deduction_per_minute: parseFloat(e.target.value) || 0 })}
+                      />
+                      <span className="text-sm text-muted-foreground">{d.egpUnit}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>{d.absenceDeductionDay}</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        value={payroll.absence_deduction_per_day}
+                        onChange={e => setPayroll({ ...payroll, absence_deduction_per_day: parseFloat(e.target.value) || 0 })}
+                      />
+                      <span className="text-sm text-muted-foreground">{d.egpUnit}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>{d.overtimeRate}</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        value={payroll.overtime_rate_per_hour}
+                        onChange={e => setPayroll({ ...payroll, overtime_rate_per_hour: parseFloat(e.target.value) || 0 })}
+                      />
+                      <span className="text-sm text-muted-foreground">{d.egpUnit}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Field Allowance */}
+              <div className="pt-4 border-t border-border">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-emerald-600">
+                  <MapPin className="w-5 h-5" />
+                  {d.fieldAllowanceType}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>{d.fieldAllowanceType}</Label>
+                    <Select
+                      value={payroll.field_allowance_type}
+                      onValueChange={v => setPayroll({ ...payroll, field_allowance_type: v })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{d.fieldAllowanceNone}</SelectItem>
+                        <SelectItem value="fixed">{d.fieldAllowanceFixed}</SelectItem>
+                        <SelectItem value="per_visit">{d.fieldAllowancePerVisit}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {payroll.field_allowance_type === "fixed" && (
+                    <div className="space-y-2">
+                      <Label>{d.fixedFieldAllowance}</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          value={payroll.fixed_field_allowance}
+                          onChange={e => setPayroll({ ...payroll, fixed_field_allowance: parseFloat(e.target.value) || 0 })}
+                        />
+                        <span className="text-sm text-muted-foreground">{d.egpUnit}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {payroll.field_allowance_type === "per_visit" && (
+                    <div className="space-y-2">
+                      <Label>{d.perVisitAllowance}</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          value={payroll.per_visit_allowance}
+                          onChange={e => setPayroll({ ...payroll, per_visit_allowance: parseFloat(e.target.value) || 0 })}
+                        />
+                        <span className="text-sm text-muted-foreground">{d.egpUnit}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Payroll Cycle */}
+              <div className="pt-4 border-t border-border">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-brand-primary">
+                  <Calendar className="w-5 h-5" />
+                  {d.payrollCycle}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>{d.payrollCycle}</Label>
+                    <Select
+                      value={payroll.payroll_cycle_type}
+                      onValueChange={v => setPayroll({ ...payroll, payroll_cycle_type: v })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="calendar_month">{d.cycleCalendarMonth}</SelectItem>
+                        <SelectItem value="custom">{d.cycleCustom}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>{d.payrollCutoffDay}</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={payroll.payroll_cutoff_day}
+                      onChange={e => setPayroll({ ...payroll, payroll_cutoff_day: parseInt(e.target.value) || 1 })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>{d.payrollPayDay}</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={payroll.payroll_pay_day}
+                      onChange={e => setPayroll({ ...payroll, payroll_pay_day: parseInt(e.target.value) || 1 })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <Button
+                  onClick={handleSavePayroll}
+                  disabled={saving}
+                  className="bg-brand-primary hover:bg-brand-primary/90 gap-2"
+                >
+                  {saving ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" />{d.saving}</>
+                  ) : (
+                    <><Save className="w-4 h-4" />{d.saveChanges}</>
+                  )}
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
