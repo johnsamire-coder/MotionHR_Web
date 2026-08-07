@@ -66,7 +66,7 @@ const TABS = [
   { key: "leave",       icon: Clock,        label_ar: "سياسة الإجازات", label_en: "Leaves",      color: "text-purple-600 bg-purple-500/10" },
   { key: "allowance",   icon: DollarSign,   label_ar: "البدلات",        label_en: "Allowances",  color: "text-amber-600 bg-amber-500/10" },
   { key: "deduction",   icon: TrendingDown, label_ar: "الخصومات",       label_en: "Deductions",  color: "text-red-600 bg-red-500/10" },
-  { key: "bonus",       icon: Award,        label_ar: "Ø§Ù„Ù…ÙƒØ§ÙØ¢Øª",       label_en: "Bonuses",     color: "text-brand-primary bg-brand-primary/10" },
+  { key: "bonus",       icon: Award,        label_ar: "المكافآت",       label_en: "Bonuses",     color: "text-brand-primary bg-brand-primary/10" },
   { key: "insurance",   icon: Shield,       label_ar: "التأمينات",      label_en: "Insurance",   color: "text-teal-600 bg-teal-500/10" },
 ] as const;
 
@@ -135,7 +135,7 @@ export default function PoliciesHubPage() {
       setBonuses(b?.results || b?.policies || []);
       setInsurances(i?.results || []);
     } catch {
-      toast.error(ar ? "ÙØ´Ù„ ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª" : "Failed to load");
+      toast.error(ar ? "فشل تحميل البيانات" : "Failed to load");
     } finally {
       setLoading(false);
     }
@@ -160,9 +160,9 @@ export default function PoliciesHubPage() {
       });
       const data = await res.json();
       if (res.ok && data.success !== false) {
-        toast.success(ar ? "ØªÙ… Ø§Ù„Ø­ÙØ¸ âœ…" : "Saved âœ…");
+        toast.success(ar ? "تم الحفظ ✅" : "Saved âœ…");
       } else {
-        toast.error(data.message || (ar ? "ÙØ´Ù„" : "Failed"));
+        toast.error(data.message || (ar ? "فشل" : "Failed"));
       }
     } catch { toast.error(ar ? "خطأ" : "Error"); }
     finally { setSaving(false); }
@@ -184,8 +184,8 @@ export default function PoliciesHubPage() {
   const handleClone = async (id: number) => {
     const endpoint = getEndpoint();
     if (!endpoint || activeTab !== "attendance") {
-      // clone ÙÙ‚Ø· Ù„Ù„Ù€ attendance policies Ø­Ø§Ù„ÙŠØ§Ù‹
-      toast.info(ar ? "Ø§Ù„Ù†Ø³Ø® Ù…ØªØ§Ø­ Ù„Ø³ÙŠØ§Ø³Ø§Øª Ø§Ù„Ø­Ø¶ÙˆØ± ÙÙ‚Ø· Ø­Ø§Ù„ÙŠØ§Ù‹" : "Clone only for attendance policies");
+      // clone فقط للـ attendance policies حالياً
+      toast.info(ar ? "النسخ متاح لسياسات الحضور فقط حالياً" : "Clone only for attendance policies");
       return;
     }
     setActionLoading(id);
@@ -196,10 +196,10 @@ export default function PoliciesHubPage() {
       });
       const data = await res.json();
       if (res.ok && data.success !== false) {
-        toast.success(ar ? "ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ù†Ø³Ø®Ø© âœ…" : "Cloned âœ…");
+        toast.success(ar ? "تم إنشاء نسخة ✅" : "Cloned âœ…");
         await load();
       } else {
-        toast.error(data.error || (ar ? "ÙØ´Ù„" : "Failed"));
+        toast.error(data.error || (ar ? "فشل" : "Failed"));
       }
     } catch { toast.error(ar ? "خطأ" : "Error"); }
     finally { setActionLoading(null); }
@@ -208,7 +208,7 @@ export default function PoliciesHubPage() {
   const handleApprove = async (id: number) => {
     const endpoint = getEndpoint();
     if (!endpoint) return;
-    if (!confirm(ar ? "اعتماد السياسة؟ Ù„Ù† ÙŠÙ…ÙƒÙ† ØªØ¹Ø¯ÙŠÙ„Ù‡Ø§ Ø¨Ø¹Ø¯ Ø§Ù„اعتماد" : "Approve? Cannot edit after.")) return;
+    if (!confirm(ar ? "اعتماد السياسة؟ لن يمكن تعديلها بعد الاعتماد" : "Approve? Cannot edit after.")) return;
     setActionLoading(id);
     try {
       const res = await fetch(`/api/hr/policies/${endpoint}/${id}/approve`, {
@@ -217,10 +217,10 @@ export default function PoliciesHubPage() {
       });
       const data = await res.json();
       if (res.ok && data.success !== false) {
-        toast.success(ar ? "ØªÙ… Ø§Ù„اعتماد âœ…" : "Approved âœ…");
+        toast.success(ar ? "تم الاعتماد ✅" : "Approved âœ…");
         await load();
       } else {
-        toast.error(data.error || (ar ? "ÙØ´Ù„" : "Failed"));
+        toast.error(data.error || (ar ? "فشل" : "Failed"));
       }
     } catch { toast.error(ar ? "خطأ" : "Error"); }
     finally { setActionLoading(null); }
@@ -229,7 +229,7 @@ export default function PoliciesHubPage() {
   const handleDelete = async (id: number) => {
     const endpoint = getEndpoint();
     if (!endpoint) return;
-    if (!confirm(ar ? "Ø­Ø°Ù السياسة؟" : "Delete?")) return;
+    if (!confirm(ar ? "حذف السياسة؟" : "Delete?")) return;
     setActionLoading(id);
     try {
       const res = await fetch(`/api/hr/policies/${endpoint}/${id}`, {
@@ -237,11 +237,11 @@ export default function PoliciesHubPage() {
         headers: { Authorization: authH },
       });
       if (res.ok) {
-        toast.success(ar ? "ØªÙ… Ø§Ù„Ø­Ø°Ù âœ…" : "Deleted âœ…");
+        toast.success(ar ? "تم الحذف ✅" : "Deleted âœ…");
         await load();
       } else {
         const data = await res.json();
-        toast.error(data.error || (ar ? "ÙØ´Ù„" : "Failed"));
+        toast.error(data.error || (ar ? "فشل" : "Failed"));
       }
     } catch { toast.error(ar ? "خطأ" : "Error"); }
     finally { setActionLoading(null); }
@@ -289,10 +289,10 @@ export default function PoliciesHubPage() {
         <Card>
           <CardContent className="py-16 text-center">
             <Info className="w-14 h-14 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-muted-foreground mb-4">{ar ? "Ù„Ø§ ØªÙˆØ¬Ø¯ Ø³ÙŠØ§Ø³Ø§Øª" : "No policies"}</p>
+            <p className="text-muted-foreground mb-4">{ar ? "لا توجد سياسات" : "No policies"}</p>
             <Button onClick={openCreateDialog} className="gap-2 bg-brand-primary hover:bg-brand-secondary">
               <Plus className="w-4 h-4" />
-              {ar ? "Ø¥Ø¶Ø§ÙØ©" : "Add"}
+              {ar ? "إضافة" : "Add"}
             </Button>
           </CardContent>
         </Card>
@@ -320,8 +320,8 @@ export default function PoliciesHubPage() {
                           "bg-slate-100 text-slate-600"
                         }`}>
                           {isActive ? (ar ? "نشط" : "Active") :
-                           isDraft  ? (ar ? "Ù…Ø³ÙˆØ¯Ø©" : "Draft") :
-                           (ar ? "Ù…Ø¤Ø±Ø´Ù" : "Archived")}
+                           isDraft  ? (ar ? "مسودة" : "Draft") :
+                           (ar ? "مؤرشف" : "Archived")}
                         </Badge>
                       )}
                     </div>
@@ -333,7 +333,7 @@ export default function PoliciesHubPage() {
                     )}
                     {isPayroll && item.amount !== undefined && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        {ar ? "Ø§Ù„Ù‚ÙŠÙ…Ø©" : "Value"}: <span className="font-semibold">{item.amount}</span>
+                        {ar ? "القيمة" : "Value"}: <span className="font-semibold">{item.amount}</span>
                         {item.amount_type === "percent" ? " %" :
                          item.amount_type === "hourly"  ? " EGP/hr" : " EGP"}
                       </p>
@@ -341,18 +341,18 @@ export default function PoliciesHubPage() {
                   </div>
 
                   <div className="flex items-center gap-1">
-                    {/* Payroll policies: ØªØ¹Ø¯ÙŠÙ„ مباشر */}
+                    {/* Payroll policies: تعديل مباشر */}
                     {isPayroll ? (
                       <>
                         <Button size="sm" variant="ghost" className="gap-1" disabled={isLoading}
                           onClick={() => openEditDialog(item.id)}>
                           <Edit2 className="w-3 h-3" />
-                          {ar ? "ØªØ¹Ø¯ÙŠÙ„" : "Edit"}
+                          {ar ? "تعديل" : "Edit"}
                         </Button>
                         <Button size="sm" variant="ghost" className="gap-1 text-red-700 hover:bg-red-50"
                           disabled={isLoading} onClick={() => handleDelete(item.id)}>
                           <Trash2 className="w-3 h-3" />
-                          {ar ? "Ø­Ø°Ù" : "Delete"}
+                          {ar ? "حذف" : "Delete"}
                         </Button>
                       </>
                     ) : (
@@ -362,7 +362,7 @@ export default function PoliciesHubPage() {
                             <Button size="sm" variant="ghost" className="gap-1" disabled={isLoading}
                               onClick={() => openEditDialog(item.id)}>
                               <Edit2 className="w-3 h-3" />
-                              {ar ? "ØªØ¹Ø¯ÙŠÙ„" : "Edit"}
+                              {ar ? "تعديل" : "Edit"}
                             </Button>
                             <Button size="sm" variant="ghost" className="gap-1 text-emerald-700 hover:bg-emerald-50"
                               disabled={isLoading} onClick={() => handleApprove(item.id)}>
@@ -372,7 +372,7 @@ export default function PoliciesHubPage() {
                             <Button size="sm" variant="ghost" className="gap-1 text-red-700 hover:bg-red-50"
                               disabled={isLoading} onClick={() => handleDelete(item.id)}>
                               <Trash2 className="w-3 h-3" />
-                              {ar ? "Ø­Ø°Ù" : "Delete"}
+                              {ar ? "حذف" : "Delete"}
                             </Button>
                           </>
                         )}
@@ -380,14 +380,14 @@ export default function PoliciesHubPage() {
                           <Button size="sm" variant="ghost" className="gap-1" disabled={isLoading}
                             onClick={() => handleClone(item.id)}>
                             {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Copy className="w-3 h-3" />}
-                            {ar ? "Ù†Ø³Ø®" : "Clone"}
+                            {ar ? "نسخ" : "Clone"}
                           </Button>
                         )}
                         {isActive && activeTab !== "attendance" && (
                           <Button size="sm" variant="ghost" className="gap-1"
                             onClick={() => openEditDialog(item.id)}>
                             <Info className="w-3 h-3" />
-                            {ar ? "Ø¹Ø±Ø¶" : "View"}
+                            {ar ? "عرض" : "View"}
                           </Button>
                         )}
                       </>
@@ -600,7 +600,7 @@ export default function PoliciesHubPage() {
             {activeTab !== "work" && (
               <Button onClick={openCreateDialog} className="gap-2 bg-brand-primary hover:bg-brand-secondary">
                 <Plus className="w-4 h-4" />
-                {ar ? "Ø¥Ø¶Ø§ÙØ©" : "Add"}
+                {ar ? "إضافة" : "Add"}
               </Button>
             )}
           </div>
@@ -655,7 +655,7 @@ export default function PoliciesHubPage() {
                   <Button onClick={saveWorkPolicy} disabled={saving}
                     className="gap-2 bg-brand-primary hover:bg-brand-secondary">
                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                    {ar ? "Ø­ÙØ¸ Ø§Ù„Ø³ÙŠØ§Ø³Ø©" : "Save Policy"}
+                    {ar ? "حفظ السياسة" : "Save Policy"}
                   </Button>
                 </div>
               </CardContent>
