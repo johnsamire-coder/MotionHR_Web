@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { toast } from "sonner";
@@ -37,7 +37,7 @@ const EMPTY = {
   salary_payment_method: "cash",
   bank_name: "", bank_account: "",
   instapay_phone: "", wallet_phone: "", wallet_provider: "",
-  has_insurance: "false", insurance_number: "",
+  has_insurance: "false", insurance_number: "", insurance_base_salary: "",
   address: "",
 };
 
@@ -126,6 +126,7 @@ export function CreateEmployeeDialog({ open, onClose, onSuccess, departments, br
         wallet_provider: form.wallet_provider || undefined,
         has_insurance: form.has_insurance === "true",
         insurance_number: form.insurance_number || undefined,
+        insurance_base_salary: form.insurance_base_salary ? Number(form.insurance_base_salary) : null,
         address: form.address || undefined,
       };
 
@@ -268,7 +269,10 @@ export function CreateEmployeeDialog({ open, onClose, onSuccess, departments, br
               <option value="true">{ar ? "نعم" : "Yes"}</option>
             </Sel>
             {showInsurance && (
-              <Field label={ar ? "رقم التأمين" : "Insurance Number"} value={form.insurance_number} onChange={v => set("insurance_number", v)} placeholder="123456789" />
+              <>
+                <Field label={ar ? "رقم التأمين" : "Insurance Number"} value={form.insurance_number} onChange={v => set("insurance_number", v)} placeholder="123456789" />
+                <Field label={ar ? "المرتب التأميني الخاص" : "Insurance Base Salary"} value={form.insurance_base_salary} onChange={v => set("insurance_base_salary", v)} placeholder={ar ? "اختياري - للسياسات المخصصة" : "Optional"} />
+              </>
             )}
           </div>
 
