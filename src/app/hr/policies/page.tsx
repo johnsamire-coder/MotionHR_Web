@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import AttendancePolicyDialog from "@/components/hr/policies/attendance-policy-d
 import LeavePolicyDialog from "@/components/hr/policies/leave-policy-dialog";
 import PayrollPolicyDialog from "@/components/hr/policies/payroll-policy-dialog";
 import InsurancePolicyDialog from "@/components/hr/policies/insurance-policy-dialog";
+import PayrollCyclePolicyDialog from "@/components/hr/policies/payroll-cycle-policy-dialog";
 import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
@@ -24,6 +25,25 @@ interface PolicyItem {
   effective_to?: string | null;
   amount?: number;
   amount_type?: string;
+}
+
+interface PayrollCyclePolicyItem {
+  id: number;
+  cycle_type: string;
+  cycle_type_display: string;
+  cutoff_day: number;
+  pay_day: number;
+  weekly_pay_day: string;
+  holiday_handling_display: string;
+  default_currency: string;
+  proration_method_display: string;
+  is_active: boolean;
+  is_superseded: boolean;
+  version_number: number;
+  start_date: string;
+  end_date?: string | null;
+  approval_level_display?: string;
+  change_reason?: string;
 }
 
 interface InsurancePolicyItem {
@@ -58,26 +78,27 @@ interface WorkPolicy {
   is_24_7: boolean;
 }
 
-type TabKey = "attendance" | "work" | "leave" | "allowance" | "deduction" | "bonus" | "insurance";
+type TabKey = "attendance" | "work" | "leave" | "allowance" | "deduction" | "bonus" | "insurance" | "payroll_cycle";
 
 const TABS = [
-  { key: "attendance",  icon: Shield,       label_ar: "سياسة الحضور",   label_en: "Attendance",  color: "text-blue-600 bg-blue-500/10" },
-  { key: "work",        icon: Calendar,     label_ar: "أيام العمل",     label_en: "Work Days",   color: "text-emerald-600 bg-emerald-500/10" },
-  { key: "leave",       icon: Clock,        label_ar: "سياسة الإجازات", label_en: "Leaves",      color: "text-purple-600 bg-purple-500/10" },
-  { key: "allowance",   icon: DollarSign,   label_ar: "البدلات",        label_en: "Allowances",  color: "text-amber-600 bg-amber-500/10" },
-  { key: "deduction",   icon: TrendingDown, label_ar: "الخصومات",       label_en: "Deductions",  color: "text-red-600 bg-red-500/10" },
-  { key: "bonus",       icon: Award,        label_ar: "المكافآت",       label_en: "Bonuses",     color: "text-brand-primary bg-brand-primary/10" },
-  { key: "insurance",   icon: Shield,       label_ar: "التأمينات",      label_en: "Insurance",   color: "text-teal-600 bg-teal-500/10" },
+  { key: "attendance",  icon: Shield,       label_ar: "Ã˜Â³Ã™Å Ã˜Â§Ã˜Â³Ã˜Â© Ã˜Â§Ã™â€žÃ˜Â­Ã˜Â¶Ã™Ë†Ã˜Â±",   label_en: "Attendance",  color: "text-blue-600 bg-blue-500/10" },
+  { key: "work",        icon: Calendar,     label_ar: "Ã˜Â£Ã™Å Ã˜Â§Ã™â€¦ Ã˜Â§Ã™â€žÃ˜Â¹Ã™â€¦Ã™â€ž",     label_en: "Work Days",   color: "text-emerald-600 bg-emerald-500/10" },
+  { key: "leave",       icon: Clock,        label_ar: "Ã˜Â³Ã™Å Ã˜Â§Ã˜Â³Ã˜Â© Ã˜Â§Ã™â€žÃ˜Â¥Ã˜Â¬Ã˜Â§Ã˜Â²Ã˜Â§Ã˜Âª", label_en: "Leaves",      color: "text-purple-600 bg-purple-500/10" },
+  { key: "allowance",   icon: DollarSign,   label_ar: "Ã˜Â§Ã™â€žÃ˜Â¨Ã˜Â¯Ã™â€žÃ˜Â§Ã˜Âª",        label_en: "Allowances",  color: "text-amber-600 bg-amber-500/10" },
+  { key: "deduction",   icon: TrendingDown, label_ar: "Ã˜Â§Ã™â€žÃ˜Â®Ã˜ÂµÃ™Ë†Ã™â€¦Ã˜Â§Ã˜Âª",       label_en: "Deductions",  color: "text-red-600 bg-red-500/10" },
+  { key: "bonus",       icon: Award,        label_ar: "Ã˜Â§Ã™â€žÃ™â€¦Ã™Æ’Ã˜Â§Ã™ÂÃ˜Â¢Ã˜Âª",       label_en: "Bonuses",     color: "text-brand-primary bg-brand-primary/10" },
+  { key: "insurance",   icon: Shield,       label_ar: "Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â£Ã™â€¦Ã™Å Ã™â€ Ã˜Â§Ã˜Âª",      label_en: "Insurance",   color: "text-teal-600 bg-teal-500/10" },
+  { key: "payroll_cycle", icon: Calendar,     label_ar: "Ã˜Â¯Ã™Ë†Ã˜Â±Ã˜Â© Ã˜Â§Ã™â€žÃ˜Â±Ã™Ë†Ã˜Â§Ã˜ÂªÃ˜Â¨",   label_en: "Payroll Cycle", color: "text-indigo-600 bg-indigo-500/10" },
 ] as const;
 
 const DAYS = [
-  { key: "work_sunday",    label_ar: "الأحد",    label_en: "Sunday" },
-  { key: "work_monday",    label_ar: "الاثنين",  label_en: "Monday" },
-  { key: "work_tuesday",   label_ar: "الثلاثاء", label_en: "Tuesday" },
-  { key: "work_wednesday", label_ar: "الأربعاء", label_en: "Wednesday" },
-  { key: "work_thursday",  label_ar: "الخميس",   label_en: "Thursday" },
-  { key: "work_friday",    label_ar: "الجمعة",   label_en: "Friday" },
-  { key: "work_saturday",  label_ar: "السبت",    label_en: "Saturday" },
+  { key: "work_sunday",    label_ar: "Ã˜Â§Ã™â€žÃ˜Â£Ã˜Â­Ã˜Â¯",    label_en: "Sunday" },
+  { key: "work_monday",    label_ar: "Ã˜Â§Ã™â€žÃ˜Â§Ã˜Â«Ã™â€ Ã™Å Ã™â€ ",  label_en: "Monday" },
+  { key: "work_tuesday",   label_ar: "Ã˜Â§Ã™â€žÃ˜Â«Ã™â€žÃ˜Â§Ã˜Â«Ã˜Â§Ã˜Â¡", label_en: "Tuesday" },
+  { key: "work_wednesday", label_ar: "Ã˜Â§Ã™â€žÃ˜Â£Ã˜Â±Ã˜Â¨Ã˜Â¹Ã˜Â§Ã˜Â¡", label_en: "Wednesday" },
+  { key: "work_thursday",  label_ar: "Ã˜Â§Ã™â€žÃ˜Â®Ã™â€¦Ã™Å Ã˜Â³",   label_en: "Thursday" },
+  { key: "work_friday",    label_ar: "Ã˜Â§Ã™â€žÃ˜Â¬Ã™â€¦Ã˜Â¹Ã˜Â©",   label_en: "Friday" },
+  { key: "work_saturday",  label_ar: "Ã˜Â§Ã™â€žÃ˜Â³Ã˜Â¨Ã˜Âª",    label_en: "Saturday" },
 ];
 
 export default function PoliciesHubPage() {
@@ -95,7 +116,9 @@ export default function PoliciesHubPage() {
   const [deductions, setDeductions]   = useState<PolicyItem[]>([]);
   const [bonuses, setBonuses]         = useState<PolicyItem[]>([]);
   const [insurances, setInsurances]   = useState<InsurancePolicyItem[]>([]);
+  const [payrollCycles, setPayrollCycles] = useState<PayrollCyclePolicyItem[]>([]);
   const [showInsuranceDialog, setShowInsuranceDialog] = useState(false);
+  const [showPayrollCycleDialog, setShowPayrollCycleDialog] = useState(false);
   const [insuranceSubTab, setInsuranceSubTab] = useState<"all" | "social" | "medical">("all");
   const [workPolicy, setWorkPolicy]   = useState<WorkPolicy | null>(null);
 
@@ -115,7 +138,7 @@ export default function PoliciesHubPage() {
     setLoading(true);
     try {
       const headers = { Authorization: authH, "Accept-Language": langH };
-      const [aRes, lRes, wRes, alRes, dRes, bRes, iRes] = await Promise.all([
+      const [aRes, lRes, wRes, alRes, dRes, bRes, iRes, pcRes] = await Promise.all([
         fetch("/api/hr/policies/attendance-policy", { headers }),
         fetch("/api/hr/policies/leave-policy", { headers }),
         fetch("/api/hr/policies/work-policy", { headers }),
@@ -123,9 +146,10 @@ export default function PoliciesHubPage() {
         fetch("/api/hr/policies/deduction-policies", { headers }),
         fetch("/api/hr/policies/bonus-policies", { headers }),
         fetch("/api/hr/policies/insurance-policies", { headers }),
+        fetch("/api/hr/policies/payroll-cycle-policies", { headers }),
       ]);
-      const [a, l, w, al, d, b, i] = await Promise.all([
-        aRes.json(), lRes.json(), wRes.json(), alRes.json(), dRes.json(), bRes.json(), iRes.json(),
+      const [a, l, w, al, d, b, i, pc] = await Promise.all([
+        aRes.json(), lRes.json(), wRes.json(), alRes.json(), dRes.json(), bRes.json(), iRes.json(), pcRes.json(),
       ]);
       setAttendance(a?.policies || a?.results || []);
       setLeaves(l?.policies || l?.results || []);
@@ -134,8 +158,9 @@ export default function PoliciesHubPage() {
       setDeductions(d?.results || d?.policies || []);
       setBonuses(b?.results || b?.policies || []);
       setInsurances(i?.results || []);
+      setPayrollCycles(pc?.results || []);
     } catch {
-      toast.error(ar ? "فشل تحميل البيانات" : "Failed to load");
+      toast.error(ar ? "Ã™ÂÃ˜Â´Ã™â€ž Ã˜ÂªÃ˜Â­Ã™â€¦Ã™Å Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¨Ã™Å Ã˜Â§Ã™â€ Ã˜Â§Ã˜Âª" : "Failed to load");
     } finally {
       setLoading(false);
     }
@@ -143,7 +168,7 @@ export default function PoliciesHubPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // â”€â”€ Work Policy â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Work Policy ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
   const toggleDay = (day: keyof WorkPolicy) => {
     if (!workPolicy) return;
     setWorkPolicy({ ...workPolicy, [day]: !workPolicy[day] });
@@ -160,15 +185,15 @@ export default function PoliciesHubPage() {
       });
       const data = await res.json();
       if (res.ok && data.success !== false) {
-        toast.success(ar ? "تم الحفظ ✅" : "Saved âœ…");
+        toast.success(ar ? "Ã˜ÂªÃ™â€¦ Ã˜Â§Ã™â€žÃ˜Â­Ã™ÂÃ˜Â¸ Ã¢Å“â€¦" : "Saved ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦");
       } else {
-        toast.error(data.message || (ar ? "فشل" : "Failed"));
+        toast.error(data.message || (ar ? "Ã™ÂÃ˜Â´Ã™â€ž" : "Failed"));
       }
-    } catch { toast.error(ar ? "خطأ" : "Error"); }
+    } catch { toast.error(ar ? "Ã˜Â®Ã˜Â·Ã˜Â£" : "Error"); }
     finally { setSaving(false); }
   };
 
-  // â”€â”€ Common Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Common Actions ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
   const getEndpoint = (): string => {
     switch (activeTab) {
       case "attendance": return "attendance-policy";
@@ -177,6 +202,7 @@ export default function PoliciesHubPage() {
       case "deduction":  return "deduction-policies";
       case "bonus":      return "bonus-policies";
       case "insurance":  return "insurance-policies";
+      case "payroll_cycle":  return "payroll-cycle-policies";
       default: return "";
     }
   };
@@ -184,8 +210,8 @@ export default function PoliciesHubPage() {
   const handleClone = async (id: number) => {
     const endpoint = getEndpoint();
     if (!endpoint || activeTab !== "attendance") {
-      // clone فقط للـ attendance policies حالياً
-      toast.info(ar ? "النسخ متاح لسياسات الحضور فقط حالياً" : "Clone only for attendance policies");
+      // clone Ã™ÂÃ™â€šÃ˜Â· Ã™â€žÃ™â€žÃ™â‚¬ attendance policies Ã˜Â­Ã˜Â§Ã™â€žÃ™Å Ã˜Â§Ã™â€¹
+      toast.info(ar ? "Ã˜Â§Ã™â€žÃ™â€ Ã˜Â³Ã˜Â® Ã™â€¦Ã˜ÂªÃ˜Â§Ã˜Â­ Ã™â€žÃ˜Â³Ã™Å Ã˜Â§Ã˜Â³Ã˜Â§Ã˜Âª Ã˜Â§Ã™â€žÃ˜Â­Ã˜Â¶Ã™Ë†Ã˜Â± Ã™ÂÃ™â€šÃ˜Â· Ã˜Â­Ã˜Â§Ã™â€žÃ™Å Ã˜Â§Ã™â€¹" : "Clone only for attendance policies");
       return;
     }
     setActionLoading(id);
@@ -196,19 +222,19 @@ export default function PoliciesHubPage() {
       });
       const data = await res.json();
       if (res.ok && data.success !== false) {
-        toast.success(ar ? "تم إنشاء نسخة ✅" : "Cloned âœ…");
+        toast.success(ar ? "Ã˜ÂªÃ™â€¦ Ã˜Â¥Ã™â€ Ã˜Â´Ã˜Â§Ã˜Â¡ Ã™â€ Ã˜Â³Ã˜Â®Ã˜Â© Ã¢Å“â€¦" : "Cloned ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦");
         await load();
       } else {
-        toast.error(data.error || (ar ? "فشل" : "Failed"));
+        toast.error(data.error || (ar ? "Ã™ÂÃ˜Â´Ã™â€ž" : "Failed"));
       }
-    } catch { toast.error(ar ? "خطأ" : "Error"); }
+    } catch { toast.error(ar ? "Ã˜Â®Ã˜Â·Ã˜Â£" : "Error"); }
     finally { setActionLoading(null); }
   };
 
   const handleApprove = async (id: number) => {
     const endpoint = getEndpoint();
     if (!endpoint) return;
-    if (!confirm(ar ? "اعتماد السياسة؟ لن يمكن تعديلها بعد الاعتماد" : "Approve? Cannot edit after.")) return;
+    if (!confirm(ar ? "Ã˜Â§Ã˜Â¹Ã˜ÂªÃ™â€¦Ã˜Â§Ã˜Â¯ Ã˜Â§Ã™â€žÃ˜Â³Ã™Å Ã˜Â§Ã˜Â³Ã˜Â©Ã˜Å¸ Ã™â€žÃ™â€  Ã™Å Ã™â€¦Ã™Æ’Ã™â€  Ã˜ÂªÃ˜Â¹Ã˜Â¯Ã™Å Ã™â€žÃ™â€¡Ã˜Â§ Ã˜Â¨Ã˜Â¹Ã˜Â¯ Ã˜Â§Ã™â€žÃ˜Â§Ã˜Â¹Ã˜ÂªÃ™â€¦Ã˜Â§Ã˜Â¯" : "Approve? Cannot edit after.")) return;
     setActionLoading(id);
     try {
       const res = await fetch(`/api/hr/policies/${endpoint}/${id}/approve`, {
@@ -217,19 +243,19 @@ export default function PoliciesHubPage() {
       });
       const data = await res.json();
       if (res.ok && data.success !== false) {
-        toast.success(ar ? "تم الاعتماد ✅" : "Approved âœ…");
+        toast.success(ar ? "Ã˜ÂªÃ™â€¦ Ã˜Â§Ã™â€žÃ˜Â§Ã˜Â¹Ã˜ÂªÃ™â€¦Ã˜Â§Ã˜Â¯ Ã¢Å“â€¦" : "Approved ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦");
         await load();
       } else {
-        toast.error(data.error || (ar ? "فشل" : "Failed"));
+        toast.error(data.error || (ar ? "Ã™ÂÃ˜Â´Ã™â€ž" : "Failed"));
       }
-    } catch { toast.error(ar ? "خطأ" : "Error"); }
+    } catch { toast.error(ar ? "Ã˜Â®Ã˜Â·Ã˜Â£" : "Error"); }
     finally { setActionLoading(null); }
   };
 
   const handleDelete = async (id: number) => {
     const endpoint = getEndpoint();
     if (!endpoint) return;
-    if (!confirm(ar ? "حذف السياسة؟" : "Delete?")) return;
+    if (!confirm(ar ? "Ã˜Â­Ã˜Â°Ã™ÂÃ‚Â Ã˜Â§Ã™â€žÃ˜Â³Ã™Å Ã˜Â§Ã˜Â³Ã˜Â©Ã˜Å¸" : "Delete?")) return;
     setActionLoading(id);
     try {
       const res = await fetch(`/api/hr/policies/${endpoint}/${id}`, {
@@ -237,13 +263,13 @@ export default function PoliciesHubPage() {
         headers: { Authorization: authH },
       });
       if (res.ok) {
-        toast.success(ar ? "تم الحذف ✅" : "Deleted âœ…");
+        toast.success(ar ? "Ã˜ÂªÃ™â€¦ Ã˜Â§Ã™â€žÃ˜Â­Ã˜Â°Ã™Â Ã¢Å“â€¦" : "Deleted ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦");
         await load();
       } else {
         const data = await res.json();
-        toast.error(data.error || (ar ? "فشل" : "Failed"));
+        toast.error(data.error || (ar ? "Ã™ÂÃ˜Â´Ã™â€ž" : "Failed"));
       }
-    } catch { toast.error(ar ? "خطأ" : "Error"); }
+    } catch { toast.error(ar ? "Ã˜Â®Ã˜Â·Ã˜Â£" : "Error"); }
     finally { setActionLoading(null); }
   };
 
@@ -252,6 +278,7 @@ export default function PoliciesHubPage() {
     if (activeTab === "attendance") setShowAttendanceDialog(true);
     else if (activeTab === "leave") setShowLeaveDialog(true);
     else if (activeTab === "insurance") setShowInsuranceDialog(true);
+    else if (activeTab === "payroll_cycle") setShowPayrollCycleDialog(true);
     else {
       setPayrollKind(activeTab as "allowance" | "deduction" | "bonus");
       setShowPayrollDialog(true);
@@ -263,6 +290,7 @@ export default function PoliciesHubPage() {
     if (activeTab === "attendance") setShowAttendanceDialog(true);
     else if (activeTab === "leave") setShowLeaveDialog(true);
     else if (activeTab === "insurance") setShowInsuranceDialog(true);
+    else if (activeTab === "payroll_cycle") setShowPayrollCycleDialog(true);
     else {
       setPayrollKind(activeTab as "allowance" | "deduction" | "bonus");
       setShowPayrollDialog(true);
@@ -280,7 +308,7 @@ export default function PoliciesHubPage() {
     }
   };
 
-  // â”€â”€ Render Policy List â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Render Policy List ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
   const renderPolicyList = () => {
     const list = getCurrentList();
 
@@ -289,10 +317,10 @@ export default function PoliciesHubPage() {
         <Card>
           <CardContent className="py-16 text-center">
             <Info className="w-14 h-14 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-muted-foreground mb-4">{ar ? "لا توجد سياسات" : "No policies"}</p>
+            <p className="text-muted-foreground mb-4">{ar ? "Ã™â€žÃ˜Â§ Ã˜ÂªÃ™Ë†Ã˜Â¬Ã˜Â¯ Ã˜Â³Ã™Å Ã˜Â§Ã˜Â³Ã˜Â§Ã˜Âª" : "No policies"}</p>
             <Button onClick={openCreateDialog} className="gap-2 bg-brand-primary hover:bg-brand-secondary">
               <Plus className="w-4 h-4" />
-              {ar ? "إضافة" : "Add"}
+              {ar ? "Ã˜Â¥Ã˜Â¶Ã˜Â§Ã™ÂÃ˜Â©" : "Add"}
             </Button>
           </CardContent>
         </Card>
@@ -319,21 +347,21 @@ export default function PoliciesHubPage() {
                           isDraft  ? "bg-amber-500/10 text-amber-700" :
                           "bg-slate-100 text-slate-600"
                         }`}>
-                          {isActive ? (ar ? "نشط" : "Active") :
-                           isDraft  ? (ar ? "مسودة" : "Draft") :
-                           (ar ? "مؤرشف" : "Archived")}
+                          {isActive ? (ar ? "Ã™â€ Ã˜Â´Ã˜Â·" : "Active") :
+                           isDraft  ? (ar ? "Ã™â€¦Ã˜Â³Ã™Ë†Ã˜Â¯Ã˜Â©" : "Draft") :
+                           (ar ? "Ã™â€¦Ã˜Â¤Ã˜Â±Ã˜Â´Ã™ÂÃ‚Â" : "Archived")}
                         </Badge>
                       )}
                     </div>
                     {item.effective_from && (
                       <p className="text-xs text-muted-foreground">
-                        {ar ? "من" : "From"}: {item.effective_from}
-                        {item.effective_to && ` → ${item.effective_to}`}
+                        {ar ? "Ã™â€¦Ã™â€ " : "From"}: {item.effective_from}
+                        {item.effective_to && ` Ã¢â€ â€™ ${item.effective_to}`}
                       </p>
                     )}
                     {isPayroll && item.amount !== undefined && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        {ar ? "القيمة" : "Value"}: <span className="font-semibold">{item.amount}</span>
+                        {ar ? "Ã˜Â§Ã™â€žÃ™â€šÃ™Å Ã™â€¦Ã˜Â©" : "Value"}: <span className="font-semibold">{item.amount}</span>
                         {item.amount_type === "percent" ? " %" :
                          item.amount_type === "hourly"  ? " EGP/hr" : " EGP"}
                       </p>
@@ -341,18 +369,18 @@ export default function PoliciesHubPage() {
                   </div>
 
                   <div className="flex items-center gap-1">
-                    {/* Payroll policies: تعديل مباشر */}
+                    {/* Payroll policies: Ã˜ÂªÃ˜Â¹Ã˜Â¯Ã™Å Ã™â€ž Ã™â€¦Ã˜Â¨Ã˜Â§Ã˜Â´Ã˜Â± */}
                     {isPayroll ? (
                       <>
                         <Button size="sm" variant="ghost" className="gap-1" disabled={isLoading}
                           onClick={() => openEditDialog(item.id)}>
                           <Edit2 className="w-3 h-3" />
-                          {ar ? "تعديل" : "Edit"}
+                          {ar ? "Ã˜ÂªÃ˜Â¹Ã˜Â¯Ã™Å Ã™â€ž" : "Edit"}
                         </Button>
                         <Button size="sm" variant="ghost" className="gap-1 text-red-700 hover:bg-red-50"
                           disabled={isLoading} onClick={() => handleDelete(item.id)}>
                           <Trash2 className="w-3 h-3" />
-                          {ar ? "حذف" : "Delete"}
+                          {ar ? "Ã˜Â­Ã˜Â°Ã™ÂÃ‚Â" : "Delete"}
                         </Button>
                       </>
                     ) : (
@@ -362,17 +390,17 @@ export default function PoliciesHubPage() {
                             <Button size="sm" variant="ghost" className="gap-1" disabled={isLoading}
                               onClick={() => openEditDialog(item.id)}>
                               <Edit2 className="w-3 h-3" />
-                              {ar ? "تعديل" : "Edit"}
+                              {ar ? "Ã˜ÂªÃ˜Â¹Ã˜Â¯Ã™Å Ã™â€ž" : "Edit"}
                             </Button>
                             <Button size="sm" variant="ghost" className="gap-1 text-emerald-700 hover:bg-emerald-50"
                               disabled={isLoading} onClick={() => handleApprove(item.id)}>
                               {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
-                              {ar ? "اعتماد" : "Approve"}
+                              {ar ? "Ã˜Â§Ã˜Â¹Ã˜ÂªÃ™â€¦Ã˜Â§Ã˜Â¯" : "Approve"}
                             </Button>
                             <Button size="sm" variant="ghost" className="gap-1 text-red-700 hover:bg-red-50"
                               disabled={isLoading} onClick={() => handleDelete(item.id)}>
                               <Trash2 className="w-3 h-3" />
-                              {ar ? "حذف" : "Delete"}
+                              {ar ? "Ã˜Â­Ã˜Â°Ã™ÂÃ‚Â" : "Delete"}
                             </Button>
                           </>
                         )}
@@ -380,14 +408,14 @@ export default function PoliciesHubPage() {
                           <Button size="sm" variant="ghost" className="gap-1" disabled={isLoading}
                             onClick={() => handleClone(item.id)}>
                             {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Copy className="w-3 h-3" />}
-                            {ar ? "نسخ" : "Clone"}
+                            {ar ? "Ã™â€ Ã˜Â³Ã˜Â®" : "Clone"}
                           </Button>
                         )}
                         {isActive && activeTab !== "attendance" && (
                           <Button size="sm" variant="ghost" className="gap-1"
                             onClick={() => openEditDialog(item.id)}>
                             <Info className="w-3 h-3" />
-                            {ar ? "عرض" : "View"}
+                            {ar ? "Ã˜Â¹Ã˜Â±Ã˜Â¶" : "View"}
                           </Button>
                         )}
                       </>
@@ -403,77 +431,42 @@ export default function PoliciesHubPage() {
   };
 
 
-  // ─── Render Insurance Section ───────────────────────────
-  const renderInsuranceList = () => {
-    const filtered = insurances.filter(p => {
-      if (insuranceSubTab === "all") return true;
-      return p.insurance_type === insuranceSubTab;
-    });
-
-    const socialCount = insurances.filter(p => p.insurance_type === "social" && !p.is_superseded).length;
-    const medicalCount = insurances.filter(p => p.insurance_type === "medical" && !p.is_superseded).length;
-
+  // Render Payroll Cycle Section
+  const renderPayrollCycleList = () => {
     return (
       <div className="space-y-4">
-        <div className="flex gap-2 border-b">
-          {[
-            { key: "all",     label_ar: `الكل (${insurances.length})`,      label_en: `All (${insurances.length})`,      color: "text-slate-600" },
-            { key: "social",  label_ar: `اجتماعي (${socialCount})`,        label_en: `Social (${socialCount})`,         color: "text-blue-600" },
-            { key: "medical", label_ar: `طبي (${medicalCount})`,           label_en: `Medical (${medicalCount})`,       color: "text-emerald-600" },
-          ].map(t => (
-            <button
-              key={t.key}
-              onClick={() => setInsuranceSubTab(t.key as "all" | "social" | "medical")}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
-                insuranceSubTab === t.key
-                  ? `${t.color} border-current`
-                  : "text-muted-foreground border-transparent hover:text-foreground"
-              }`}
-            >
-              {ar ? t.label_ar : t.label_en}
-            </button>
-          ))}
-        </div>
-
-        {filtered.length === 0 ? (
+        {payrollCycles.length === 0 ? (
           <Card>
             <CardContent className="py-16 text-center">
-              <Shield className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
+              <Calendar className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
               <p className="text-muted-foreground mb-4">
-                {ar ? "لا توجد سياسات تأمين" : "No insurance policies"}
+                {ar ? "لا توجد سياسة دورة رواتب" : "No payroll cycle policy"}
               </p>
-              <Button onClick={openCreateDialog} className="gap-2 bg-teal-600 hover:bg-teal-700">
+              <Button onClick={openCreateDialog} className="gap-2 bg-indigo-600 hover:bg-indigo-700">
                 <Plus className="w-4 h-4" />
-                {ar ? "إضافة سياسة تأمين" : "Add Insurance Policy"}
+                {ar ? "إنشاء سياسة دورة رواتب" : "Create Payroll Cycle"}
               </Button>
             </CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filtered.map(policy => {
-              const isSocial = policy.insurance_type === "social";
-              const colorBg = isSocial ? "bg-blue-500/10" : "bg-emerald-500/10";
-              const colorText = isSocial ? "text-blue-700" : "text-emerald-700";
-              const colorBorder = isSocial ? "border-blue-200" : "border-emerald-200";
+            {payrollCycles.map(policy => {
               const isLoading = actionLoading === policy.id;
-
               return (
                 <Card
                   key={policy.id}
-                  className={`border-2 ${colorBorder} ${policy.is_superseded ? "opacity-60" : ""}`}
+                  className={`border-2 border-indigo-200 ${policy.is_superseded ? "opacity-60" : ""}`}
                 >
                   <CardContent className="p-4 space-y-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2 flex-1 min-w-0">
-                        <div className={`w-8 h-8 rounded-lg ${colorBg} flex items-center justify-center shrink-0`}>
-                          <Shield className={`w-4 h-4 ${colorText}`} />
+                        <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center shrink-0">
+                          <Calendar className="w-4 h-4 text-indigo-700" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-sm truncate">{policy.name_ar}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {isSocial ? (ar ? "تأمين اجتماعي" : "Social") : (ar ? "تأمين طبي" : "Medical")}
-                            {" · "}
-                            {ar ? "نسخة" : "v"}{policy.version_number}
+                          <p className="font-semibold text-sm">{policy.cycle_type_display}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {ar ? "نسخة" : "v"}{policy.version_number} · {policy.default_currency}
                           </p>
                         </div>
                       </div>
@@ -491,26 +484,21 @@ export default function PoliciesHubPage() {
 
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="p-2 rounded bg-slate-50">
-                        <p className="text-muted-foreground">{ar ? "حصة الشركة" : "Company"}</p>
-                        <p className="font-semibold">
-                          {policy.company_share_value}{policy.company_share_type === "percent" ? "%" : " EGP"}
-                        </p>
+                        <p className="text-muted-foreground">{ar ? "يوم الصرف" : "Pay Day"}</p>
+                        <p className="font-semibold">{policy.pay_day}</p>
                       </div>
                       <div className="p-2 rounded bg-slate-50">
-                        <p className="text-muted-foreground">{ar ? "حصة الموظف" : "Employee"}</p>
-                        <p className="font-semibold">
-                          {policy.employee_share_value}{policy.employee_share_type === "percent" ? "%" : " EGP"}
-                        </p>
+                        <p className="text-muted-foreground">{ar ? "الحساب" : "Calculation"}</p>
+                        <p className="font-semibold text-xs">{policy.proration_method_display}</p>
                       </div>
                     </div>
 
                     <div className="text-xs text-muted-foreground">
-                      <p>{policy.scope_display} {policy.branch_name ? `· ${policy.branch_name}` : ""}{policy.department_name ? `· ${policy.department_name}` : ""}</p>
+                      <p>{ar ? "لو عطلة:" : "If Holiday:"} {policy.holiday_handling_display}</p>
+                      <p className="mt-1">{ar ? "الموافقة:" : "Approval:"} {policy.approval_level_display}</p>
                       <p className="mt-1">
                         {ar ? "من" : "From"} {policy.start_date}
-                        {policy.end_date && (
-                          <> · {ar ? "إلى" : "To"} {policy.end_date}</>
-                        )}
+                        {policy.end_date && (<> · {ar ? "إلى" : "To"} {policy.end_date}</>)}
                       </p>
                     </div>
 
@@ -542,12 +530,151 @@ export default function PoliciesHubPage() {
     );
   };
 
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Render Insurance Section Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  const renderInsuranceList = () => {
+    const filtered = insurances.filter(p => {
+      if (insuranceSubTab === "all") return true;
+      return p.insurance_type === insuranceSubTab;
+    });
+
+    const socialCount = insurances.filter(p => p.insurance_type === "social" && !p.is_superseded).length;
+    const medicalCount = insurances.filter(p => p.insurance_type === "medical" && !p.is_superseded).length;
+
+    return (
+      <div className="space-y-4">
+        <div className="flex gap-2 border-b">
+          {[
+            { key: "all",     label_ar: `Ã˜Â§Ã™â€žÃ™Æ’Ã™â€ž (${insurances.length})`,      label_en: `All (${insurances.length})`,      color: "text-slate-600" },
+            { key: "social",  label_ar: `Ã˜Â§Ã˜Â¬Ã˜ÂªÃ™â€¦Ã˜Â§Ã˜Â¹Ã™Å  (${socialCount})`,        label_en: `Social (${socialCount})`,         color: "text-blue-600" },
+            { key: "medical", label_ar: `Ã˜Â·Ã˜Â¨Ã™Å  (${medicalCount})`,           label_en: `Medical (${medicalCount})`,       color: "text-emerald-600" },
+          ].map(t => (
+            <button
+              key={t.key}
+              onClick={() => setInsuranceSubTab(t.key as "all" | "social" | "medical")}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
+                insuranceSubTab === t.key
+                  ? `${t.color} border-current`
+                  : "text-muted-foreground border-transparent hover:text-foreground"
+              }`}
+            >
+              {ar ? t.label_ar : t.label_en}
+            </button>
+          ))}
+        </div>
+
+        {filtered.length === 0 ? (
+          <Card>
+            <CardContent className="py-16 text-center">
+              <Shield className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
+              <p className="text-muted-foreground mb-4">
+                {ar ? "Ã™â€žÃ˜Â§ Ã˜ÂªÃ™Ë†Ã˜Â¬Ã˜Â¯ Ã˜Â³Ã™Å Ã˜Â§Ã˜Â³Ã˜Â§Ã˜Âª Ã˜ÂªÃ˜Â£Ã™â€¦Ã™Å Ã™â€ " : "No insurance policies"}
+              </p>
+              <Button onClick={openCreateDialog} className="gap-2 bg-teal-600 hover:bg-teal-700">
+                <Plus className="w-4 h-4" />
+                {ar ? "Ã˜Â¥Ã˜Â¶Ã˜Â§Ã™ÂÃ˜Â© Ã˜Â³Ã™Å Ã˜Â§Ã˜Â³Ã˜Â© Ã˜ÂªÃ˜Â£Ã™â€¦Ã™Å Ã™â€ " : "Add Insurance Policy"}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filtered.map(policy => {
+              const isSocial = policy.insurance_type === "social";
+              const colorBg = isSocial ? "bg-blue-500/10" : "bg-emerald-500/10";
+              const colorText = isSocial ? "text-blue-700" : "text-emerald-700";
+              const colorBorder = isSocial ? "border-blue-200" : "border-emerald-200";
+              const isLoading = actionLoading === policy.id;
+
+              return (
+                <Card
+                  key={policy.id}
+                  className={`border-2 ${colorBorder} ${policy.is_superseded ? "opacity-60" : ""}`}
+                >
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2 flex-1 min-w-0">
+                        <div className={`w-8 h-8 rounded-lg ${colorBg} flex items-center justify-center shrink-0`}>
+                          <Shield className={`w-4 h-4 ${colorText}`} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-sm truncate">{policy.name_ar}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {isSocial ? (ar ? "Ã˜ÂªÃ˜Â£Ã™â€¦Ã™Å Ã™â€  Ã˜Â§Ã˜Â¬Ã˜ÂªÃ™â€¦Ã˜Â§Ã˜Â¹Ã™Å " : "Social") : (ar ? "Ã˜ÂªÃ˜Â£Ã™â€¦Ã™Å Ã™â€  Ã˜Â·Ã˜Â¨Ã™Å " : "Medical")}
+                            {" Ã‚Â· "}
+                            {ar ? "Ã™â€ Ã˜Â³Ã˜Â®Ã˜Â©" : "v"}{policy.version_number}
+                          </p>
+                        </div>
+                      </div>
+                      {policy.is_superseded && (
+                        <Badge variant="secondary" className="text-[10px] shrink-0">
+                          {ar ? "Ã™â€¦Ã™â€šÃ™ÂÃ™â€žÃ˜Â©" : "Superseded"}
+                        </Badge>
+                      )}
+                      {!policy.is_active && !policy.is_superseded && (
+                        <Badge variant="outline" className="text-[10px] shrink-0">
+                          {ar ? "Ã™â€¦Ã˜Â¹Ã˜Â·Ã™â€žÃ˜Â©" : "Inactive"}
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="p-2 rounded bg-slate-50">
+                        <p className="text-muted-foreground">{ar ? "Ã˜Â­Ã˜ÂµÃ˜Â© Ã˜Â§Ã™â€žÃ˜Â´Ã˜Â±Ã™Æ’Ã˜Â©" : "Company"}</p>
+                        <p className="font-semibold">
+                          {policy.company_share_value}{policy.company_share_type === "percent" ? "%" : " EGP"}
+                        </p>
+                      </div>
+                      <div className="p-2 rounded bg-slate-50">
+                        <p className="text-muted-foreground">{ar ? "Ã˜Â­Ã˜ÂµÃ˜Â© Ã˜Â§Ã™â€žÃ™â€¦Ã™Ë†Ã˜Â¸Ã™Â" : "Employee"}</p>
+                        <p className="font-semibold">
+                          {policy.employee_share_value}{policy.employee_share_type === "percent" ? "%" : " EGP"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-muted-foreground">
+                      <p>{policy.scope_display} {policy.branch_name ? `Ã‚Â· ${policy.branch_name}` : ""}{policy.department_name ? `Ã‚Â· ${policy.department_name}` : ""}</p>
+                      <p className="mt-1">
+                        {ar ? "Ã™â€¦Ã™â€ " : "From"} {policy.start_date}
+                        {policy.end_date && (
+                          <> Ã‚Â· {ar ? "Ã˜Â¥Ã™â€žÃ™â€°" : "To"} {policy.end_date}</>
+                        )}
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2 pt-2 border-t">
+                      <Button
+                        variant="outline" size="sm"
+                        className="flex-1 gap-1.5"
+                        onClick={() => openEditDialog(policy.id)}
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        {ar ? "Ã˜ÂªÃ˜Â¹Ã˜Â¯Ã™Å Ã™â€ž" : "Edit"}
+                      </Button>
+                      <Button
+                        variant="outline" size="sm"
+                        className="text-red-600 hover:text-red-700"
+                        disabled={isLoading}
+                        onClick={() => handleDelete(policy.id)}
+                      >
+                        {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 pb-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{ar ? "السياسات" : "Policies"}</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{ar ? "Ã˜Â§Ã™â€žÃ˜Â³Ã™Å Ã˜Â§Ã˜Â³Ã˜Â§Ã˜Âª" : "Policies"}</h1>
         <p className="text-muted-foreground mt-1">
-          {ar ? "إدارة كل سياسات الشركة" : "Manage all company policies"}
+          {ar ? "Ã˜Â¥Ã˜Â¯Ã˜Â§Ã˜Â±Ã˜Â© Ã™Æ’Ã™â€ž Ã˜Â³Ã™Å Ã˜Â§Ã˜Â³Ã˜Â§Ã˜Âª Ã˜Â§Ã™â€žÃ˜Â´Ã˜Â±Ã™Æ’Ã˜Â©" : "Manage all company policies"}
         </p>
       </div>
 
@@ -600,7 +727,7 @@ export default function PoliciesHubPage() {
             {activeTab !== "work" && (
               <Button onClick={openCreateDialog} className="gap-2 bg-brand-primary hover:bg-brand-secondary">
                 <Plus className="w-4 h-4" />
-                {ar ? "إضافة" : "Add"}
+                {ar ? "Ã˜Â¥Ã˜Â¶Ã˜Â§Ã™ÂÃ˜Â©" : "Add"}
               </Button>
             )}
           </div>
@@ -610,9 +737,9 @@ export default function PoliciesHubPage() {
               <CardContent className="p-6 space-y-4">
                 <div className="flex items-center justify-between pb-4 border-b">
                   <div>
-                    <p className="font-semibold">{ar ? "أيام العمل الأسبوعية" : "Weekly Work Days"}</p>
+                    <p className="font-semibold">{ar ? "Ã˜Â£Ã™Å Ã˜Â§Ã™â€¦ Ã˜Â§Ã™â€žÃ˜Â¹Ã™â€¦Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â£Ã˜Â³Ã˜Â¨Ã™Ë†Ã˜Â¹Ã™Å Ã˜Â©" : "Weekly Work Days"}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {ar ? "اختر أيام العمل الرسمية" : "Select official work days"}
+                      {ar ? "Ã˜Â§Ã˜Â®Ã˜ÂªÃ˜Â± Ã˜Â£Ã™Å Ã˜Â§Ã™â€¦ Ã˜Â§Ã™â€žÃ˜Â¹Ã™â€¦Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â±Ã˜Â³Ã™â€¦Ã™Å Ã˜Â©" : "Select official work days"}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -655,13 +782,13 @@ export default function PoliciesHubPage() {
                   <Button onClick={saveWorkPolicy} disabled={saving}
                     className="gap-2 bg-brand-primary hover:bg-brand-secondary">
                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                    {ar ? "حفظ السياسة" : "Save Policy"}
+                    {ar ? "Ã˜Â­Ã™ÂÃ˜Â¸ Ã˜Â§Ã™â€žÃ˜Â³Ã™Å Ã˜Â§Ã˜Â³Ã˜Â©" : "Save Policy"}
                   </Button>
                 </div>
               </CardContent>
             </Card>
           ) : (
-            activeTab === "insurance" ? renderInsuranceList() : renderPolicyList()
+            activeTab === "insurance" ? renderInsuranceList() : activeTab === "payroll_cycle" ? renderPayrollCycleList() : renderPolicyList()
           )}
         </>
       )}
@@ -689,6 +816,14 @@ export default function PoliciesHubPage() {
         onSaved={load}
         policyId={editingPolicyId}
         kind={payrollKind}
+        ar={ar}
+      />
+
+      <PayrollCyclePolicyDialog
+        open={showPayrollCycleDialog}
+        onClose={() => { setShowPayrollCycleDialog(false); setEditingPolicyId(null); }}
+        onSaved={load}
+        policyId={editingPolicyId}
         ar={ar}
       />
 
