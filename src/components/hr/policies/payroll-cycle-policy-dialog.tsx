@@ -31,6 +31,9 @@ const emptyForm = {
   payroll_ref_prefix: "PR",
   approval_level: "hr_only",
   require_approval_before_pay: true,
+  first_approver_role: "hr_manager",
+  second_approver_role: "",
+  third_approver_role: "",
   is_active: true,
   start_date: new Date().toISOString().slice(0, 10),
   end_date: "",
@@ -72,6 +75,9 @@ export default function PayrollCyclePolicyDialog({ open, onClose, onSaved, polic
         payroll_ref_prefix: p.payroll_ref_prefix,
         approval_level: p.approval_level,
         require_approval_before_pay: p.require_approval_before_pay,
+        first_approver_role: p.first_approver_role || "hr_manager",
+        second_approver_role: p.second_approver_role || "",
+        third_approver_role: p.third_approver_role || "",
         is_active: p.is_active,
         start_date: p.start_date,
         end_date: p.end_date || "",
@@ -315,6 +321,69 @@ export default function PayrollCyclePolicyDialog({ open, onClose, onSaved, polic
                   onChange={(e) => setForm({ ...form, require_approval_before_pay: e.target.checked })} />
                 {ar ? "الموافقة مطلوبة قبل الصرف" : "Require approval before pay"}
               </label>
+
+              {/* ═══ من يعتمد كل مستوى ═══ */}
+              <div className="mt-4 pt-4 border-t space-y-3">
+                <p className="text-xs text-muted-foreground mb-2">
+                  {ar
+                    ? "حدد الأدوار المسؤولة عن اعتماد المرتبات (أي موظف بهذا الدور يقدر يعتمد)"
+                    : "Specify the roles responsible for approving payroll (any employee with this role can approve)"}
+                </p>
+
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block font-semibold">
+                    {ar ? "المعتمد الأول (HR)" : "First Approver (HR)"}
+                  </label>
+                  <select
+                    className="w-full px-3 py-2 border rounded-md bg-white text-sm"
+                    value={form.first_approver_role}
+                    onChange={(e) => setForm({ ...form, first_approver_role: e.target.value })}
+                  >
+                    <option value="hr_manager">{ar ? "مدير الموارد البشرية" : "HR Manager"}</option>
+                    <option value="company_admin">{ar ? "صاحب الشركة" : "Company Admin"}</option>
+                    <option value="manager">{ar ? "مدير" : "Manager"}</option>
+                  </select>
+                </div>
+
+                {(form.approval_level === "hr_plus_manager" || form.approval_level === "hr_plus_finance_plus_ceo") && (
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block font-semibold">
+                      {ar ? "المعتمد الثاني (المدير)" : "Second Approver (Manager)"}
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 border rounded-md bg-white text-sm"
+                      value={form.second_approver_role}
+                      onChange={(e) => setForm({ ...form, second_approver_role: e.target.value })}
+                    >
+                      <option value="">{ar ? "-- اختر --" : "-- Select --"}</option>
+                      <option value="manager">{ar ? "مدير عام" : "General Manager"}</option>
+                      <option value="company_admin">{ar ? "صاحب الشركة" : "Company Admin"}</option>
+                    </select>
+                  </div>
+                )}
+
+                {form.approval_level === "hr_plus_finance_plus_ceo" && (
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block font-semibold">
+                      {ar ? "المعتمد الثالث (المالي/CEO)" : "Third Approver (Finance/CEO)"}
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 border rounded-md bg-white text-sm"
+                      value={form.third_approver_role}
+                      onChange={(e) => setForm({ ...form, third_approver_role: e.target.value })}
+                    >
+                      <option value="">{ar ? "-- اختر --" : "-- Select --"}</option>
+                      <option value="company_admin">{ar ? "صاحب الشركة (CEO)" : "Company Admin (CEO)"}</option>
+                      <option value="finance_manager">{ar ? "مدير مالي" : "Finance Manager"}</option>
+                    </select>
+                    <p className="text-[10px] text-amber-600 mt-1">
+                      {ar
+                        ? "⚠️ لو الدور 'مدير مالي' مش موجود، أنشئه من شاشة الأدوار أولاً"
+                        : "⚠️ If 'Finance Manager' role doesn't exist, create it in the Roles screen first"}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* ═══ التواريخ ═══ */}
