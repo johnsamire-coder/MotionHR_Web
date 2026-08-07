@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
@@ -64,6 +64,7 @@ interface EmployeeData {
   wallet_provider?: string;
   has_insurance?: boolean;
   insurance_number?: string;
+  insurance_base_salary?: number | string | null;
   insurance_date?: string;
   status?: string;
   country?: string;
@@ -271,6 +272,7 @@ export default function EmployeeDetailPage() {
       wallet_provider: emp.wallet_provider || "",
       has_insurance: emp.has_insurance ? "true" : "false",
       insurance_number: emp.insurance_number || "",
+      insurance_base_salary: emp.insurance_base_salary != null ? String(emp.insurance_base_salary) : "",
       country: emp.country || "EG",
       language: emp.language || "ar",
     });
@@ -320,6 +322,7 @@ export default function EmployeeDetailPage() {
         job_title_id: form.job_title_id ? Number(form.job_title_id) : null,
         direct_manager_id: form.direct_manager_id ? Number(form.direct_manager_id) : null,
         basic_salary: form.basic_salary ? Number(form.basic_salary) : 0,
+        insurance_base_salary: form.insurance_base_salary ? Number(form.insurance_base_salary) : null,
         has_insurance: form.has_insurance === "true",
       };
 
@@ -621,7 +624,10 @@ export default function EmployeeDetailPage() {
                   </FSel>
 
                   {showInsurance && (
-                    <FField label={ar ? "رقم التأمين" : "Insurance Number"} value={form.insurance_number} onChange={v => set("insurance_number", v)} />
+                    <>
+                      <FField label={ar ? "رقم التأمين" : "Insurance Number"} value={form.insurance_number} onChange={v => set("insurance_number", v)} />
+                      <FField label={ar ? "المرتب التأميني الخاص" : "Insurance Base Salary"} value={form.insurance_base_salary} onChange={v => set("insurance_base_salary", v)} placeholder={ar ? "اختياري - للسياسات المخصصة" : "Optional - for custom policies"} />
+                    </>
                   )}
                 </div>
               ) : (
@@ -632,6 +638,7 @@ export default function EmployeeDetailPage() {
                   <Field label={ar ? "مدة العقد بالشهور" : "Contract Duration (Months)"} value={employee.contract_duration_months} />
                   <Field label={ar ? "مؤمن عليه" : "Has Insurance"} value={employee.has_insurance ? (ar ? "نعم" : "Yes") : (ar ? "لا" : "No")} />
                   <Field label={ar ? "رقم التأمين" : "Insurance Number"} value={employee.insurance_number} />
+                  <Field label={ar ? "المرتب التأميني الخاص" : "Insurance Base Salary"} value={employee.insurance_base_salary ? String(employee.insurance_base_salary) : (ar ? "—" : "—")} />
                   <Field label={ar ? "تاريخ التأمين" : "Insurance Date"} value={employee.insurance_date} />
                 </div>
               )}
