@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
@@ -61,23 +61,23 @@ interface WorkPolicy {
 type TabKey = "attendance" | "work" | "leave" | "allowance" | "deduction" | "bonus" | "insurance";
 
 const TABS = [
-  { key: "attendance",  icon: Shield,       label_ar: "Ø³ÙŠØ§Ø³Ø© Ø§Ù„Ø­Ø¶ÙˆØ±",   label_en: "Attendance",  color: "text-blue-600 bg-blue-500/10" },
-  { key: "work",        icon: Calendar,     label_ar: "Ø£ÙŠØ§Ù… Ø§Ù„Ø¹Ù…Ù„",     label_en: "Work Days",   color: "text-emerald-600 bg-emerald-500/10" },
-  { key: "leave",       icon: Clock,        label_ar: "Ø³ÙŠØ§Ø³Ø© Ø§Ù„Ø¥Ø¬Ø§Ø²Ø§Øª", label_en: "Leaves",      color: "text-purple-600 bg-purple-500/10" },
-  { key: "allowance",   icon: DollarSign,   label_ar: "Ø§Ù„Ø¨Ø¯Ù„Ø§Øª",        label_en: "Allowances",  color: "text-amber-600 bg-amber-500/10" },
-  { key: "deduction",   icon: TrendingDown, label_ar: "Ø§Ù„Ø®ØµÙˆÙ…Ø§Øª",       label_en: "Deductions",  color: "text-red-600 bg-red-500/10" },
+  { key: "attendance",  icon: Shield,       label_ar: "سياسة الحضور",   label_en: "Attendance",  color: "text-blue-600 bg-blue-500/10" },
+  { key: "work",        icon: Calendar,     label_ar: "أيام العمل",     label_en: "Work Days",   color: "text-emerald-600 bg-emerald-500/10" },
+  { key: "leave",       icon: Clock,        label_ar: "سياسة الإجازات", label_en: "Leaves",      color: "text-purple-600 bg-purple-500/10" },
+  { key: "allowance",   icon: DollarSign,   label_ar: "البدلات",        label_en: "Allowances",  color: "text-amber-600 bg-amber-500/10" },
+  { key: "deduction",   icon: TrendingDown, label_ar: "الخصومات",       label_en: "Deductions",  color: "text-red-600 bg-red-500/10" },
   { key: "bonus",       icon: Award,        label_ar: "Ø§Ù„Ù…ÙƒØ§ÙØ¢Øª",       label_en: "Bonuses",     color: "text-brand-primary bg-brand-primary/10" },
   { key: "insurance",   icon: Shield,       label_ar: "التأمينات",      label_en: "Insurance",   color: "text-teal-600 bg-teal-500/10" },
 ] as const;
 
 const DAYS = [
-  { key: "work_sunday",    label_ar: "Ø§Ù„Ø£Ø­Ø¯",    label_en: "Sunday" },
-  { key: "work_monday",    label_ar: "Ø§Ù„Ø§Ø«Ù†ÙŠÙ†",  label_en: "Monday" },
-  { key: "work_tuesday",   label_ar: "Ø§Ù„Ø«Ù„Ø§Ø«Ø§Ø¡", label_en: "Tuesday" },
-  { key: "work_wednesday", label_ar: "Ø§Ù„Ø£Ø±Ø¨Ø¹Ø§Ø¡", label_en: "Wednesday" },
-  { key: "work_thursday",  label_ar: "Ø§Ù„Ø®Ù…ÙŠØ³",   label_en: "Thursday" },
-  { key: "work_friday",    label_ar: "Ø§Ù„Ø¬Ù…Ø¹Ø©",   label_en: "Friday" },
-  { key: "work_saturday",  label_ar: "Ø§Ù„Ø³Ø¨Øª",    label_en: "Saturday" },
+  { key: "work_sunday",    label_ar: "الأحد",    label_en: "Sunday" },
+  { key: "work_monday",    label_ar: "الاثنين",  label_en: "Monday" },
+  { key: "work_tuesday",   label_ar: "الثلاثاء", label_en: "Tuesday" },
+  { key: "work_wednesday", label_ar: "الأربعاء", label_en: "Wednesday" },
+  { key: "work_thursday",  label_ar: "الخميس",   label_en: "Thursday" },
+  { key: "work_friday",    label_ar: "الجمعة",   label_en: "Friday" },
+  { key: "work_saturday",  label_ar: "السبت",    label_en: "Saturday" },
 ];
 
 export default function PoliciesHubPage() {
@@ -164,7 +164,7 @@ export default function PoliciesHubPage() {
       } else {
         toast.error(data.message || (ar ? "ÙØ´Ù„" : "Failed"));
       }
-    } catch { toast.error(ar ? "Ø®Ø·Ø£" : "Error"); }
+    } catch { toast.error(ar ? "خطأ" : "Error"); }
     finally { setSaving(false); }
   };
 
@@ -201,14 +201,14 @@ export default function PoliciesHubPage() {
       } else {
         toast.error(data.error || (ar ? "ÙØ´Ù„" : "Failed"));
       }
-    } catch { toast.error(ar ? "Ø®Ø·Ø£" : "Error"); }
+    } catch { toast.error(ar ? "خطأ" : "Error"); }
     finally { setActionLoading(null); }
   };
 
   const handleApprove = async (id: number) => {
     const endpoint = getEndpoint();
     if (!endpoint) return;
-    if (!confirm(ar ? "Ø§Ø¹ØªÙ…Ø§Ø¯ Ø§Ù„Ø³ÙŠØ§Ø³Ø©ØŸ Ù„Ù† ÙŠÙ…ÙƒÙ† ØªØ¹Ø¯ÙŠÙ„Ù‡Ø§ Ø¨Ø¹Ø¯ Ø§Ù„Ø§Ø¹ØªÙ…Ø§Ø¯" : "Approve? Cannot edit after.")) return;
+    if (!confirm(ar ? "اعتماد السياسة؟ Ù„Ù† ÙŠÙ…ÙƒÙ† ØªØ¹Ø¯ÙŠÙ„Ù‡Ø§ Ø¨Ø¹Ø¯ Ø§Ù„اعتماد" : "Approve? Cannot edit after.")) return;
     setActionLoading(id);
     try {
       const res = await fetch(`/api/hr/policies/${endpoint}/${id}/approve`, {
@@ -217,19 +217,19 @@ export default function PoliciesHubPage() {
       });
       const data = await res.json();
       if (res.ok && data.success !== false) {
-        toast.success(ar ? "ØªÙ… Ø§Ù„Ø§Ø¹ØªÙ…Ø§Ø¯ âœ…" : "Approved âœ…");
+        toast.success(ar ? "ØªÙ… Ø§Ù„اعتماد âœ…" : "Approved âœ…");
         await load();
       } else {
         toast.error(data.error || (ar ? "ÙØ´Ù„" : "Failed"));
       }
-    } catch { toast.error(ar ? "Ø®Ø·Ø£" : "Error"); }
+    } catch { toast.error(ar ? "خطأ" : "Error"); }
     finally { setActionLoading(null); }
   };
 
   const handleDelete = async (id: number) => {
     const endpoint = getEndpoint();
     if (!endpoint) return;
-    if (!confirm(ar ? "Ø­Ø°Ù Ø§Ù„Ø³ÙŠØ§Ø³Ø©ØŸ" : "Delete?")) return;
+    if (!confirm(ar ? "Ø­Ø°Ù السياسة؟" : "Delete?")) return;
     setActionLoading(id);
     try {
       const res = await fetch(`/api/hr/policies/${endpoint}/${id}`, {
@@ -243,7 +243,7 @@ export default function PoliciesHubPage() {
         const data = await res.json();
         toast.error(data.error || (ar ? "ÙØ´Ù„" : "Failed"));
       }
-    } catch { toast.error(ar ? "Ø®Ø·Ø£" : "Error"); }
+    } catch { toast.error(ar ? "خطأ" : "Error"); }
     finally { setActionLoading(null); }
   };
 
@@ -319,7 +319,7 @@ export default function PoliciesHubPage() {
                           isDraft  ? "bg-amber-500/10 text-amber-700" :
                           "bg-slate-100 text-slate-600"
                         }`}>
-                          {isActive ? (ar ? "Ù†Ø´Ø·" : "Active") :
+                          {isActive ? (ar ? "نشط" : "Active") :
                            isDraft  ? (ar ? "Ù…Ø³ÙˆØ¯Ø©" : "Draft") :
                            (ar ? "Ù…Ø¤Ø±Ø´Ù" : "Archived")}
                         </Badge>
@@ -341,7 +341,7 @@ export default function PoliciesHubPage() {
                   </div>
 
                   <div className="flex items-center gap-1">
-                    {/* Payroll policies: ØªØ¹Ø¯ÙŠÙ„ Ù…Ø¨Ø§Ø´Ø± */}
+                    {/* Payroll policies: ØªØ¹Ø¯ÙŠÙ„ مباشر */}
                     {isPayroll ? (
                       <>
                         <Button size="sm" variant="ghost" className="gap-1" disabled={isLoading}
@@ -367,7 +367,7 @@ export default function PoliciesHubPage() {
                             <Button size="sm" variant="ghost" className="gap-1 text-emerald-700 hover:bg-emerald-50"
                               disabled={isLoading} onClick={() => handleApprove(item.id)}>
                               {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
-                              {ar ? "Ø§Ø¹ØªÙ…Ø§Ø¯" : "Approve"}
+                              {ar ? "اعتماد" : "Approve"}
                             </Button>
                             <Button size="sm" variant="ghost" className="gap-1 text-red-700 hover:bg-red-50"
                               disabled={isLoading} onClick={() => handleDelete(item.id)}>
@@ -545,9 +545,9 @@ export default function PoliciesHubPage() {
   return (
     <div className="space-y-6 pb-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{ar ? "Ø§Ù„Ø³ÙŠØ§Ø³Ø§Øª" : "Policies"}</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{ar ? "السياسات" : "Policies"}</h1>
         <p className="text-muted-foreground mt-1">
-          {ar ? "Ø¥Ø¯Ø§Ø±Ø© ÙƒÙ„ Ø³ÙŠØ§Ø³Ø§Øª Ø§Ù„Ø´Ø±ÙƒØ©" : "Manage all company policies"}
+          {ar ? "إدارة كل سياسات الشركة" : "Manage all company policies"}
         </p>
       </div>
 
@@ -610,9 +610,9 @@ export default function PoliciesHubPage() {
               <CardContent className="p-6 space-y-4">
                 <div className="flex items-center justify-between pb-4 border-b">
                   <div>
-                    <p className="font-semibold">{ar ? "Ø£ÙŠØ§Ù… Ø§Ù„Ø¹Ù…Ù„ Ø§Ù„Ø£Ø³Ø¨ÙˆØ¹ÙŠØ©" : "Weekly Work Days"}</p>
+                    <p className="font-semibold">{ar ? "أيام العمل الأسبوعية" : "Weekly Work Days"}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {ar ? "Ø§Ø®ØªØ± Ø£ÙŠØ§Ù… Ø§Ù„Ø¹Ù…Ù„ Ø§Ù„Ø±Ø³Ù…ÙŠØ©" : "Select official work days"}
+                      {ar ? "اختر أيام العمل الرسمية" : "Select official work days"}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -702,6 +702,7 @@ export default function PoliciesHubPage() {
     </div>
   );
 }
+
 
 
 
