@@ -29,6 +29,12 @@ interface PayslipData {
   late_deduction?: number;
   absence_deduction?: number;
   insurance_deduction?: number;
+  // ═══ نظام التأمينات الجديد ═══
+  social_insurance_employee?: number;
+  social_insurance_company?: number;
+  medical_insurance_employee?: number;
+  medical_insurance_company?: number;
+  total_company_insurance_contribution?: number;
   installments_total?: number;
   penalties_total?: number;
   total_deductions?: number;
@@ -188,10 +194,34 @@ export default function MyPayslipPage() {
                   <span className="text-sm">{d.absenceDeduction}</span>
                   <span className="font-mono text-red-600">-{formatMoney(data.absence_deduction)} {data.currency}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                  <span className="text-sm">{d.insuranceDeduction}</span>
-                  <span className="font-mono text-red-600">-{formatMoney(data.insurance_deduction)} {data.currency}</span>
-                </div>
+                {/* ═══ التأمينات (نظام جديد) ═══ */}
+                {(data.social_insurance_employee || data.medical_insurance_employee) ? (
+                  <>
+                    {data.social_insurance_employee ? (
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-blue-500/10 border border-blue-200">
+                        <span className="text-sm flex items-center gap-2">
+                          <span className="inline-block w-2 h-2 rounded-full bg-blue-600"></span>
+                          {lang === "ar" ? "تأمين اجتماعي (حصة الموظف)" : "Social Insurance (Employee Share)"}
+                        </span>
+                        <span className="font-mono text-red-600">-{formatMoney(data.social_insurance_employee)} {data.currency}</span>
+                      </div>
+                    ) : null}
+                    {data.medical_insurance_employee ? (
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-500/10 border border-emerald-200">
+                        <span className="text-sm flex items-center gap-2">
+                          <span className="inline-block w-2 h-2 rounded-full bg-emerald-600"></span>
+                          {lang === "ar" ? "تأمين طبي (حصة الموظف)" : "Medical Insurance (Employee Share)"}
+                        </span>
+                        <span className="font-mono text-red-600">-{formatMoney(data.medical_insurance_employee)} {data.currency}</span>
+                      </div>
+                    ) : null}
+                  </>
+                ) : (data.insurance_deduction ? (
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                    <span className="text-sm">{d.insuranceDeduction}</span>
+                    <span className="font-mono text-red-600">-{formatMoney(data.insurance_deduction)} {data.currency}</span>
+                  </div>
+                ) : null)}
                 <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
                   <span className="text-sm">{d.installments}</span>
                   <span className="font-mono text-red-600">-{formatMoney(data.installments_total)} {data.currency}</span>
@@ -207,6 +237,55 @@ export default function MyPayslipPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* ═══ مساهمة الشركة في التأمينات (للعلم فقط) ═══ */}
+          {(data.social_insurance_company || data.medical_insurance_company) ? (
+            <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-emerald-50">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2 text-blue-700">
+                  <span>🏢</span>
+                  {lang === "ar" ? "مساهمة الشركة في التأمينات (للعلم فقط)" : "Company Insurance Contribution (Info Only)"}
+                </h3>
+                <p className="text-xs text-muted-foreground mb-4">
+                  {lang === "ar"
+                    ? "هذه المبالغ لا تُخصم من راتبك - تدفعها الشركة بالكامل عنك"
+                    : "These amounts are NOT deducted from your salary - fully paid by the company"}
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {data.social_insurance_company ? (
+                    <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-200 text-center">
+                      <p className="text-xs text-muted-foreground mb-1">
+                        {lang === "ar" ? "تأمين اجتماعي" : "Social Insurance"}
+                      </p>
+                      <p className="text-xl font-bold text-blue-700 font-mono">
+                        {formatMoney(data.social_insurance_company)} {data.currency}
+                      </p>
+                    </div>
+                  ) : null}
+                  {data.medical_insurance_company ? (
+                    <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-200 text-center">
+                      <p className="text-xs text-muted-foreground mb-1">
+                        {lang === "ar" ? "تأمين طبي" : "Medical Insurance"}
+                      </p>
+                      <p className="text-xl font-bold text-emerald-700 font-mono">
+                        {formatMoney(data.medical_insurance_company)} {data.currency}
+                      </p>
+                    </div>
+                  ) : null}
+                  {data.total_company_insurance_contribution ? (
+                    <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-200 text-center">
+                      <p className="text-xs text-muted-foreground mb-1">
+                        {lang === "ar" ? "الإجمالي" : "Total"}
+                      </p>
+                      <p className="text-xl font-bold text-purple-700 font-mono">
+                        {formatMoney(data.total_company_insurance_contribution)} {data.currency}
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
 
           {/* Attendance Summary */}
           <Card>
