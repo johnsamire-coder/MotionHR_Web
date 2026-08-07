@@ -87,9 +87,12 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
         fetch("/api/departments", { headers: { Authorization: authH } }),
         fetch("/api/employees/list", { headers: { Authorization: authH } }),
       ]);
-      setBranches((await brRes.json()).results || (await brRes.json()).branches || []);
-      setDepartments((await depRes.json()).results || (await depRes.json()).departments || []);
-      setEmployees((await empRes.json()).results || (await empRes.json()).employees || []);
+      const brData = await brRes.json();
+      const depData = await depRes.json();
+      const empData = await empRes.json();
+      setBranches(brData.results || brData.branches || []);
+      setDepartments(depData.results || depData.departments || []);
+      setEmployees(empData.results || empData.employees || []);
     } catch {}
   }, [authH]);
 
