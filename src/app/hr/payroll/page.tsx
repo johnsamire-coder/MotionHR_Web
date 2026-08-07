@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -134,7 +134,7 @@ export default function PayrollPage() {
       fetch("/api/departments", { headers: { Authorization: authHeader } }).then(r => r.json()),
       fetch("/api/branches", { headers: { Authorization: authHeader } }).then(r => r.json()),
     ]).then(([payData, deptData, brData]) => {
-      // تأكد إن الداتا صحيحة وفيها employees array
+      // ØªØ£ÙƒØ¯ Ø¥Ù† Ø§Ù„Ø¯Ø§ØªØ§ ØµØ­ÙŠØ­Ø© ÙˆÙÙŠÙ‡Ø§ employees array
       const safePayData = payData && typeof payData === 'object' ? {
         year: payData.year || year,
         month: payData.month || month,
@@ -224,12 +224,13 @@ export default function PayrollPage() {
   const toggleSort = (col: "name" | "net" | "basic") => {
     if (sortBy === col) setSortDir(d => d === "asc" ? "desc" : "asc");
     else { setSortBy(col); setSortDir("desc"); }
+  };
 
   const [selectedEmp, setSelectedEmp] = useState<PayrollEmployee | null>(null);
 
   const handleExportExcel = () => {
-    if (!sorted.length) { toast.error(lang === "ar" ? "لا توجد بيانات" : "No data"); return; }
-    const header = lang === "ar" ? ["الموظف","الكود","القسم","الأساسي","البدلات","الخصومات","الصافي"] : ["Employee","Code","Department","Basic","Allowances","Deductions","Net"];
+    if (!sorted.length) { toast.error(lang === "ar" ? "Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¨ÙŠØ§Ù†Ø§Øª" : "No data"); return; }
+    const header = lang === "ar" ? ["Ø§Ù„Ù…ÙˆØ¸Ù","Ø§Ù„ÙƒÙˆØ¯","Ø§Ù„Ù‚Ø³Ù…","Ø§Ù„Ø£Ø³Ø§Ø³ÙŠ","Ø§Ù„Ø¨Ø¯Ù„Ø§Øª","Ø§Ù„Ø®ØµÙˆÙ…Ø§Øª","Ø§Ù„ØµØ§ÙÙŠ"] : ["Employee","Code","Department","Basic","Allowances","Deductions","Net"];
     const rows = sorted.map(e => [e.employee_name, e.employee_code, e.department_name, e.basic_salary, (e.allowances_total + e.bonuses_total + e.overtime_bonus).toFixed(2), e.total_deductions.toFixed(2), e.net_salary.toFixed(2)].join(","));
     const csv = "\uFEFF" + header.join(",") + "\n" + rows.join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -241,7 +242,7 @@ export default function PayrollPage() {
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
-    toast.success(lang === "ar" ? "تم التصدير" : "Exported");
+    toast.success(lang === "ar" ? "ØªÙ… Ø§Ù„ØªØµØ¯ÙŠØ±" : "Exported");
   };
   };
 
@@ -298,11 +299,11 @@ export default function PayrollPage() {
             <Loader2 className="w-12 h-12 animate-spin text-brand-primary" />
             <div className="text-center">
               <p className="text-lg font-semibold mb-1">
-                {lang === "ar" ? "جاري حساب الرواتب..." : "Calculating payroll..."}
+                {lang === "ar" ? "Ø¬Ø§Ø±ÙŠ Ø­Ø³Ø§Ø¨ Ø§Ù„Ø±ÙˆØ§ØªØ¨..." : "Calculating payroll..."}
               </p>
               <p className="text-sm text-muted-foreground">
                 {lang === "ar"
-                  ? "قد يستغرق ذلك حتى 5 دقائق لأول مرة، برجاء الانتظار"
+                  ? "Ù‚Ø¯ ÙŠØ³ØªØºØ±Ù‚ Ø°Ù„Ùƒ Ø­ØªÙ‰ 5 Ø¯Ù‚Ø§Ø¦Ù‚ Ù„Ø£ÙˆÙ„ Ù…Ø±Ø©ØŒ Ø¨Ø±Ø¬Ø§Ø¡ Ø§Ù„Ø§Ù†ØªØ¸Ø§Ø±"
                   : "This may take up to 5 minutes on first load, please wait"}
               </p>
             </div>
@@ -363,7 +364,7 @@ export default function PayrollPage() {
                 <SelectValue placeholder={d.filterByBranch} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{lang === "ar" ? "كل الفروع" : "All Branches"}</SelectItem>
+                <SelectItem value="all">{lang === "ar" ? "ÙƒÙ„ Ø§Ù„ÙØ±ÙˆØ¹" : "All Branches"}</SelectItem>
                 {branches.map(b => (
                   <SelectItem key={b} value={b}>{getBranchDisplayName(b)}</SelectItem>
                 ))}
@@ -400,7 +401,7 @@ export default function PayrollPage() {
             <div className="p-4 rounded-lg bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20">
               <p className="text-xs text-muted-foreground mb-1">{d.topPaid}</p>
               <p className="text-lg font-bold">
-                {sorted[0]?.employee_name || "—"}
+                {sorted[0]?.employee_name || "â€”"}
               </p>
               <p className="text-sm text-blue-600 mt-1">
                 {formatCurrency(sorted[0]?.net_salary || 0)}
@@ -417,7 +418,7 @@ export default function PayrollPage() {
                 )}
               </p>
               <p className="text-sm text-emerald-600 mt-1">
-                {lang === "ar" ? "متوسط الصافي" : "Average Net"}
+                {lang === "ar" ? "Ù…ØªÙˆØ³Ø· Ø§Ù„ØµØ§ÙÙŠ" : "Average Net"}
               </p>
             </div>
 
@@ -427,7 +428,7 @@ export default function PayrollPage() {
                 {formatCurrency(summary?.grand_total_overtime || 0)}
               </p>
               <p className="text-sm text-purple-600 mt-1">
-                {lang === "ar" ? "بدل الإضافي" : "Overtime Bonus"}
+                {lang === "ar" ? "Ø¨Ø¯Ù„ Ø§Ù„Ø¥Ø¶Ø§ÙÙŠ" : "Overtime Bonus"}
               </p>
             </div>
           </div>
@@ -558,7 +559,7 @@ export default function PayrollPage() {
             {d.monthlyComparisonDesc}
           </p>
           <div className="h-48 flex items-center justify-center bg-muted/30 rounded-lg text-muted-foreground text-sm">
-            {lang === "ar" ? "الرسم البياني قريباً" : "Chart coming soon"}
+            {lang === "ar" ? "Ø§Ù„Ø±Ø³Ù… Ø§Ù„Ø¨ÙŠØ§Ù†ÙŠ Ù‚Ø±ÙŠØ¨Ø§Ù‹" : "Chart coming soon"}
           </div>
         </CardContent>
       </Card>
