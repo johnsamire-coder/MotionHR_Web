@@ -14,6 +14,9 @@ import LeavePolicyDialog from "@/components/hr/policies/leave-policy-dialog";
 import PayrollPolicyDialog from "@/components/hr/policies/payroll-policy-dialog";
 import InsurancePolicyDialog from "@/components/hr/policies/insurance-policy-dialog";
 import PayrollCyclePolicyDialog from "@/components/hr/policies/payroll-cycle-policy-dialog";
+import DeductionRuleDialog from "@/components/hr/policies/deduction-rule-dialog";
+import BonusRuleDialog from "@/components/hr/policies/bonus-rule-dialog";
+import AllowanceRuleDialog from "@/components/hr/policies/allowance-rule-dialog";
 import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
@@ -25,6 +28,62 @@ interface PolicyItem {
   effective_to?: string | null;
   amount?: number;
   amount_type?: string;
+}
+
+interface BonusRuleItem {
+  id: number;
+  name: string;
+  overtime_rate_per_hour: number;
+  overtime_multiplier_regular: number;
+  night_shift_bonus_per_hour: number;
+  weekend_bonus_per_day: number;
+  scope: string;
+  scope_display: string;
+  branch_name?: string | null;
+  department_name?: string | null;
+  is_active: boolean;
+  is_superseded: boolean;
+  version_number: number;
+  start_date: string;
+  end_date?: string | null;
+}
+
+interface AllowanceRuleItem {
+  id: number;
+  name: string;
+  field_allowance_type: string;
+  field_allowance_type_display: string;
+  fixed_field_allowance: number;
+  per_visit_allowance: number;
+  meal_allowance_per_day: number;
+  transport_allowance_type: string;
+  scope: string;
+  scope_display: string;
+  branch_name?: string | null;
+  department_name?: string | null;
+  is_active: boolean;
+  is_superseded: boolean;
+  version_number: number;
+  start_date: string;
+  end_date?: string | null;
+}
+
+interface DeductionRuleItem {
+  id: number;
+  name: string;
+  late_deduction_per_minute: number;
+  late_grace_minutes: number;
+  absence_deduction_per_day: number;
+  early_leave_per_minute: number;
+  scope: string;
+  scope_display: string;
+  branch_name?: string | null;
+  department_name?: string | null;
+  is_active: boolean;
+  is_superseded: boolean;
+  version_number: number;
+  start_date: string;
+  end_date?: string | null;
 }
 
 interface PayrollCyclePolicyItem {
@@ -78,7 +137,7 @@ interface WorkPolicy {
   is_24_7: boolean;
 }
 
-type TabKey = "attendance" | "work" | "leave" | "allowance" | "deduction" | "bonus" | "insurance" | "payroll_cycle";
+type TabKey = "attendance" | "work" | "leave" | "allowance" | "deduction" | "bonus" | "insurance" | "payroll_cycle" | "deduction_rule" | "bonus_rule" | "allowance_rule";
 
 const TABS = [
   { key: "attendance",  icon: Shield,       label_ar: "سياسة الحضور",   label_en: "Attendance",  color: "text-blue-600 bg-blue-500/10" },
@@ -89,6 +148,9 @@ const TABS = [
   { key: "bonus",       icon: Award,        label_ar: "المكافآت",       label_en: "Bonuses",     color: "text-brand-primary bg-brand-primary/10" },
   { key: "insurance",   icon: Shield,       label_ar: "التأمينات",      label_en: "Insurance",   color: "text-teal-600 bg-teal-500/10" },
   { key: "payroll_cycle", icon: Calendar,     label_ar: "دورة الرواتب",   label_en: "Payroll Cycle", color: "text-indigo-600 bg-indigo-500/10" },
+  { key: "deduction_rule", icon: TrendingDown, label_ar: "قواعد الحسم",    label_en: "Deduction Rules", color: "text-red-700 bg-red-600/10" },
+  { key: "bonus_rule",    icon: Award,        label_ar: "قواعد المكافآت", label_en: "Bonus Rules",     color: "text-emerald-700 bg-emerald-600/10" },
+  { key: "allowance_rule", icon: DollarSign,  label_ar: "قواعد البدلات",  label_en: "Allowance Rules", color: "text-amber-700 bg-amber-600/10" },
 ] as const;
 
 const DAYS = [
@@ -117,8 +179,14 @@ export default function PoliciesHubPage() {
   const [bonuses, setBonuses]         = useState<PolicyItem[]>([]);
   const [insurances, setInsurances]   = useState<InsurancePolicyItem[]>([]);
   const [payrollCycles, setPayrollCycles] = useState<PayrollCyclePolicyItem[]>([]);
+  const [deductionRules, setDeductionRules] = useState<DeductionRuleItem[]>([]);
+  const [bonusRules, setBonusRules] = useState<BonusRuleItem[]>([]);
+  const [allowanceRules, setAllowanceRules] = useState<AllowanceRuleItem[]>([]);
   const [showInsuranceDialog, setShowInsuranceDialog] = useState(false);
   const [showPayrollCycleDialog, setShowPayrollCycleDialog] = useState(false);
+  const [showDeductionRuleDialog, setShowDeductionRuleDialog] = useState(false);
+  const [showBonusRuleDialog, setShowBonusRuleDialog] = useState(false);
+  const [showAllowanceRuleDialog, setShowAllowanceRuleDialog] = useState(false);
   const [insuranceSubTab, setInsuranceSubTab] = useState<"all" | "social" | "medical">("all");
   const [workPolicy, setWorkPolicy]   = useState<WorkPolicy | null>(null);
 
@@ -138,7 +206,7 @@ export default function PoliciesHubPage() {
     setLoading(true);
     try {
       const headers = { Authorization: authH, "Accept-Language": langH };
-      const [aRes, lRes, wRes, alRes, dRes, bRes, iRes, pcRes] = await Promise.all([
+      const [aRes, lRes, wRes, alRes, dRes, bRes, iRes, pcRes, drRes, brRes, arRes] = await Promise.all([
         fetch("/api/hr/policies/attendance-policy", { headers }),
         fetch("/api/hr/policies/leave-policy", { headers }),
         fetch("/api/hr/policies/work-policy", { headers }),
@@ -147,9 +215,12 @@ export default function PoliciesHubPage() {
         fetch("/api/hr/policies/bonus-policies", { headers }),
         fetch("/api/hr/policies/insurance-policies", { headers }),
         fetch("/api/hr/policies/payroll-cycle-policies", { headers }),
+        fetch("/api/hr/policies/deduction-rules", { headers }),
+        fetch("/api/hr/policies/bonus-rules", { headers }),
+        fetch("/api/hr/policies/allowance-rules", { headers }),
       ]);
-      const [a, l, w, al, d, b, i, pc] = await Promise.all([
-        aRes.json(), lRes.json(), wRes.json(), alRes.json(), dRes.json(), bRes.json(), iRes.json(), pcRes.json(),
+      const [a, l, w, al, d, b, i, pc, dr, br, arRule] = await Promise.all([
+        aRes.json(), lRes.json(), wRes.json(), alRes.json(), dRes.json(), bRes.json(), iRes.json(), pcRes.json(), drRes.json(), brRes.json(), arRes.json(),
       ]);
       setAttendance(a?.policies || a?.results || []);
       setLeaves(l?.policies || l?.results || []);
@@ -159,6 +230,9 @@ export default function PoliciesHubPage() {
       setBonuses(b?.results || b?.policies || []);
       setInsurances(i?.results || []);
       setPayrollCycles(pc?.results || []);
+      setDeductionRules(dr?.results || []);
+      setBonusRules(br?.results || []);
+      setAllowanceRules(arRule?.results || []);
     } catch {
       toast.error(ar ? "فشل تحميل البيانات" : "Failed to load");
     } finally {
@@ -203,6 +277,9 @@ export default function PoliciesHubPage() {
       case "bonus":      return "bonus-policies";
       case "insurance":  return "insurance-policies";
       case "payroll_cycle":  return "payroll-cycle-policies";
+      case "deduction_rule": return "deduction-rules";
+      case "bonus_rule":     return "bonus-rules";
+      case "allowance_rule": return "allowance-rules";
       default: return "";
     }
   };
@@ -279,6 +356,9 @@ export default function PoliciesHubPage() {
     else if (activeTab === "leave") setShowLeaveDialog(true);
     else if (activeTab === "insurance") setShowInsuranceDialog(true);
     else if (activeTab === "payroll_cycle") setShowPayrollCycleDialog(true);
+    else if (activeTab === "deduction_rule") setShowDeductionRuleDialog(true);
+    else if (activeTab === "bonus_rule") setShowBonusRuleDialog(true);
+    else if (activeTab === "allowance_rule") setShowAllowanceRuleDialog(true);
     else {
       setPayrollKind(activeTab as "allowance" | "deduction" | "bonus");
       setShowPayrollDialog(true);
@@ -291,6 +371,9 @@ export default function PoliciesHubPage() {
     else if (activeTab === "leave") setShowLeaveDialog(true);
     else if (activeTab === "insurance") setShowInsuranceDialog(true);
     else if (activeTab === "payroll_cycle") setShowPayrollCycleDialog(true);
+    else if (activeTab === "deduction_rule") setShowDeductionRuleDialog(true);
+    else if (activeTab === "bonus_rule") setShowBonusRuleDialog(true);
+    else if (activeTab === "allowance_rule") setShowAllowanceRuleDialog(true);
     else {
       setPayrollKind(activeTab as "allowance" | "deduction" | "bonus");
       setShowPayrollDialog(true);
@@ -573,6 +656,108 @@ export default function PoliciesHubPage() {
 
   // Render Payroll Cycle Section
   const renderPayrollCycleList = () => {
+
+  // Render Deduction Rule Section
+  const renderDeductionRuleList = () => {
+    return (
+      <div className="space-y-4">
+        {deductionRules.length === 0 ? (
+          <Card>
+            <CardContent className="py-16 text-center">
+              <TrendingDown className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
+              <p className="text-muted-foreground mb-4">
+                {ar ? "لا توجد قواعد حسم" : "No deduction rules"}
+              </p>
+              <Button onClick={openCreateDialog} className="gap-2 bg-red-600 hover:bg-red-700">
+                <Plus className="w-4 h-4" />
+                {ar ? "إنشاء قاعدة حسم" : "Create Deduction Rule"}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {deductionRules.map(rule => {
+              const isLoading = actionLoading === rule.id;
+              return (
+                <Card
+                  key={rule.id}
+                  className={`border-2 border-red-200 ${rule.is_superseded ? "opacity-60" : ""}`}
+                >
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2 flex-1 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
+                          <TrendingDown className="w-4 h-4 text-red-700" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-sm">{rule.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {ar ? "نسخة" : "v"}{rule.version_number} · {rule.scope_display}
+                          </p>
+                        </div>
+                      </div>
+                      {rule.is_superseded && (
+                        <Badge variant="secondary" className="text-[10px] shrink-0">
+                          {ar ? "مقفلة" : "Superseded"}
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="p-2 rounded bg-slate-50">
+                        <p className="text-muted-foreground">{ar ? "تأخير/د" : "Late/min"}</p>
+                        <p className="font-semibold">{rule.late_deduction_per_minute} EGP</p>
+                      </div>
+                      <div className="p-2 rounded bg-slate-50">
+                        <p className="text-muted-foreground">{ar ? "غياب/يوم" : "Absence/day"}</p>
+                        <p className="font-semibold">{rule.absence_deduction_per_day} EGP</p>
+                      </div>
+                      <div className="p-2 rounded bg-slate-50">
+                        <p className="text-muted-foreground">{ar ? "خروج مبكر/د" : "Early/min"}</p>
+                        <p className="font-semibold">{rule.early_leave_per_minute} EGP</p>
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-muted-foreground">
+                      <p>
+                        {ar ? "فترة السماح للتأخير:" : "Late grace:"} {rule.late_grace_minutes} {ar ? "دقيقة" : "min"}
+                      </p>
+                      {rule.branch_name && <p>{ar ? "الفرع:" : "Branch:"} {rule.branch_name}</p>}
+                      {rule.department_name && <p>{ar ? "الإدارة:" : "Dept:"} {rule.department_name}</p>}
+                      <p className="mt-1">
+                        {ar ? "من" : "From"} {rule.start_date}
+                        {rule.end_date && (<> · {ar ? "إلى" : "To"} {rule.end_date}</>)}
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2 pt-2 border-t">
+                      <Button
+                        variant="outline" size="sm"
+                        className="flex-1 gap-1.5"
+                        onClick={() => openEditDialog(rule.id)}
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        {ar ? "تعديل" : "Edit"}
+                      </Button>
+                      <Button
+                        variant="outline" size="sm"
+                        className="text-red-600 hover:text-red-700"
+                        disabled={isLoading}
+                        onClick={() => handleDelete(rule.id)}
+                      >
+                        {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
     return (
       <div className="space-y-4">
         {payrollCycles.length === 0 ? (
@@ -652,6 +837,171 @@ export default function PoliciesHubPage() {
                         disabled={isLoading}
                         onClick={() => handleDelete(policy.id)}
                       >
+                        {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+
+  // Render Bonus Rule Section
+  const renderBonusRuleList = () => {
+    return (
+      <div className="space-y-4">
+        {bonusRules.length === 0 ? (
+          <Card>
+            <CardContent className="py-16 text-center">
+              <Award className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
+              <p className="text-muted-foreground mb-4">
+                {ar ? "لا توجد قواعد مكافآت" : "No bonus rules"}
+              </p>
+              <Button onClick={openCreateDialog} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="w-4 h-4" />
+                {ar ? "إنشاء قاعدة مكافآت" : "Create Bonus Rule"}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {bonusRules.map(rule => {
+              const isLoading = actionLoading === rule.id;
+              return (
+                <Card key={rule.id} className={`border-2 border-emerald-200 ${rule.is_superseded ? "opacity-60" : ""}`}>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2 flex-1 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+                          <Award className="w-4 h-4 text-emerald-700" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-sm">{rule.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {ar ? "نسخة" : "v"}{rule.version_number} · {rule.scope_display}
+                          </p>
+                        </div>
+                      </div>
+                      {rule.is_superseded && (
+                        <Badge variant="secondary" className="text-[10px] shrink-0">{ar ? "مقفلة" : "Superseded"}</Badge>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="p-2 rounded bg-slate-50">
+                        <p className="text-muted-foreground">{ar ? "أوفرتايم/ساعة" : "Overtime/hr"}</p>
+                        <p className="font-semibold">{rule.overtime_rate_per_hour} EGP</p>
+                      </div>
+                      <div className="p-2 rounded bg-slate-50">
+                        <p className="text-muted-foreground">{ar ? "المعامل" : "Multiplier"}</p>
+                        <p className="font-semibold">×{rule.overtime_multiplier_regular}</p>
+                      </div>
+                      <div className="p-2 rounded bg-slate-50">
+                        <p className="text-muted-foreground">{ar ? "شيفت ليلي/ساعة" : "Night/hr"}</p>
+                        <p className="font-semibold">{rule.night_shift_bonus_per_hour} EGP</p>
+                      </div>
+                      <div className="p-2 rounded bg-slate-50">
+                        <p className="text-muted-foreground">{ar ? "ويكند/يوم" : "Weekend/day"}</p>
+                        <p className="font-semibold">{rule.weekend_bonus_per_day} EGP</p>
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {rule.branch_name && <p>{ar ? "الفرع:" : "Branch:"} {rule.branch_name}</p>}
+                      {rule.department_name && <p>{ar ? "الإدارة:" : "Dept:"} {rule.department_name}</p>}
+                      <p className="mt-1">{ar ? "من" : "From"} {rule.start_date}{rule.end_date && (<> · {ar ? "إلى" : "To"} {rule.end_date}</>)}</p>
+                    </div>
+                    <div className="flex gap-2 pt-2 border-t">
+                      <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => openEditDialog(rule.id)}>
+                        <Edit2 className="w-3.5 h-3.5" />
+                        {ar ? "تعديل" : "Edit"}
+                      </Button>
+                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" disabled={isLoading} onClick={() => handleDelete(rule.id)}>
+                        {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Render Allowance Rule Section
+  const renderAllowanceRuleList = () => {
+    return (
+      <div className="space-y-4">
+        {allowanceRules.length === 0 ? (
+          <Card>
+            <CardContent className="py-16 text-center">
+              <DollarSign className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
+              <p className="text-muted-foreground mb-4">
+                {ar ? "لا توجد قواعد بدلات" : "No allowance rules"}
+              </p>
+              <Button onClick={openCreateDialog} className="gap-2 bg-amber-600 hover:bg-amber-700">
+                <Plus className="w-4 h-4" />
+                {ar ? "إنشاء قاعدة بدلات" : "Create Allowance Rule"}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {allowanceRules.map(rule => {
+              const isLoading = actionLoading === rule.id;
+              return (
+                <Card key={rule.id} className={`border-2 border-amber-200 ${rule.is_superseded ? "opacity-60" : ""}`}>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2 flex-1 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
+                          <DollarSign className="w-4 h-4 text-amber-700" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-sm">{rule.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {ar ? "نسخة" : "v"}{rule.version_number} · {rule.scope_display}
+                          </p>
+                        </div>
+                      </div>
+                      {rule.is_superseded && (
+                        <Badge variant="secondary" className="text-[10px] shrink-0">{ar ? "مقفلة" : "Superseded"}</Badge>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="p-2 rounded bg-slate-50">
+                        <p className="text-muted-foreground">{ar ? "بدل ميدان" : "Field"}</p>
+                        <p className="font-semibold text-xs">{rule.field_allowance_type_display}</p>
+                      </div>
+                      <div className="p-2 rounded bg-slate-50">
+                        <p className="text-muted-foreground">{ar ? "بدل ثابت" : "Fixed"}</p>
+                        <p className="font-semibold">{rule.fixed_field_allowance} EGP</p>
+                      </div>
+                      <div className="p-2 rounded bg-slate-50">
+                        <p className="text-muted-foreground">{ar ? "لكل زيارة" : "Per visit"}</p>
+                        <p className="font-semibold">{rule.per_visit_allowance} EGP</p>
+                      </div>
+                      <div className="p-2 rounded bg-slate-50">
+                        <p className="text-muted-foreground">{ar ? "وجبة/يوم" : "Meal/day"}</p>
+                        <p className="font-semibold">{rule.meal_allowance_per_day} EGP</p>
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {rule.branch_name && <p>{ar ? "الفرع:" : "Branch:"} {rule.branch_name}</p>}
+                      {rule.department_name && <p>{ar ? "الإدارة:" : "Dept:"} {rule.department_name}</p>}
+                      <p className="mt-1">{ar ? "من" : "From"} {rule.start_date}{rule.end_date && (<> · {ar ? "إلى" : "To"} {rule.end_date}</>)}</p>
+                    </div>
+                    <div className="flex gap-2 pt-2 border-t">
+                      <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => openEditDialog(rule.id)}>
+                        <Edit2 className="w-3.5 h-3.5" />
+                        {ar ? "تعديل" : "Edit"}
+                      </Button>
+                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" disabled={isLoading} onClick={() => handleDelete(rule.id)}>
                         {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                       </Button>
                     </div>
@@ -784,7 +1134,7 @@ export default function PoliciesHubPage() {
               </CardContent>
             </Card>
           ) : (
-            activeTab === "insurance" ? renderInsuranceList() : activeTab === "payroll_cycle" ? renderPayrollCycleList() : renderPolicyList()
+            activeTab === "insurance" ? renderInsuranceList() : activeTab === "payroll_cycle" ? renderPayrollCycleList() : activeTab === "deduction_rule" ? renderDeductionRuleList() : activeTab === "bonus_rule" ? renderBonusRuleList() : activeTab === "allowance_rule" ? renderAllowanceRuleList() : renderPolicyList()
           )}
         </>
       )}
@@ -812,6 +1162,30 @@ export default function PoliciesHubPage() {
         onSaved={load}
         policyId={editingPolicyId}
         kind={payrollKind}
+        ar={ar}
+      />
+
+      <BonusRuleDialog
+        open={showBonusRuleDialog}
+        onClose={() => { setShowBonusRuleDialog(false); setEditingPolicyId(null); }}
+        onSaved={load}
+        ruleId={editingPolicyId}
+        ar={ar}
+      />
+
+      <AllowanceRuleDialog
+        open={showAllowanceRuleDialog}
+        onClose={() => { setShowAllowanceRuleDialog(false); setEditingPolicyId(null); }}
+        onSaved={load}
+        ruleId={editingPolicyId}
+        ar={ar}
+      />
+
+      <DeductionRuleDialog
+        open={showDeductionRuleDialog}
+        onClose={() => { setShowDeductionRuleDialog(false); setEditingPolicyId(null); }}
+        onSaved={load}
+        ruleId={editingPolicyId}
         ar={ar}
       />
 
