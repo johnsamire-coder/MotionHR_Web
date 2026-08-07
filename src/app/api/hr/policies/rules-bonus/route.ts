@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 const BACKEND = "https://jssolutions-eg.com";
 
 export async function GET(request: Request) {
@@ -7,15 +7,10 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.toString();
-    const url = `${BACKEND}/attendance/api/mobile/manager/deduction-rules/${query ? `?${query}` : ""}`;
-    const res = await fetch(url, {
-      headers: { Authorization: authHeader, "Accept-Language": "ar" },
-      cache: "no-store",
-    });
+    const url = `${BACKEND}/attendance/api/mobile/manager/rules/bonus/${query ? `?${query}` : ""}`;
+    const res = await fetch(url, { headers: { Authorization: authHeader, "Accept-Language": "ar" }, cache: "no-store" });
     return NextResponse.json(await res.json(), { status: res.status });
-  } catch {
-    return NextResponse.json({ error: "Network error" }, { status: 500 });
-  }
+  } catch { return NextResponse.json({ error: "Network error" }, { status: 500 }); }
 }
 
 export async function POST(request: Request) {
@@ -23,13 +18,11 @@ export async function POST(request: Request) {
   if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const body = await request.json();
-    const res = await fetch(`${BACKEND}/attendance/api/mobile/manager/deduction-rules/`, {
+    const res = await fetch(`${BACKEND}/attendance/api/mobile/manager/rules/bonus/`, {
       method: "POST",
       headers: { Authorization: authHeader, "Content-Type": "application/json", "Accept-Language": "ar" },
       body: JSON.stringify(body),
     });
     return NextResponse.json(await res.json(), { status: res.status });
-  } catch {
-    return NextResponse.json({ error: "Network error" }, { status: 500 });
-  }
+  } catch { return NextResponse.json({ error: "Network error" }, { status: 500 }); }
 }

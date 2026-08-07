@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { Award, Save, Loader2, Info, Plus, Trash2 } from "lucide-react";
+import { TrendingDown, Save, Loader2, Info, Plus, Trash2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -29,31 +29,40 @@ interface Employee {
 interface Tier {
   from: number;
   to: number | null;
-  value_type: string;
-  value: number;
+  deduction_type: string;
+  value?: number;
 }
 
-const BONUS_TYPES = [
-  { value: "overtime",     label_ar: "الأوفرتايم",         unit_ar: "ساعة" },
-  { value: "night_shift",  label_ar: "الشيفت الليلي",     unit_ar: "ساعة" },
-  { value: "weekend_work", label_ar: "العمل في الويكند",  unit_ar: "يوم" },
-  { value: "holiday_work", label_ar: "العمل في الأعياد",  unit_ar: "يوم" },
+const PENALTY_TYPES = [
+  { value: "late_arrival",     label_ar: "تأخير الحضور",       unit_ar: "دقيقة" },
+  { value: "absence",          label_ar: "الغياب",              unit_ar: "يوم" },
+  { value: "early_leave",      label_ar: "الخروج المبكر",      unit_ar: "دقيقة" },
+  { value: "missing_checkout", label_ar: "عدم تسجيل الخروج",   unit_ar: "مرة" },
 ];
 
-const VALUE_TYPES = [
-  { value: "multiplier",       label_ar: "معامل من الأجر (×)",     suffix: "×" },
-  { value: "fixed_per_unit",   label_ar: "مبلغ ثابت لكل وحدة",     suffix: "EGP" },
-  { value: "fixed_total",      label_ar: "مبلغ ثابت إجمالي",       suffix: "EGP" },
-  { value: "percent_basic",    label_ar: "% من الراتب الأساسي",    suffix: "%" },
+const DEDUCTION_TYPES = [
+  { value: "fixed_per_unit",    label_ar: "مبلغ ثابت لكل وحدة",   needs_value: true,  suffix: "EGP" },
+  { value: "fixed_total",       label_ar: "مبلغ ثابت إجمالي",     needs_value: true,  suffix: "EGP" },
+  { value: "percent_basic",     label_ar: "% من الراتب الأساسي",  needs_value: true,  suffix: "%" },
+  { value: "quarter_day",       label_ar: "ربع يوم",               needs_value: false, suffix: "" },
+  { value: "half_day",          label_ar: "نصف يوم",               needs_value: false, suffix: "" },
+  { value: "full_day",          label_ar: "يوم كامل",              needs_value: false, suffix: "" },
+  { value: "two_days",          label_ar: "يومين",                 needs_value: false, suffix: "" },
+  { value: "three_days",        label_ar: "3 أيام",                needs_value: false, suffix: "" },
+  { value: "day_plus_warning",  label_ar: "يوم + إنذار كتابي",    needs_value: false, suffix: "" },
 ];
+
+const emptyTier: Tier = { from: 1, to: 15, deduction_type: "fixed_per_unit", value: 1 };
 
 const emptyForm = {
   name: "",
-  bonus_type: "overtime",
-  tiers: [{ from: 1, to: 2, value_type: "multiplier", value: 1.5 }] as Tier[],
-  max_per_day: 4,
-  max_per_month: 60,
-  requires_approval: false,
+  penalty_type: "late_arrival",
+  grace_amount: 0,
+  tiers: [{ ...emptyTier }] as Tier[],
+  warnings_enabled: false,
+  first_warning_after: 3,
+  second_warning_after: 5,
+  termination_after: 10,
   scope: "company",
   branch_id: null as number | null,
   department_id: null as number | null,
@@ -64,7 +73,7 @@ const emptyForm = {
   change_reason: "",
 };
 
-export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: Props) {
+export default function PenaltyRuleDialog({ open, onClose, onSaved, ruleId, ar }: Props) {
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -78,7 +87,7 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authH = token?.startsWith("Token") ? token : `Token ${token}`;
 
-  const currentType = BONUS_TYPES.find(t => t.value === form.bonus_type) || BONUS_TYPES[0];
+  const currentType = PENALTY_TYPES.find(t => t.value === form.penalty_type) || PENALTY_TYPES[0];
 
   const loadLookups = useCallback(async () => {
     try {
@@ -87,9 +96,13 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
         fetch("/api/departments", { headers: { Authorization: authH } }),
         fetch("/api/employees/list", { headers: { Authorization: authH } }),
       ]);
-      setBranches((await brRes.json()).results || (await brRes.json()).branches || []);
-      setDepartments((await depRes.json()).results || (await depRes.json()).departments || []);
-      setEmployees((await empRes.json()).results || (await empRes.json()).employees || []);
+      const brData = await brRes.json();
+      const depData = await depRes.json();
+      const empData = await empRes.json();
+
+      setBranches(brData.results || brData.branches || brData || []);
+      setDepartments(depData.results || depData.departments || depData || []);
+      setEmployees(empData.results || empData.employees || []);
     } catch {}
   }, [authH]);
 
@@ -97,17 +110,19 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
     if (!ruleId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/hr/policies/rules-bonus/${ruleId}`, { headers: { Authorization: authH } });
+      const res = await fetch(`/api/hr/policies/rules-penalty/${ruleId}`, { headers: { Authorization: authH } });
       const data = await res.json();
       const r = data.rule || data;
       if (!r?.id) { toast.error(ar ? "فشل التحميل" : "Load failed"); return; }
       setForm({
         name: r.name,
-        bonus_type: r.bonus_type,
-        tiers: r.tiers && r.tiers.length > 0 ? r.tiers : [{ from: 1, to: 2, value_type: "multiplier", value: 1.5 }],
-        max_per_day: Number(r.max_per_day) || 4,
-        max_per_month: Number(r.max_per_month) || 60,
-        requires_approval: r.requires_approval,
+        penalty_type: r.penalty_type,
+        grace_amount: r.grace_amount,
+        tiers: r.tiers && r.tiers.length > 0 ? r.tiers : [{ ...emptyTier }],
+        warnings_enabled: r.warnings_enabled,
+        first_warning_after: r.first_warning_after,
+        second_warning_after: r.second_warning_after,
+        termination_after: r.termination_after,
         scope: r.scope,
         branch_id: r.branch_id || null,
         department_id: r.department_id || null,
@@ -132,11 +147,14 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
   const addTier = () => {
     const lastTier = form.tiers[form.tiers.length - 1];
     const newFrom = (lastTier?.to || lastTier?.from || 0) + 1;
-    setForm({ ...form, tiers: [...form.tiers, { from: newFrom, to: newFrom + 1, value_type: "multiplier", value: 2.0 }] });
+    setForm({ ...form, tiers: [...form.tiers, { from: newFrom, to: newFrom + 14, deduction_type: "fixed_per_unit", value: 1 }] });
   };
 
   const removeTier = (index: number) => {
-    if (form.tiers.length === 1) { toast.error(ar ? "لازم شريحة واحدة" : "At least one tier"); return; }
+    if (form.tiers.length === 1) {
+      toast.error(ar ? "لازم شريحة واحدة على الأقل" : "At least one tier required");
+      return;
+    }
     setForm({ ...form, tiers: form.tiers.filter((_, i) => i !== index) });
   };
 
@@ -164,14 +182,14 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
 
   const handleSave = async () => {
     if (!form.name.trim()) { toast.error(ar ? "الاسم مطلوب" : "Name required"); return; }
-    if (form.tiers.length === 0) { toast.error(ar ? "لازم شريحة" : "At least one tier"); return; }
+    if (form.tiers.length === 0) { toast.error(ar ? "لازم شريحة واحدة على الأقل" : "At least one tier"); return; }
     if (form.scope === "branch" && !form.branch_id) { toast.error(ar ? "اختر الفرع" : "Select branch"); return; }
-    if (form.scope === "department" && !form.department_id) { toast.error(ar ? "اختر الإدارة" : "Select dept"); return; }
-    if (form.scope === "employees" && form.specific_employees.length === 0) { toast.error(ar ? "اختر موظف" : "Select employees"); return; }
+    if (form.scope === "department" && !form.department_id) { toast.error(ar ? "اختر الإدارة" : "Select department"); return; }
+    if (form.scope === "employees" && form.specific_employees.length === 0) { toast.error(ar ? "اختر موظف واحد على الأقل" : "Select at least one employee"); return; }
 
     setSaving(true);
     try {
-      const url = isEdit ? `/api/hr/policies/rules-bonus/${ruleId}` : "/api/hr/policies/rules-bonus";
+      const url = isEdit ? `/api/hr/policies/rules-penalty/${ruleId}` : "/api/hr/policies/rules-penalty";
       const method = isEdit ? "PUT" : "POST";
       const payload = {
         ...form,
@@ -195,10 +213,10 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
         onSaved();
         onClose();
       } else {
-        toast.error(data.error || (ar ? "فشل" : "Failed"));
+        toast.error(data.error || (ar ? "فشل الحفظ" : "Failed"));
       }
     } catch {
-      toast.error(ar ? "خطأ" : "Error");
+      toast.error(ar ? "خطأ في الاتصال" : "Network error");
     } finally { setSaving(false); }
   };
 
@@ -207,8 +225,8 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
       <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto" dir={ar ? "rtl" : "ltr"}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Award className="w-5 h-5 text-emerald-600" />
-            {isEdit ? (ar ? "تعديل قاعدة مكافأة" : "Edit Bonus Rule") : (ar ? "إنشاء قاعدة مكافأة" : "Create Bonus Rule")}
+            <TrendingDown className="w-5 h-5 text-red-600" />
+            {isEdit ? (ar ? "تعديل قاعدة جزاء" : "Edit Penalty Rule") : (ar ? "إنشاء قاعدة جزاء" : "Create Penalty Rule")}
           </DialogTitle>
         </DialogHeader>
 
@@ -220,81 +238,120 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
               <div className={`p-3 rounded-lg border ${versionInfo.isSuperseded ? "bg-orange-50 border-orange-200" : "bg-blue-50 border-blue-200"}`}>
                 <div className="flex items-start gap-2 text-sm">
                   <Info className={`w-4 h-4 mt-0.5 ${versionInfo.isSuperseded ? "text-orange-600" : "text-blue-600"}`} />
-                  <p className="font-semibold">{ar ? `النسخة ${versionInfo.version}` : `v${versionInfo.version}`}</p>
+                  <div>
+                    <p className="font-semibold">{ar ? `النسخة رقم ${versionInfo.version}` : `Version ${versionInfo.version}`}</p>
+                    <p className="text-xs mt-1 text-muted-foreground">
+                      {ar ? "أي تعديل جوهري ينشئ نسخة جديدة تبدأ من أول الشهر التالي." : "Core edit creates new version next month."}
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
 
+            {/* اسم القاعدة */}
             <div>
               <label className="text-sm font-semibold block mb-1">{ar ? "اسم القاعدة *" : "Rule Name *"}</label>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
 
-            {/* نوع المكافأة */}
+            {/* نوع الجزاء */}
             <div>
-              <label className="text-sm font-semibold block mb-2">{ar ? "نوع المكافأة *" : "Bonus Type *"}</label>
+              <label className="text-sm font-semibold block mb-2">{ar ? "نوع الجزاء *" : "Penalty Type *"}</label>
               <div className="grid grid-cols-2 gap-2">
-                {BONUS_TYPES.map(t => (
-                  <button key={t.value} type="button" disabled={isEdit}
-                    onClick={() => setForm({ ...form, bonus_type: t.value })}
+                {PENALTY_TYPES.map(t => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setForm({ ...form, penalty_type: t.value })}
+                    disabled={isEdit}
                     className={`p-3 rounded-lg border-2 text-right transition ${
-                      form.bonus_type === t.value ? "bg-emerald-50 border-emerald-500" : "bg-white border-border hover:border-emerald-300"
-                    } ${isEdit ? "opacity-70 cursor-not-allowed" : ""}`}>
+                      form.penalty_type === t.value
+                        ? "bg-red-50 border-red-500"
+                        : "bg-white border-border hover:border-red-300"
+                    } ${isEdit ? "opacity-70 cursor-not-allowed" : ""}`}
+                  >
                     <p className="font-medium text-sm">{t.label_ar}</p>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* الشرائح */}
-            <div className="p-4 rounded-lg bg-emerald-50 border-2 border-emerald-200">
+            {/* فترة السماح */}
+            <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
+              <label className="text-sm font-semibold block mb-1">
+                {ar ? `فترة السماح (${currentType.unit_ar})` : `Grace Period (${currentType.unit_ar})`}
+              </label>
+              <Input type="number" value={form.grace_amount}
+                onChange={(e) => setForm({ ...form, grace_amount: Number(e.target.value) || 0 })} />
+              <p className="text-xs text-muted-foreground mt-1">
+                {ar
+                  ? `الـ ${currentType.unit_ar} الأولى من الجزاء لا تُحسب`
+                  : `First units are ignored`}
+              </p>
+            </div>
+
+            {/* ═══ الشرائح (Tiers) ═══ */}
+            <div className="p-4 rounded-lg bg-red-50 border-2 border-red-200">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Award className="w-4 h-4 text-emerald-700" />
+                  <TrendingDown className="w-4 h-4 text-red-700" />
                   <p className="font-semibold text-sm">{ar ? "الشرائح التصاعدية" : "Progressive Tiers"}</p>
                 </div>
                 <Button type="button" size="sm" variant="outline" onClick={addTier} className="gap-1.5">
-                  <Plus className="w-3.5 h-3.5" />{ar ? "أضف شريحة" : "Add"}
+                  <Plus className="w-3.5 h-3.5" />
+                  {ar ? "أضف شريحة" : "Add Tier"}
                 </Button>
               </div>
               <div className="space-y-3">
                 {form.tiers.map((tier, idx) => {
-                  const vtDef = VALUE_TYPES.find(v => v.value === tier.value_type) || VALUE_TYPES[0];
+                  const dtDef = DEDUCTION_TYPES.find(d => d.value === tier.deduction_type) || DEDUCTION_TYPES[0];
                   return (
-                    <div key={idx} className="bg-white p-3 rounded-lg border border-emerald-100">
+                    <div key={idx} className="bg-white p-3 rounded-lg border border-red-100">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-emerald-700">{ar ? `شريحة ${idx + 1}` : `Tier ${idx + 1}`}</span>
+                        <span className="text-xs font-bold text-red-700">
+                          {ar ? `الشريحة ${idx + 1}` : `Tier ${idx + 1}`}
+                        </span>
                         <Button type="button" size="sm" variant="ghost" onClick={() => removeTier(idx)} className="h-7 w-7 p-0 text-red-600">
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </div>
                       <div className="grid grid-cols-2 gap-2 mb-2">
                         <div>
-                          <label className="text-xs text-muted-foreground mb-1 block">{ar ? `من (${currentType.unit_ar})` : "From"}</label>
-                          <Input type="number" step="0.5" value={tier.from}
+                          <label className="text-xs text-muted-foreground mb-1 block">
+                            {ar ? `من (${currentType.unit_ar})` : `From`}
+                          </label>
+                          <Input type="number" value={tier.from}
                             onChange={(e) => updateTier(idx, "from", Number(e.target.value) || 0)} />
                         </div>
                         <div>
-                          <label className="text-xs text-muted-foreground mb-1 block">{ar ? "إلى (فارغ = بدون حد)" : "To"}</label>
-                          <Input type="number" step="0.5" value={tier.to || ""}
+                          <label className="text-xs text-muted-foreground mb-1 block">
+                            {ar ? `إلى (فارغ = بدون حد)` : `To (empty = no limit)`}
+                          </label>
+                          <Input type="number" value={tier.to || ""}
                             placeholder={ar ? "بدون حد" : "No limit"}
                             onChange={(e) => updateTier(idx, "to", e.target.value ? Number(e.target.value) : null)} />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="text-xs text-muted-foreground mb-1 block">{ar ? "نوع القيمة" : "Value Type"}</label>
+                          <label className="text-xs text-muted-foreground mb-1 block">{ar ? "نوع الخصم" : "Deduction Type"}</label>
                           <select className="w-full px-3 py-2 border rounded-md bg-white text-sm"
-                            value={tier.value_type}
-                            onChange={(e) => updateTier(idx, "value_type", e.target.value)}>
-                            {VALUE_TYPES.map(v => <option key={v.value} value={v.value}>{v.label_ar}</option>)}
+                            value={tier.deduction_type}
+                            onChange={(e) => updateTier(idx, "deduction_type", e.target.value)}>
+                            {DEDUCTION_TYPES.map(d => (
+                              <option key={d.value} value={d.value}>{d.label_ar}</option>
+                            ))}
                           </select>
                         </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground mb-1 block">{ar ? "القيمة" : "Value"} ({vtDef.suffix})</label>
-                          <Input type="number" step="0.01" value={tier.value}
-                            onChange={(e) => updateTier(idx, "value", Number(e.target.value) || 0)} />
-                        </div>
+                        {dtDef.needs_value && (
+                          <div>
+                            <label className="text-xs text-muted-foreground mb-1 block">
+                              {ar ? "القيمة" : "Value"} ({dtDef.suffix})
+                            </label>
+                            <Input type="number" step="0.01" value={tier.value || 0}
+                              onChange={(e) => updateTier(idx, "value", Number(e.target.value) || 0)} />
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -302,26 +359,35 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
               </div>
             </div>
 
-            {/* الحدود */}
-            <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-              <p className="font-semibold text-sm mb-3">{ar ? "الحدود القصوى" : "Max Limits"}</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">{ar ? "أقصى ساعات/يوم (0=بدون)" : "Max hours/day (0=none)"}</label>
-                  <Input type="number" step="0.5" value={form.max_per_day}
-                    onChange={(e) => setForm({ ...form, max_per_day: Number(e.target.value) || 0 })} />
+            {/* الإنذارات التصاعدية */}
+            <div className="p-4 rounded-lg bg-orange-50 border border-orange-200">
+              <label className="flex items-center gap-2 mb-3 cursor-pointer">
+                <input type="checkbox" checked={form.warnings_enabled}
+                  onChange={(e) => setForm({ ...form, warnings_enabled: e.target.checked })} />
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-orange-700" />
+                  <span className="font-semibold text-sm">{ar ? "تفعيل الإنذارات التصاعدية" : "Enable Progressive Warnings"}</span>
                 </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">{ar ? "أقصى ساعات/شهر (0=بدون)" : "Max hours/month (0=none)"}</label>
-                  <Input type="number" value={form.max_per_month}
-                    onChange={(e) => setForm({ ...form, max_per_month: Number(e.target.value) || 0 })} />
-                </div>
-              </div>
-              <label className="flex items-center gap-2 mt-3 text-sm cursor-pointer">
-                <input type="checkbox" checked={form.requires_approval}
-                  onChange={(e) => setForm({ ...form, requires_approval: e.target.checked })} />
-                {ar ? "يحتاج موافقة مسبقة" : "Requires prior approval"}
               </label>
+              {form.warnings_enabled && (
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">{ar ? "الإنذار 1 بعد" : "1st warning after"}</label>
+                    <Input type="number" value={form.first_warning_after}
+                      onChange={(e) => setForm({ ...form, first_warning_after: Number(e.target.value) || 0 })} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">{ar ? "الإنذار 2 بعد" : "2nd warning after"}</label>
+                    <Input type="number" value={form.second_warning_after}
+                      onChange={(e) => setForm({ ...form, second_warning_after: Number(e.target.value) || 0 })} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">{ar ? "الفصل بعد" : "Termination after"}</label>
+                    <Input type="number" value={form.termination_after}
+                      onChange={(e) => setForm({ ...form, termination_after: Number(e.target.value) || 0 })} />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* النطاق */}
@@ -330,32 +396,39 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
               <select className="w-full px-3 py-2 border rounded-md bg-white text-sm mb-2"
                 value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value })}>
                 <option value="company">{ar ? "الشركة كلها" : "Whole Company"}</option>
-                <option value="branch">{ar ? "فرع محدد" : "Branch"}</option>
-                <option value="department">{ar ? "إدارة محددة" : "Department"}</option>
-                <option value="employees">{ar ? "موظفين محددين" : "Employees"}</option>
+                <option value="branch">{ar ? "فرع محدد" : "Specific Branch"}</option>
+                <option value="department">{ar ? "إدارة محددة" : "Specific Department"}</option>
+                <option value="employees">{ar ? "موظفين محددين" : "Specific Employees"}</option>
               </select>
+
               {form.scope === "branch" && (
                 <select className="w-full px-3 py-2 border rounded-md bg-white text-sm"
                   value={form.branch_id || ""} onChange={(e) => setForm({ ...form, branch_id: Number(e.target.value) || null })}>
-                  <option value="">{ar ? "-- اختر --" : "--"}</option>
+                  <option value="">{ar ? "-- اختر الفرع --" : "-- Select --"}</option>
                   {branches.map(b => <option key={b.id} value={b.id}>{b.name_ar || b.name}</option>)}
                 </select>
               )}
+
               {form.scope === "department" && (
                 <select className="w-full px-3 py-2 border rounded-md bg-white text-sm"
                   value={form.department_id || ""} onChange={(e) => setForm({ ...form, department_id: Number(e.target.value) || null })}>
-                  <option value="">{ar ? "-- اختر --" : "--"}</option>
+                  <option value="">{ar ? "-- اختر الإدارة --" : "-- Select --"}</option>
                   {departments.map(d => <option key={d.id} value={d.id}>{d.name_ar || d.name}</option>)}
                 </select>
               )}
+
               {form.scope === "employees" && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-2">{ar ? `المختارين: ${form.specific_employees.length}` : `Selected: ${form.specific_employees.length}`}</p>
-                  <Input placeholder="🔍" value={empSearch} onChange={(e) => setEmpSearch(e.target.value)} className="mb-2" />
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {ar ? `عدد المختارين: ${form.specific_employees.length}` : `Selected: ${form.specific_employees.length}`}
+                  </p>
+                  <Input placeholder={ar ? "🔍 ابحث..." : "🔍 Search..."}
+                    value={empSearch} onChange={(e) => setEmpSearch(e.target.value)} className="mb-2" />
                   <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
                     {filteredEmployees.map(e => (
                       <label key={e.id} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer">
-                        <input type="checkbox" checked={form.specific_employees.includes(e.id)} onChange={() => toggleEmployee(e.id)} />
+                        <input type="checkbox" checked={form.specific_employees.includes(e.id)}
+                          onChange={() => toggleEmployee(e.id)} />
                         <span className="text-sm">
                           {e.full_name || `${e.first_name_ar || ""} ${e.last_name_ar || ""}`.trim() || `#${e.id}`}
                           {e.employee_code && <span className="text-xs text-muted-foreground mr-2">({e.employee_code})</span>}
@@ -370,18 +443,18 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
             {/* التواريخ */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-sm font-semibold block mb-1">{ar ? "من *" : "Start *"}</label>
+                <label className="text-sm font-semibold block mb-1">{ar ? "من تاريخ *" : "Start *"}</label>
                 <Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
               </div>
               <div>
-                <label className="text-sm font-semibold block mb-1">{ar ? "إلى" : "End"}</label>
+                <label className="text-sm font-semibold block mb-1">{ar ? "لحد تاريخ" : "End"}</label>
                 <Input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
               </div>
             </div>
 
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
-              {ar ? "نشط" : "Active"}
+              {ar ? "القاعدة نشطة" : "Rule is active"}
             </label>
 
             {isEdit && (
@@ -394,7 +467,7 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
 
             <div className="flex gap-2 justify-end pt-3 border-t sticky bottom-0 bg-white">
               <Button variant="outline" onClick={onClose} disabled={saving}>{ar ? "إلغاء" : "Cancel"}</Button>
-              <Button onClick={handleSave} disabled={saving} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+              <Button onClick={handleSave} disabled={saving} className="gap-2 bg-red-600 hover:bg-red-700">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 {isEdit ? (ar ? "حفظ" : "Save") : (ar ? "إنشاء" : "Create")}
               </Button>
