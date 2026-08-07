@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -243,7 +243,6 @@ export default function PayrollPage() {
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
     toast.success(lang === "ar" ? "ØªÙ… Ø§Ù„ØªØµØ¯ÙŠØ±" : "Exported");
-  };
   };
 
   return (
