@@ -327,8 +327,8 @@ export default function PoliciesHubPage() {
                     </div>
                     {item.effective_from && (
                       <p className="text-xs text-muted-foreground">
-                        {ar ? "Ù…Ù†" : "From"}: {item.effective_from}
-                        {item.effective_to && ` â†’ ${item.effective_to}`}
+                        {ar ? "من" : "From"}: {item.effective_from}
+                        {item.effective_to && ` → ${item.effective_to}`}
                       </p>
                     )}
                     {isPayroll && item.amount !== undefined && (
