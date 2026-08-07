@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
@@ -101,6 +101,41 @@ export default function CompanySettingsPage() {
     }
   };
 
+  const handleUploadLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(lang === "ar" ? "حجم الملف أكبر من 5MB" : "File exceeds 5MB");
+      return;
+    }
+    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      toast.error(lang === "ar" ? "نوع الملف غير مدعوم" : "Unsupported file type");
+      return;
+    }
+    setSaving(true);
+    try {
+      const fd = new FormData();
+      fd.append("logo", file);
+      const res = await fetch("/api/company/upload-logo", {
+        method: "POST",
+        headers: { Authorization: authHeader! },
+        body: fd,
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(lang === "ar" ? "تم رفع اللوجو بنجاح" : "Logo uploaded");
+        if (company) setCompany({ ...company, logo_url: data.logo_url });
+      } else {
+        toast.error(data.error || (lang === "ar" ? "فشل رفع اللوجو" : "Upload failed"));
+      }
+    } catch {
+      toast.error(lang === "ar" ? "خطأ في الاتصال" : "Network error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSavePayroll = async () => {
     if (!payroll) return;
     setSaving(true);
@@ -187,7 +222,7 @@ export default function CompanySettingsPage() {
                 <div>
                   <h3 className="text-lg font-semibold mb-1">{d.companyLogo}</h3>
                   <p className="text-sm text-muted-foreground mb-3">
-                    {lang === "ar" ? "PNG, JPG - حد أقصى 2 ميجا" : "PNG, JPG - max 2 MB"}
+                    {lang === "ar" ? "PNG, JPG - Ø­Ø¯ Ø£Ù‚ØµÙ‰ 2 Ù…ÙŠØ¬Ø§" : "PNG, JPG - max 2 MB"}
                   </p>
                   <Button variant="outline" className="gap-2">
                     <Camera className="w-4 h-4" />
@@ -390,7 +425,7 @@ export default function CompanySettingsPage() {
               <div>
                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-red-600">
                   <DollarSign className="w-5 h-5" />
-                  {lang === "ar" ? "الخصومات" : "Deductions"}
+                  {lang === "ar" ? "Ø§Ù„Ø®ØµÙˆÙ…Ø§Øª" : "Deductions"}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
@@ -436,7 +471,7 @@ export default function CompanySettingsPage() {
               <div className="pt-4 border-t border-border">
                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-blue-600">
                   <Percent className="w-5 h-5" />
-                  {lang === "ar" ? "التأمين" : "Insurance"}
+                  {lang === "ar" ? "Ø§Ù„ØªØ£Ù…ÙŠÙ†" : "Insurance"}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
@@ -602,3 +637,4 @@ export default function CompanySettingsPage() {
     </div>
   );
 }
+
