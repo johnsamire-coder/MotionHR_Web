@@ -24,6 +24,7 @@ export function Sidebar() {
     { key: "requests",         href: "/hr/requests",          icon: FileText },
     { key: "payroll",          href: "/hr/payroll",           icon: DollarSign },
     { key: "payrollRuns",     href: "/hr/payroll-runs",     icon: Play },
+    { key: "manualEntries",   href: "/hr/manual-entries",  icon: FileText },
     { key: "missions",         href: "/hr/missions",          icon: Briefcase },
     { key: "locations",        href: "/hr/locations",         icon: MapPin },
     { key: "announcements",    href: "/hr/announcements",     icon: Bell },
