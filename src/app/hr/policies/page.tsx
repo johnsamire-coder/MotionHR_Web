@@ -17,6 +17,7 @@ import PayrollCyclePolicyDialog from "@/components/hr/policies/payroll-cycle-pol
 import PenaltyRuleDialog from "@/components/hr/policies/penalty-rule-dialog";
 import BonusRuleDialog from "@/components/hr/policies/bonus-rule-dialog";
 import AllowanceRuleDialog from "@/components/hr/policies/allowance-rule-dialog";
+import LeaveRuleDialog from "@/components/hr/policies/leave-rule-dialog";
 import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
@@ -39,6 +40,26 @@ interface RuleTier {
   deduction_type?: string;
   value_type?: string;
   value?: number;
+}
+
+interface LeaveRuleItem {
+  id: number;
+  name: string;
+  annual_leave_days: number;
+  sick_leave_max_days: number;
+  emergency_max_days: number;
+  maternity_days: number;
+  paternity_days: number;
+  scope: string;
+  scope_display: string;
+  branch_name?: string | null;
+  department_name?: string | null;
+  specific_employees: number[];
+  is_active: boolean;
+  is_superseded: boolean;
+  version_number: number;
+  start_date: string;
+  end_date?: string | null;
 }
 
 interface PenaltyRuleItem {
@@ -151,7 +172,7 @@ interface WorkPolicy {
   is_24_7: boolean;
 }
 
-type TabKey = "attendance" | "work" | "leave" | "allowance" | "deduction" | "bonus" | "insurance" | "payroll_cycle" | "penalty_rule" | "bonus_rule" | "allowance_rule";
+type TabKey = "attendance" | "work" | "leave" | "allowance" | "deduction" | "bonus" | "insurance" | "payroll_cycle" | "penalty_rule" | "bonus_rule" | "allowance_rule" | "leave_rule";
 
 const TABS = [
   { key: "attendance",  icon: Shield,       label_ar: "سياسة الحضور",   label_en: "Attendance",  color: "text-blue-600 bg-blue-500/10" },
@@ -165,6 +186,7 @@ const TABS = [
   { key: "penalty_rule",  icon: TrendingDown, label_ar: "قواعد الجزاءات", label_en: "Penalty Rules", color: "text-red-700 bg-red-500/10" },
   { key: "bonus_rule",    icon: Award,        label_ar: "قواعد المكافآت والأوفرتايم", label_en: "Bonus & Overtime", color: "text-emerald-700 bg-emerald-500/10" },
   { key: "allowance_rule", icon: DollarSign,  label_ar: "قواعد البدلات الشهرية", label_en: "Monthly Allowances", color: "text-amber-700 bg-amber-500/10" },
+  { key: "leave_rule",    icon: Calendar,     label_ar: "قواعد الإجازات",       label_en: "Leave Rules",       color: "text-purple-700 bg-purple-500/10" },
 ] as const;
 
 const DAYS = [
@@ -196,11 +218,13 @@ export default function PoliciesHubPage() {
   const [penaltyRules, setPenaltyRules] = useState<PenaltyRuleItem[]>([]);
   const [bonusRules, setBonusRules] = useState<BonusRuleItem[]>([]);
   const [allowanceRules, setAllowanceRules] = useState<AllowanceRuleItem[]>([]);
+  const [leaveRules, setLeaveRules] = useState<LeaveRuleItem[]>([]);
   const [showInsuranceDialog, setShowInsuranceDialog] = useState(false);
   const [showPayrollCycleDialog, setShowPayrollCycleDialog] = useState(false);
   const [showPenaltyRuleDialog, setShowPenaltyRuleDialog] = useState(false);
   const [showBonusRuleDialog, setShowBonusRuleDialog] = useState(false);
   const [showAllowanceRuleDialog, setShowAllowanceRuleDialog] = useState(false);
+  const [showLeaveRuleDialog, setShowLeaveRuleDialog] = useState(false);
   const [insuranceSubTab, setInsuranceSubTab] = useState<"all" | "social" | "medical">("all");
   const [workPolicy, setWorkPolicy]   = useState<WorkPolicy | null>(null);
 
@@ -220,7 +244,7 @@ export default function PoliciesHubPage() {
     setLoading(true);
     try {
       const headers = { Authorization: authH, "Accept-Language": langH };
-      const [aRes, lRes, wRes, alRes, dRes, bRes, iRes, pcRes, prRes, brRes, arRes] = await Promise.all([
+      const [aRes, lRes, wRes, alRes, dRes, bRes, iRes, pcRes, prRes, brRes, arRes, lrRes] = await Promise.all([
         fetch("/api/hr/policies/attendance-policy", { headers }),
         fetch("/api/hr/policies/leave-policy", { headers }),
         fetch("/api/hr/policies/work-policy", { headers }),
@@ -232,9 +256,10 @@ export default function PoliciesHubPage() {
         fetch("/api/hr/policies/rules-penalty", { headers }),
         fetch("/api/hr/policies/rules-bonus", { headers }),
         fetch("/api/hr/policies/rules-allowance", { headers }),
+        fetch("/api/hr/policies/rules-leave", { headers }),
       ]);
-      const [a, l, w, al, d, b, i, pc, pr, br, arRule] = await Promise.all([
-        aRes.json(), lRes.json(), wRes.json(), alRes.json(), dRes.json(), bRes.json(), iRes.json(), pcRes.json(), prRes.json(), brRes.json(), arRes.json(),
+      const [a, l, w, al, d, b, i, pc, pr, br, arRule, lr] = await Promise.all([
+        aRes.json(), lRes.json(), wRes.json(), alRes.json(), dRes.json(), bRes.json(), iRes.json(), pcRes.json(), prRes.json(), brRes.json(), arRes.json(), lrRes.json(),
       ]);
       setAttendance(a?.policies || a?.results || []);
       setLeaves(l?.policies || l?.results || []);
@@ -247,6 +272,7 @@ export default function PoliciesHubPage() {
       setPenaltyRules(pr?.results || []);
       setBonusRules(br?.results || []);
       setAllowanceRules(arRule?.results || []);
+      setLeaveRules(lr?.results || []);
     } catch {
       toast.error(ar ? "فشل تحميل البيانات" : "Failed to load");
     } finally {
@@ -294,6 +320,7 @@ export default function PoliciesHubPage() {
       case "penalty_rule":   return "rules-penalty";
       case "bonus_rule":     return "rules-bonus";
       case "allowance_rule": return "rules-allowance";
+      case "leave_rule":     return "rules-leave";
       default: return "";
     }
   };
@@ -373,6 +400,7 @@ export default function PoliciesHubPage() {
     else if (activeTab === "penalty_rule") setShowPenaltyRuleDialog(true);
     else if (activeTab === "bonus_rule") setShowBonusRuleDialog(true);
     else if (activeTab === "allowance_rule") setShowAllowanceRuleDialog(true);
+    else if (activeTab === "leave_rule") setShowLeaveRuleDialog(true);
     else {
       setPayrollKind(activeTab as "allowance" | "deduction" | "bonus");
       setShowPayrollDialog(true);
@@ -388,6 +416,7 @@ export default function PoliciesHubPage() {
     else if (activeTab === "penalty_rule") setShowPenaltyRuleDialog(true);
     else if (activeTab === "bonus_rule") setShowBonusRuleDialog(true);
     else if (activeTab === "allowance_rule") setShowAllowanceRuleDialog(true);
+    else if (activeTab === "leave_rule") setShowLeaveRuleDialog(true);
     else {
       setPayrollKind(activeTab as "allowance" | "deduction" | "bonus");
       setShowPayrollDialog(true);
@@ -956,6 +985,85 @@ export default function PoliciesHubPage() {
     );
   };
 
+
+  // ═══ Render Leave Rules ═══
+  const renderLeaveRuleList = () => {
+    return (
+      <div className="space-y-4">
+        {leaveRules.length === 0 ? (
+          <Card>
+            <CardContent className="py-16 text-center">
+              <Calendar className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
+              <p className="text-muted-foreground mb-4">{ar ? "لا توجد قواعد إجازات" : "No leave rules"}</p>
+              <Button onClick={openCreateDialog} className="gap-2 bg-purple-600 hover:bg-purple-700">
+                <Plus className="w-4 h-4" />
+                {ar ? "إنشاء قواعد إجازات" : "Create Leave Rules"}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {leaveRules.map(rule => {
+              const isLoading = actionLoading === rule.id;
+              return (
+                <Card key={rule.id} className={`border-2 border-purple-200 ${rule.is_superseded ? "opacity-60" : ""}`}>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2 flex-1 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
+                          <Calendar className="w-4 h-4 text-purple-700" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-sm">{rule.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {ar ? "نسخة" : "v"}{rule.version_number} · {rule.scope_display}
+                          </p>
+                        </div>
+                      </div>
+                      {rule.is_superseded && <Badge variant="secondary" className="text-[10px] shrink-0">{ar ? "مقفلة" : "Superseded"}</Badge>}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="p-2 rounded bg-blue-50">
+                        <p className="text-muted-foreground">{ar ? "سنوية" : "Annual"}</p>
+                        <p className="font-semibold text-blue-700">{rule.annual_leave_days} {ar ? "يوم" : "days"}</p>
+                      </div>
+                      <div className="p-2 rounded bg-red-50">
+                        <p className="text-muted-foreground">{ar ? "مرضية" : "Sick"}</p>
+                        <p className="font-semibold text-red-700">{rule.sick_leave_max_days} {ar ? "يوم" : "days"}</p>
+                      </div>
+                      <div className="p-2 rounded bg-yellow-50">
+                        <p className="text-muted-foreground">{ar ? "طارئة" : "Emergency"}</p>
+                        <p className="font-semibold text-yellow-700">{rule.emergency_max_days} {ar ? "يوم" : "days"}</p>
+                      </div>
+                      <div className="p-2 rounded bg-pink-50">
+                        <p className="text-muted-foreground">{ar ? "أمومة" : "Maternity"}</p>
+                        <p className="font-semibold text-pink-700">{rule.maternity_days} {ar ? "يوم" : "days"}</p>
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {rule.branch_name && <p>{ar ? "الفرع:" : "Branch:"} {rule.branch_name}</p>}
+                      {rule.department_name && <p>{ar ? "الإدارة:" : "Dept:"} {rule.department_name}</p>}
+                      {rule.specific_employees.length > 0 && <p>{rule.specific_employees.length} {ar ? "موظف" : "emp"}</p>}
+                      <p className="mt-1">{ar ? "من" : "From"} {rule.start_date}{rule.end_date && (<> · {rule.end_date}</>)}</p>
+                    </div>
+                    <div className="flex gap-2 pt-2 border-t">
+                      <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => openEditDialog(rule.id)}>
+                        <Edit2 className="w-3.5 h-3.5" />{ar ? "تعديل" : "Edit"}
+                      </Button>
+                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" disabled={isLoading} onClick={() => handleDelete(rule.id)}>
+                        {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 pb-6">
       <div>
@@ -1075,7 +1183,7 @@ export default function PoliciesHubPage() {
               </CardContent>
             </Card>
           ) : (
-            activeTab === "insurance" ? renderInsuranceList() : activeTab === "payroll_cycle" ? renderPayrollCycleList() : activeTab === "penalty_rule" ? renderPenaltyRuleList() : activeTab === "bonus_rule" ? renderBonusRuleList() : activeTab === "allowance_rule" ? renderAllowanceRuleList() : renderPolicyList()
+            activeTab === "insurance" ? renderInsuranceList() : activeTab === "payroll_cycle" ? renderPayrollCycleList() : activeTab === "penalty_rule" ? renderPenaltyRuleList() : activeTab === "bonus_rule" ? renderBonusRuleList() : activeTab === "allowance_rule" ? renderAllowanceRuleList() : activeTab === "leave_rule" ? renderLeaveRuleList() : renderPolicyList()
           )}
         </>
       )}
@@ -1125,6 +1233,14 @@ export default function PoliciesHubPage() {
       <BonusRuleDialog
         open={showBonusRuleDialog}
         onClose={() => { setShowBonusRuleDialog(false); setEditingPolicyId(null); }}
+        onSaved={load}
+        ruleId={editingPolicyId}
+        ar={ar}
+      />
+
+      <LeaveRuleDialog
+        open={showLeaveRuleDialog}
+        onClose={() => { setShowLeaveRuleDialog(false); setEditingPolicyId(null); }}
         onSaved={load}
         ruleId={editingPolicyId}
         ar={ar}
