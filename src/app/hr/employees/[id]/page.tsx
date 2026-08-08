@@ -84,6 +84,36 @@ interface Lookup {
   title_en?: string;
 }
 
+interface Document {
+  id: number;
+  document_type: string;
+  document_type_code: string;
+  title: string;
+  file_url?: string;
+  issue_date?: string;
+  expiry_date?: string;
+  is_expired: boolean;
+  expires_soon: boolean;
+  notes?: string;
+}
+interface Movement {
+  id: number;
+  type: string;
+  type_code: string;
+  date: string;
+  notes: string;
+}
+interface Summary {
+  month: string;
+  attendance: {
+    total_days: number; present: number; late: number;
+    absent: number; on_leave: number; early_leave: number;
+    total_late_minutes: number; total_overtime_hours: number; total_work_hours: number;
+  };
+  leave_balances: { leave_type: string; total: number; used: number; remaining: number }[];
+  requests: { pending: number; approved: number; rejected: number; total: number };
+  leaves: { pending: number; approved: number; rejected: number; total: number };
+}
 interface Manager {
   id: number;
   full_name?: string;
@@ -211,13 +241,42 @@ export default function EmployeeDetailPage() {
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"personal" | "job" | "salary" | "contract">("personal");
+  const [activeTab, setActiveTab] = useState<"personal" | "job" | "salary" | "contract" | "documents" | "movements" | "summary">("personal");
   const [form, setForm] = useState<Record<string, string>>({});
 
   const [departments, setDepartments] = useState<Lookup[]>([]);
   const [branches, setBranches] = useState<Lookup[]>([]);
   const [jobTitles, setJobTitles] = useState<Lookup[]>([]);
   const [managers, setManagers] = useState<Manager[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [movements, setMovements] = useState<Movement[]>([]);
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [loadingTab, setLoadingTab] = useState(false);
+
+  const loadTab = async (tab: string) => {
+    if (!employee) return;
+    const empId = employee.id;
+    setLoadingTab(true);
+    try {
+      if (tab === "documents") {
+        const res = await fetch(`/api/hr/employees/${empId}/documents`, { headers: { Authorization: authH } });
+        const data = await res.json();
+        setDocuments(data.documents || []);
+      } else if (tab === "movements") {
+        const res = await fetch(`/api/hr/employees/${empId}/movements`, { headers: { Authorization: authH } });
+        const data = await res.json();
+        setMovements(data.movements || []);
+      } else if (tab === "summary") {
+        const res = await fetch(`/api/hr/employees/${empId}/summary`, { headers: { Authorization: authH } });
+        const data = await res.json();
+        setSummary(data);
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoadingTab(false);
+    }
+  };
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authH = token?.startsWith("Token") ? token : `Token ${token}`;
@@ -449,7 +508,7 @@ export default function EmployeeDetailPage() {
             {tabs.map(tab => (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => { setActiveTab(tab.key as any); loadTab(tab.key); }}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
                   activeTab === tab.key
                     ? "border-brand-primary text-brand-primary"
@@ -596,6 +655,132 @@ export default function EmployeeDetailPage() {
                   <Field label={ar ? "رقم المحفظة" : "Wallet Phone"} value={employee.wallet_phone} dir="ltr" />
                   <Field label={ar ? "مزود المحفظة" : "Wallet Provider"} value={employee.wallet_provider} />
                 </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "documents" && (
+            <div className="space-y-3">
+              {loadingTab ? (
+                <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+              ) : documents.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">{ar ? "لا توجد مستندات" : "No documents"}</p>
+              ) : documents.map((d) => (
+                <Card key={d.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-sm">{d.document_type}</p>
+                        <p className="text-xs text-muted-foreground">{d.title}</p>
+                        {d.issue_date && <p className="text-xs mt-1">{ar ? "إصدار:" : "Issued:"} {d.issue_date}</p>}
+                        {d.expiry_date && <p className="text-xs">{ar ? "انتهاء:" : "Expiry:"} {d.expiry_date}</p>}
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        {d.is_expired && <Badge variant="destructive" className="text-[10px]">{ar ? "منتهي" : "Expired"}</Badge>}
+                        {d.expires_soon && !d.is_expired && <Badge className="text-[10px] bg-amber-100 text-amber-700">{ar ? "ينتهي قريباً" : "Expiring Soon"}</Badge>}
+                        {d.file_url && (
+                          <a href={d.file_url} target="_blank" rel="noopener noreferrer"
+                            className="text-xs text-brand-primary hover:underline flex items-center gap-1">
+                            <FileText className="w-3 h-3" />{ar ? "فتح" : "Open"}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                    {d.notes && <p className="text-xs text-muted-foreground mt-2">{d.notes}</p>}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {activeTab === "movements" && (
+            <div className="space-y-3">
+              {loadingTab ? (
+                <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+              ) : movements.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">{ar ? "لا توجد حركات" : "No movements"}</p>
+              ) : movements.map((m) => (
+                <Card key={m.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-sm">{m.type}</p>
+                        <p className="text-xs text-muted-foreground">{m.date}</p>
+                      </div>
+                    </div>
+                    {m.notes && <p className="text-xs text-muted-foreground mt-2">{m.notes}</p>}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {activeTab === "summary" && (
+            <div className="space-y-4">
+              {loadingTab ? (
+                <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+              ) : !summary ? (
+                <p className="text-center text-muted-foreground py-8">{ar ? "لا توجد بيانات" : "No data"}</p>
+              ) : (
+                <>
+                  <Card>
+                    <CardContent className="p-4">
+                      <p className="font-semibold mb-3">{ar ? "حضور الشهر الحالي" : "Current Month Attendance"} — {summary.month}</p>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { label: ar ? "حاضر" : "Present", val: summary.attendance.present, color: "text-emerald-600" },
+                          { label: ar ? "غائب" : "Absent",  val: summary.attendance.absent,  color: "text-red-600" },
+                          { label: ar ? "متأخر" : "Late",   val: summary.attendance.late,    color: "text-amber-600" },
+                          { label: ar ? "إجازة" : "Leave",  val: summary.attendance.on_leave,color: "text-blue-600" },
+                          { label: ar ? "أوفرتايم" : "OT",  val: `${summary.attendance.total_overtime_hours}h`, color: "text-purple-600" },
+                          { label: ar ? "تأخير" : "Late min",val: `${summary.attendance.total_late_minutes}m`, color: "text-orange-600" },
+                        ].map((item, i) => (
+                          <div key={i} className="text-center p-2 bg-slate-50 rounded-lg">
+                            <p className={`text-xl font-bold ${item.color}`}>{item.val}</p>
+                            <p className="text-xs text-muted-foreground">{item.label}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  {summary.leave_balances.length > 0 && (
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="font-semibold mb-3">{ar ? "أرصدة الإجازات" : "Leave Balances"}</p>
+                        <div className="space-y-2">
+                          {summary.leave_balances.map((b, i) => (
+                            <div key={i} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
+                              <span>{b.leave_type}</span>
+                              <div className="flex gap-4 text-xs">
+                                <span className="text-muted-foreground">{ar ? "إجمالي" : "Total"}: {b.total}</span>
+                                <span className="text-red-600">{ar ? "مستخدم" : "Used"}: {b.used}</span>
+                                <span className="text-emerald-600 font-semibold">{ar ? "متبقي" : "Remaining"}: {b.remaining}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                  <Card>
+                    <CardContent className="p-4">
+                      <p className="font-semibold mb-3">{ar ? "الطلبات" : "Requests"}</p>
+                      <div className="grid grid-cols-4 gap-2 text-center">
+                        {[
+                          { label: ar ? "إجمالي" : "Total",    val: summary.requests.total,    color: "text-slate-700" },
+                          { label: ar ? "معلق" : "Pending",    val: summary.requests.pending,   color: "text-amber-600" },
+                          { label: ar ? "موافق" : "Approved",  val: summary.requests.approved,  color: "text-emerald-600" },
+                          { label: ar ? "مرفوض" : "Rejected",  val: summary.requests.rejected,  color: "text-red-600" },
+                        ].map((item, i) => (
+                          <div key={i} className="p-2 bg-slate-50 rounded-lg">
+                            <p className={`text-xl font-bold ${item.color}`}>{item.val}</p>
+                            <p className="text-xs text-muted-foreground">{item.label}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
               )}
             </div>
           )}
