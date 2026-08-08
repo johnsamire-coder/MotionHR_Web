@@ -99,10 +99,15 @@ export default function DailyAttendanceReportPage() {
               <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mt-3 text-sm">
                 <div>IN: {r.check_in || "—"}</div>
                 <div>OUT: {r.check_out || "—"}</div>
+                <div>{ar ? "الشيفت" : "Shift"}: {r.shift_name || "—"}</div>
                 <div>{ar ? "ساعات العمل" : "Work Hours"}: {r.work_hours}</div>
                 <div>{ar ? "التأخير" : "Late"}: {r.late_minutes}</div>
                 <div>{ar ? "الانصراف المبكر" : "Early Leave"}: {r.early_leave_minutes}</div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2 text-sm">
                 <div>{ar ? "الأوفرتايم" : "OT"}: {r.overtime_hours}</div>
+                <div>{ar ? "ليلي" : "Night Shift"}: {r.is_night_shift ? (ar ? "نعم" : "Yes") : (ar ? "لا" : "No")}</div>
+                <div>{ar ? "عمل ويكند" : "Weekend Work"}: {r.is_weekend_work ? (ar ? "نعم" : "Yes") : (ar ? "لا" : "No")}</div>
               </div>
             </div>
           ))}

@@ -53,7 +53,7 @@ export default function RequestsReportPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { l: ar ? "الإجمالي" : "Total", v: data?.total || 0, c: "text-slate-700" },
+          { l: ar ? "الإجمالي" : "Total", v: data?.total_requests || 0, c: "text-slate-700" },
           { l: ar ? "موافق" : "Approved", v: data?.approved || 0, c: "text-emerald-600" },
           { l: ar ? "معلق" : "Pending", v: data?.pending || 0, c: "text-amber-600" },
           { l: ar ? "مرفوض" : "Rejected", v: data?.rejected || 0, c: "text-red-600" },
@@ -86,7 +86,11 @@ export default function RequestsReportPage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-bold">{r.employee_name}</p>
-                  <p className="text-xs text-muted-foreground">{r.request_type}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {r.request_type}
+                    {r.employee_id && <span> · #{r.employee_id}</span>}
+                    {r.id && <span> · Req#{r.id}</span>}
+                  </p>
                 </div>
                 <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-700">{r.status}</span>
               </div>

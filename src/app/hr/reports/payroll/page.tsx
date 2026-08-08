@@ -105,12 +105,37 @@ export default function PayrollReportPage() {
                 <div className="bg-slate-50 rounded-lg p-2"><p className="text-xs text-muted-foreground">{ar ? "خصومات" : "Deductions"}</p><p className="font-semibold text-red-700">{r.total_deductions}</p></div>
                 <div className="bg-slate-50 rounded-lg p-2"><p className="text-xs text-muted-foreground">{ar ? "ضريبة" : "Tax"}</p><p className="font-semibold">{r.tax_deduction || 0}</p></div>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs text-muted-foreground">
+
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-xs text-muted-foreground">
+                <div>{ar ? "المسمى" : "Job Title"}: {r.job_title || "—"}</div>
+                <div>{ar ? "العملة" : "Currency"}: {r.currency || "EGP"}</div>
                 <div>{ar ? "بدلات" : "Allowances"}: {r.allowances_total}</div>
                 <div>{ar ? "أوفرتايم" : "Overtime"}: {r.overtime_bonus}</div>
+                <div>{ar ? "بدل ليلي" : "Night"}: {r.night_allowance || 0}</div>
+                <div>{ar ? "بدل ويكند" : "Weekend"}: {r.weekend_allowance || 0}</div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-xs text-muted-foreground">
                 <div>{ar ? "تأمين" : "Insurance"}: {r.insurance_deduction}</div>
                 <div>{ar ? "تأخير" : "Late"}: {r.late_deduction}</div>
                 <div>{ar ? "غياب" : "Absence"}: {r.absence_deduction}</div>
+                <div>{ar ? "انصراف مبكر" : "Early Leave"}: {r.early_leave_deduction || 0}</div>
+                <div>{ar ? "بدون راتب" : "Unpaid"}: {r.unpaid_leave_deduction || 0}</div>
+                <div>{ar ? "نقص مرن" : "Flex Shortage"}: {r.flex_shortage_deduction || 0}</div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs text-muted-foreground">
+                <div>{ar ? "أقساط" : "Installments"}: {r.installments_total || 0}</div>
+                <div>{ar ? "جزاءات" : "Penalties"}: {r.penalties_total || 0}</div>
+                <div>{ar ? "أيام الحضور" : "Attended Days"}: {r.attended_days || 0}</div>
+                <div>{ar ? "أيام التأخير" : "Late Days"}: {r.late_days || 0}</div>
+                <div>{ar ? "أيام إجازة" : "Leave Days"}: {r.on_leave_days || 0}</div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs text-muted-foreground">
+                <div>{ar ? "إجمالي دقائق التأخير" : "Late Minutes"}: {r.total_late_minutes || 0}</div>
+                <div>{ar ? "أيام الغياب" : "Absent Days"}: {r.absent_days || 0}</div>
+                <div>{ar ? "السياسة" : "Policy"}: {r.policy_name || "—"}</div>
               </div>
             </div>
           ))}
