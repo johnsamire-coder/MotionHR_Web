@@ -18,6 +18,8 @@ import PenaltyRuleDialog from "@/components/hr/policies/penalty-rule-dialog";
 import BonusRuleDialog from "@/components/hr/policies/bonus-rule-dialog";
 import AllowanceRuleDialog from "@/components/hr/policies/allowance-rule-dialog";
 import LeaveRuleDialog from "@/components/hr/policies/leave-rule-dialog";
+import TaxPolicyDialog from "@/components/hr/policies/tax-policy-dialog";
+import EosPolicyDialog from "@/components/hr/policies/eos-policy-dialog";
 import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
@@ -172,7 +174,7 @@ interface WorkPolicy {
   is_24_7: boolean;
 }
 
-type TabKey = "attendance" | "work" | "leave" | "allowance" | "deduction" | "bonus" | "insurance" | "payroll_cycle" | "penalty_rule" | "bonus_rule" | "allowance_rule" | "leave_rule";
+type TabKey = "attendance" | "work" | "leave" | "allowance" | "deduction" | "bonus" | "insurance" | "payroll_cycle" | "penalty_rule" | "bonus_rule" | "allowance_rule" | "leave_rule" | "tax" | "eos";
 
 const TABS = [
   { key: "attendance",  icon: Shield,       label_ar: "سياسة الحضور",   label_en: "Attendance",  color: "text-blue-600 bg-blue-500/10" },
@@ -187,6 +189,8 @@ const TABS = [
   { key: "bonus_rule",    icon: Award,        label_ar: "قواعد المكافآت والأوفرتايم", label_en: "Bonus & Overtime", color: "text-emerald-700 bg-emerald-500/10" },
   { key: "allowance_rule", icon: DollarSign,  label_ar: "قواعد البدلات الشهرية", label_en: "Monthly Allowances", color: "text-amber-700 bg-amber-500/10" },
   { key: "leave_rule",    icon: Calendar,     label_ar: "قواعد الإجازات",       label_en: "Leave Rules",       color: "text-purple-700 bg-purple-500/10" },
+  { key: "tax",           icon: TrendingDown, label_ar: "سياسة الضرائب",        label_en: "Tax Policy",        color: "text-orange-600 bg-orange-500/10" },
+  { key: "eos",           icon: Award,        label_ar: "مكافأة نهاية الخدمة",  label_en: "End of Service",    color: "text-amber-600 bg-amber-500/10" },
 ] as const;
 
 const DAYS = [
@@ -219,6 +223,12 @@ export default function PoliciesHubPage() {
   const [bonusRules, setBonusRules] = useState<BonusRuleItem[]>([]);
   const [allowanceRules, setAllowanceRules] = useState<AllowanceRuleItem[]>([]);
   const [leaveRules, setLeaveRules] = useState<LeaveRuleItem[]>([]);
+  const [taxPolicies, setTaxPolicies] = useState<any[]>([]);
+  const [eosPolicies, setEosPolicies] = useState<any[]>([]);
+  const [showTaxDialog, setShowTaxDialog] = useState(false);
+  const [showEosDialog, setShowEosDialog] = useState(false);
+  const [editingTax, setEditingTax] = useState<any>(null);
+  const [editingEos, setEditingEos] = useState<any>(null);
   const [showInsuranceDialog, setShowInsuranceDialog] = useState(false);
   const [showPayrollCycleDialog, setShowPayrollCycleDialog] = useState(false);
   const [showPenaltyRuleDialog, setShowPenaltyRuleDialog] = useState(false);
@@ -244,7 +254,7 @@ export default function PoliciesHubPage() {
     setLoading(true);
     try {
       const headers = { Authorization: authH, "Accept-Language": langH };
-      const [aRes, lRes, wRes, alRes, dRes, bRes, iRes, pcRes, prRes, brRes, arRes, lrRes] = await Promise.all([
+      const [aRes, lRes, wRes, alRes, dRes, bRes, iRes, pcRes, prRes, brRes, arRes, lrRes, taxRes, eosRes] = await Promise.all([
         fetch("/api/hr/policies/attendance-policy", { headers }),
         fetch("/api/hr/policies/leave-policy", { headers }),
         fetch("/api/hr/policies/work-policy", { headers }),
@@ -257,9 +267,11 @@ export default function PoliciesHubPage() {
         fetch("/api/hr/policies/rules-bonus", { headers }),
         fetch("/api/hr/policies/rules-allowance", { headers }),
         fetch("/api/hr/policies/rules-leave", { headers }),
+        fetch("/api/hr/policies/tax", { headers }),
+        fetch("/api/hr/policies/eos", { headers }),
       ]);
-      const [a, l, w, al, d, b, i, pc, pr, br, arRule, lr] = await Promise.all([
-        aRes.json(), lRes.json(), wRes.json(), alRes.json(), dRes.json(), bRes.json(), iRes.json(), pcRes.json(), prRes.json(), brRes.json(), arRes.json(), lrRes.json(),
+      const [a, l, w, al, d, b, i, pc, pr, br, arRule, lr, taxData, eosData] = await Promise.all([
+        aRes.json(), lRes.json(), wRes.json(), alRes.json(), dRes.json(), bRes.json(), iRes.json(), pcRes.json(), prRes.json(), brRes.json(), arRes.json(), lrRes.json(), taxRes.json(), eosRes.json(),
       ]);
       setAttendance(a?.policies || a?.results || []);
       setLeaves(l?.policies || l?.results || []);
@@ -273,6 +285,8 @@ export default function PoliciesHubPage() {
       setBonusRules(br?.results || []);
       setAllowanceRules(arRule?.results || []);
       setLeaveRules(lr?.results || []);
+      setTaxPolicies(Array.isArray(taxData) ? taxData : (taxData?.results || []));
+      setEosPolicies(Array.isArray(eosData) ? eosData : (eosData?.results || []));
     } catch {
       toast.error(ar ? "فشل تحميل البيانات" : "Failed to load");
     } finally {
@@ -321,6 +335,8 @@ export default function PoliciesHubPage() {
       case "bonus_rule":     return "rules-bonus";
       case "allowance_rule": return "rules-allowance";
       case "leave_rule":     return "rules-leave";
+      case "tax":            return "tax";
+      case "eos":            return "eos";
       default: return "";
     }
   };
@@ -401,6 +417,8 @@ export default function PoliciesHubPage() {
     else if (activeTab === "bonus_rule") setShowBonusRuleDialog(true);
     else if (activeTab === "allowance_rule") setShowAllowanceRuleDialog(true);
     else if (activeTab === "leave_rule") setShowLeaveRuleDialog(true);
+    else if (activeTab === "tax") { setEditingTax(taxPolicies.find(p => p.id === id) || null); setShowTaxDialog(true); }
+    else if (activeTab === "eos") { setEditingEos(eosPolicies.find(p => p.id === id) || null); setShowEosDialog(true); }
     else {
       setPayrollKind(activeTab as "allowance" | "deduction" | "bonus");
       setShowPayrollDialog(true);
@@ -417,6 +435,8 @@ export default function PoliciesHubPage() {
     else if (activeTab === "bonus_rule") setShowBonusRuleDialog(true);
     else if (activeTab === "allowance_rule") setShowAllowanceRuleDialog(true);
     else if (activeTab === "leave_rule") setShowLeaveRuleDialog(true);
+    else if (activeTab === "tax") { setEditingTax(null); setShowTaxDialog(true); }
+    else if (activeTab === "eos") { setEditingEos(null); setShowEosDialog(true); }
     else {
       setPayrollKind(activeTab as "allowance" | "deduction" | "bonus");
       setShowPayrollDialog(true);
@@ -987,6 +1007,100 @@ export default function PoliciesHubPage() {
 
 
   // ═══ Render Leave Rules ═══
+  const renderTaxList = () => {
+    const active = taxPolicies.filter(p => !p.is_superseded);
+    return (
+      <div className="space-y-4">
+        {active.length === 0 ? (
+          <Card className="border-dashed"><CardContent className="py-12 text-center">
+            <p className="text-gray-500 mb-3">{ar ? "لا توجد سياسة ضرائب" : "No tax policy"}</p>
+            <Button onClick={openCreateDialog} className="gap-2 bg-orange-600 hover:bg-orange-700">
+              <Plus className="w-4 h-4" />{ar ? "إنشاء سياسة ضرائب" : "Create Tax Policy"}
+            </Button>
+          </CardContent></Card>
+        ) : active.map(policy => (
+          <Card key={policy.id} className="border-orange-200 hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <h3 className="font-bold text-lg">{policy.name}</h3>
+                  <p className="text-sm text-gray-500">
+                    {ar ? "إعفاء شخصي:" : "Personal exemption:"} {policy.personal_exemption?.toLocaleString()} EGP
+                  </p>
+                </div>
+                <Badge className="bg-orange-100 text-orange-700">
+                  {ar ? `${policy.brackets?.length || 0} شرائح` : `${policy.brackets?.length || 0} brackets`}
+                </Badge>
+              </div>
+              {policy.brackets && (
+                <div className="space-y-1 mb-3">
+                  {policy.brackets.map((b: any, i: number) => (
+                    <div key={i} className="flex justify-between text-sm bg-orange-50 rounded px-3 py-1.5">
+                      <span>{b.from_amount?.toLocaleString()} - {b.to_amount ? b.to_amount.toLocaleString() : "\u221E"} EGP</span>
+                      <span className="font-bold text-orange-700">{b.rate}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => openEditDialog(policy.id)}>
+                  <Edit2 className="w-3.5 h-3.5" />{ar ? "تعديل" : "Edit"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  };
+
+  const renderEosList = () => {
+    const active = eosPolicies.filter(p => !p.is_superseded);
+    return (
+      <div className="space-y-4">
+        {active.length === 0 ? (
+          <Card className="border-dashed"><CardContent className="py-12 text-center">
+            <p className="text-gray-500 mb-3">{ar ? "لا توجد سياسة مكافأة نهاية الخدمة" : "No end of service policy"}</p>
+            <Button onClick={openCreateDialog} className="gap-2 bg-amber-600 hover:bg-amber-700">
+              <Plus className="w-4 h-4" />{ar ? "إنشاء سياسة مكافأة" : "Create EOS Policy"}
+            </Button>
+          </CardContent></Card>
+        ) : active.map(policy => (
+          <Card key={policy.id} className="border-amber-200 hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <h3 className="font-bold text-lg">{policy.name}</h3>
+                  <p className="text-sm text-gray-500">
+                    {ar ? "أساس الحساب:" : "Salary base:"} {policy.salary_base === "last" ? (ar ? "آخر مرتب" : "Last salary") : policy.salary_base === "avg3" ? (ar ? "متوسط 3 شهور" : "Avg 3 months") : (ar ? "متوسط 12 شهر" : "Avg 12 months")}
+                  </p>
+                </div>
+                <Badge className="bg-amber-100 text-amber-700">
+                  {ar ? `${policy.tiers?.length || 0} شرائح` : `${policy.tiers?.length || 0} tiers`}
+                </Badge>
+              </div>
+              {policy.tiers && (
+                <div className="space-y-1 mb-3">
+                  {policy.tiers.map((t: any, i: number) => (
+                    <div key={i} className="flex justify-between text-sm bg-amber-50 rounded px-3 py-1.5">
+                      <span>{t.from_year} - {t.to_year ?? "\u221E"} {ar ? "سنة" : "years"}</span>
+                      <span className="font-bold text-amber-700">{t.months_per_year} {ar ? "شهر/سنة" : "mo/yr"}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => openEditDialog(policy.id)}>
+                  <Edit2 className="w-3.5 h-3.5" />{ar ? "تعديل" : "Edit"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  };
+
   const renderLeaveRuleList = () => {
     return (
       <div className="space-y-4">
@@ -1183,7 +1297,7 @@ export default function PoliciesHubPage() {
               </CardContent>
             </Card>
           ) : (
-            activeTab === "insurance" ? renderInsuranceList() : activeTab === "payroll_cycle" ? renderPayrollCycleList() : activeTab === "penalty_rule" ? renderPenaltyRuleList() : activeTab === "bonus_rule" ? renderBonusRuleList() : activeTab === "allowance_rule" ? renderAllowanceRuleList() : activeTab === "leave_rule" ? renderLeaveRuleList() : renderPolicyList()
+            activeTab === "insurance" ? renderInsuranceList() : activeTab === "payroll_cycle" ? renderPayrollCycleList() : activeTab === "penalty_rule" ? renderPenaltyRuleList() : activeTab === "bonus_rule" ? renderBonusRuleList() : activeTab === "allowance_rule" ? renderAllowanceRuleList() : activeTab === "leave_rule" ? renderLeaveRuleList() : activeTab === "tax" ? renderTaxList() : activeTab === "eos" ? renderEosList() : renderPolicyList()
           )}
         </>
       )}
@@ -1252,6 +1366,20 @@ export default function PoliciesHubPage() {
         onSaved={load}
         ruleId={editingPolicyId}
         ar={ar}
+      />
+
+      <TaxPolicyDialog
+        open={showTaxDialog}
+        onClose={() => { setShowTaxDialog(false); setEditingTax(null); }}
+        onSaved={load}
+        existing={editingTax}
+      />
+
+      <EosPolicyDialog
+        open={showEosDialog}
+        onClose={() => { setShowEosDialog(false); setEditingEos(null); }}
+        onSaved={load}
+        existing={editingEos}
       />
 
       <InsurancePolicyDialog
