@@ -62,6 +62,15 @@ interface PayrollEmployee {
 interface DeptLookup { id: number; name_ar: string; name_en: string; }
 interface BranchLookup { id: number; name_ar: string; name_en: string; }
 
+interface PayrollDetail extends PayrollEmployee {
+  tax_deduction?: number;
+  social_insurance_employee?: number;
+  social_insurance_company?: number;
+  medical_insurance_employee?: number;
+  medical_insurance_company?: number;
+  total_company_insurance_contribution?: number;
+}
+
 interface PayrollSummary {
   year: number;
   month: number;
@@ -73,22 +82,6 @@ interface PayrollSummary {
   grand_total_deductions: number;
   grand_total_net: number;
   employees: PayrollEmployee[];
-}
-
-interface PayrollDetail extends PayrollEmployee {
-  tax_deduction?: number;
-  social_insurance_employee?: number;
-  social_insurance_company?: number;
-  medical_insurance_employee?: number;
-  medical_insurance_company?: number;
-  total_company_insurance_contribution?: number;
-  daily_details?: Array<{
-    date: string;
-    effective_status?: string;
-    work_hours?: number;
-    late_minutes?: number;
-    overtime_hours?: number;
-  }>;
 }
 
 function StatCard({
@@ -190,32 +183,6 @@ export default function PayrollPage() {
       .finally(() => setLoading(false));
   }, [year, month]);
 
-  useEffect(() => {
-    if (!token || !selectedEmp) {
-      setDetailData(null);
-      return;
-    }
-
-    setDetailLoading(true);
-    fetch(`/api/hr/payroll/employee-detail?employee_id=${selectedEmp.employee_id}&year=${year}&month=${month}`, {
-      headers: { Authorization: authHeader },
-    })
-      .then(r => r.json())
-      .then(data => {
-        if (data?.error) {
-          toast.error(data.error);
-          setDetailData(null);
-          return;
-        }
-        setDetailData(data);
-      })
-      .catch(() => {
-        toast.error(lang === "ar" ? "فشل تحميل بيان الراتب" : "Failed to load payslip");
-        setDetailData(null);
-      })
-      .finally(() => setDetailLoading(false));
-  }, [selectedEmp, year, month, token, authHeader, lang]);
-
   const getDeptDisplayName = (name: string) => {
     const item = deptMap[name];
     if (!item) return name;
@@ -272,6 +239,22 @@ export default function PayrollPage() {
   const [selectedEmp, setSelectedEmp] = useState<PayrollEmployee | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailData, setDetailData] = useState<PayrollDetail | null>(null);
+
+  useEffect(() => {
+    if (!selectedEmp) { setDetailData(null); return; }
+    setDetailLoading(true);
+    // جلب التوكن محليا لمنع الـ Loop
+    const t = localStorage.getItem(STORAGE_KEYS.token);
+    const auth = t?.startsWith("Token") ? t : `Token ${t}`;
+    
+    fetch(`/api/hr/payroll/employee-detail?employee_id=${selectedEmp.employee_id}&year=${year}&month=${month}`, {
+      headers: { Authorization: auth },
+    })
+      .then(r => r.json())
+      .then(data => { if (!data.error) setDetailData(data); })
+      .catch(() => {})
+      .finally(() => setDetailLoading(false));
+  }, [selectedEmp, year, month]);
 
   const handleExportExcel = () => {
     if (!sorted.length) { toast.error(lang === "ar" ? "لا توجد بيانات" : "No data"); return; }
@@ -607,74 +590,26 @@ export default function PayrollPage() {
           </div>
         </CardContent>
       </Card>
-
-      <Dialog open={!!selectedEmp} onOpenChange={(open) => { if (!open) closeEmployeePayslip(); }}>
+      <Dialog open={!!selectedEmp} onOpenChange={(o) => { if(!o) setSelectedEmp(null); }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" dir={lang === "ar" ? "rtl" : "ltr"}>
-          <DialogHeader>
-            <DialogTitle>
-              {lang === "ar" ? "بيان راتب الموظف" : "Employee Payslip"}
-            </DialogTitle>
-          </DialogHeader>
-
+          <DialogHeader><DialogTitle>{lang === "ar" ? "بيان راتب الموظف" : "Employee Payslip"}</DialogTitle></DialogHeader>
           {detailLoading || !detailData ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
-            </div>
+            <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin" /></div>
           ) : (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "الموظف" : "Employee"}</p><p className="font-semibold">{detailData?.employee_name}</p></CardContent></Card>
-                <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "الكود" : "Code"}</p><p className="font-semibold">{detailData?.employee_code}</p></CardContent></Card>
-                <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "القسم" : "Department"}</p><p className="font-semibold">{getDeptDisplayName(detailData?.department_name)}</p></CardContent></Card>
-                <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "الفرع" : "Branch"}</p><p className="font-semibold">{getBranchDisplayName(detailData?.branch_name)}</p></CardContent></Card>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-4">
-                <Card>
-                  <CardContent className="p-5 space-y-3">
-                    <h3 className="font-semibold text-emerald-700">{lang === "ar" ? "الإيرادات" : "Earnings"}</h3>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "الراتب الأساسي" : "Basic Salary"}</span><span className="font-mono">{formatCurrency(detailData?.basic_salary || 0)} {detailData?.currency || ''}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "البدلات" : "Allowances"}</span><span className="font-mono text-emerald-600">+{formatCurrency(detailData.allowances_total)} {detailData?.currency || ''}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "المكافآت" : "Bonuses"}</span><span className="font-mono text-emerald-600">+{formatCurrency(detailData.bonuses_total)} {detailData?.currency || ''}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "الإضافي" : "Overtime"}</span><span className="font-mono text-emerald-600">+{formatCurrency(detailData.overtime_bonus)} {detailData?.currency || ''}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "بدل ليلي" : "Night Allowance"}</span><span className="font-mono text-emerald-600">+{formatCurrency(detailData.night_allowance || 0)} {detailData?.currency || ''}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "بدل راحة" : "Weekend Allowance"}</span><span className="font-mono text-emerald-600">+{formatCurrency(detailData.weekend_allowance || 0)} {detailData?.currency || ''}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "بدل ميداني" : "Field Allowance"}</span><span className="font-mono text-emerald-600">+{formatCurrency(detailData.field_allowance || 0)} {detailData?.currency || ''}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "الراتب الإجمالي" : "Gross Salary"}</span><span className="font-mono font-bold text-emerald-700">{formatCurrency(detailData.gross_salary)} {detailData?.currency || ''}</span></div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-5 space-y-3">
-                    <h3 className="font-semibold text-red-700">{lang === "ar" ? "الخصومات" : "Deductions"}</h3>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "خصم التأخير" : "Late Deduction"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.late_deduction)} {detailData?.currency || ''}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "خصم الغياب" : "Absence Deduction"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.absence_deduction)} {detailData?.currency || ''}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "خصم الانصراف المبكر" : "Early Leave"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.early_leave_deduction || 0)} {detailData?.currency || ''}</span></div>
-
-                    {(detailData.social_insurance_employee || detailData.medical_insurance_employee) ? (
-                      <>
-                        <div className="flex justify-between text-sm"><span>{lang === "ar" ? "تأمين اجتماعي" : "Social Insurance"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.social_insurance_employee || 0)} {detailData?.currency || ''}</span></div>
-                        <div className="flex justify-between text-sm"><span>{lang === "ar" ? "تأمين طبي" : "Medical Insurance"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.medical_insurance_employee || 0)} {detailData?.currency || ''}</span></div>
-                      </>
-                    ) : (
-                      <div className="flex justify-between text-sm"><span>{lang === "ar" ? "التأمينات" : "Insurance"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.insurance_deduction)} {detailData?.currency || ''}</span></div>
-                    )}
-
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "ضريبة الدخل" : "Income Tax"}</span><span className="font-mono text-orange-600">-{formatCurrency(detailData.tax_deduction || 0)} {detailData?.currency || ''}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "الأقساط" : "Installments"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.installments_total)} {detailData?.currency || ''}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "الجزاءات" : "Penalties"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.penalties_total)} {detailData?.currency || ''}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "خصومات إضافية" : "Extra Deductions"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.extra_deductions_total)} {detailData?.currency || ''}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "إجمالي الخصومات" : "Total Deductions"}</span><span className="font-mono font-bold text-red-700">-{formatCurrency(detailData.total_deductions)} {detailData?.currency || ''}</span></div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="grid md:grid-cols-4 gap-3">
-                <Card><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "صافي المرتب" : "Net Salary"}</p><p className="text-xl font-bold text-brand-primary">{formatCurrency(detailData.net_salary)} {detailData?.currency || ''}</p></CardContent></Card>
-                <Card><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "أيام العمل" : "Working Days"}</p><p className="text-xl font-bold">{detailData.total_working_days}</p></CardContent></Card>
-                <Card><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "الحضور" : "Present"}</p><p className="text-xl font-bold">{detailData.present_days}</p></CardContent></Card>
-                <Card><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "الغياب" : "Absent"}</p><p className="text-xl font-bold">{detailData.absent_days}</p></CardContent></Card>
-              </div>
+            <div className="grid md:grid-cols-2 gap-4">
+               <Card><CardContent className="p-4 space-y-2">
+                  <h3 className="font-bold text-emerald-700">{lang === "ar" ? "الإيرادات" : "Earnings"}</h3>
+                  <div className="flex justify-between text-sm"><span>{lang === "ar" ? "الراتب الأساسي" : "Basic"}</span><span>{formatCurrency(detailData.basic_salary)}</span></div>
+                  <div className="flex justify-between text-sm"><span>{lang === "ar" ? "الإضافي" : "Overtime"}</span><span>{formatCurrency(detailData.overtime_bonus)}</span></div>
+                  <div className="flex justify-between font-bold border-t pt-2"><span>{lang === "ar" ? "الإجمالي" : "Gross"}</span><span>{formatCurrency(detailData.gross_salary)}</span></div>
+               </CardContent></Card>
+               <Card><CardContent className="p-4 space-y-2">
+                  <h3 className="font-bold text-red-700">{lang === "ar" ? "الخصومات" : "Deductions"}</h3>
+                  <div className="flex justify-between text-sm"><span>{lang === "ar" ? "تأخير وغياب" : "Late/Absence"}</span><span>{formatCurrency(detailData.late_deduction + detailData.absence_deduction)}</span></div>
+                  <div className="flex justify-between text-sm"><span>{lang === "ar" ? "تأمينات" : "Insurance"}</span><span>{formatCurrency(detailData.insurance_deduction)}</span></div>
+                  <div className="flex justify-between text-sm text-orange-600"><span>{lang === "ar" ? "ضريبة الدخل" : "Tax"}</span><span>{formatCurrency(detailData.tax_deduction || 0)}</span></div>
+                  <div className="flex justify-between font-bold border-t pt-2"><span>{lang === "ar" ? "صافي المرتب" : "Net"}</span><span className="text-brand-primary">{formatCurrency(detailData.net_salary)}</span></div>
+               </CardContent></Card>
             </div>
           )}
         </DialogContent>
