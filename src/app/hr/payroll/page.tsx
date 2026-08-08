@@ -214,7 +214,7 @@ export default function PayrollPage() {
         setDetailData(null);
       })
       .finally(() => setDetailLoading(false));
-  }, [selectedEmp?.employee_id, year, month, token, authHeader, lang]);
+  }, [selectedEmp, year, month, token, authHeader, lang]);
 
   const getDeptDisplayName = (name: string) => {
     const item = deptMap[name];
@@ -623,54 +623,54 @@ export default function PayrollPage() {
           ) : (
             <div className="space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "الموظف" : "Employee"}</p><p className="font-semibold">{detailData.employee_name}</p></CardContent></Card>
-                <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "الكود" : "Code"}</p><p className="font-semibold">{detailData.employee_code}</p></CardContent></Card>
-                <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "القسم" : "Department"}</p><p className="font-semibold">{getDeptDisplayName(detailData.department_name)}</p></CardContent></Card>
-                <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "الفرع" : "Branch"}</p><p className="font-semibold">{getBranchDisplayName(detailData.branch_name)}</p></CardContent></Card>
+                <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "الموظف" : "Employee"}</p><p className="font-semibold">{detailData?.employee_name}</p></CardContent></Card>
+                <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "الكود" : "Code"}</p><p className="font-semibold">{detailData?.employee_code}</p></CardContent></Card>
+                <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "القسم" : "Department"}</p><p className="font-semibold">{getDeptDisplayName(detailData?.department_name)}</p></CardContent></Card>
+                <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "الفرع" : "Branch"}</p><p className="font-semibold">{getBranchDisplayName(detailData?.branch_name)}</p></CardContent></Card>
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
                 <Card>
                   <CardContent className="p-5 space-y-3">
                     <h3 className="font-semibold text-emerald-700">{lang === "ar" ? "الإيرادات" : "Earnings"}</h3>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "الراتب الأساسي" : "Basic Salary"}</span><span className="font-mono">{formatCurrency(detailData.basic_salary)} {detailData.currency}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "البدلات" : "Allowances"}</span><span className="font-mono text-emerald-600">+{formatCurrency(detailData.allowances_total)} {detailData.currency}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "المكافآت" : "Bonuses"}</span><span className="font-mono text-emerald-600">+{formatCurrency(detailData.bonuses_total)} {detailData.currency}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "الإضافي" : "Overtime"}</span><span className="font-mono text-emerald-600">+{formatCurrency(detailData.overtime_bonus)} {detailData.currency}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "بدل ليلي" : "Night Allowance"}</span><span className="font-mono text-emerald-600">+{formatCurrency(detailData.night_allowance || 0)} {detailData.currency}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "بدل راحة" : "Weekend Allowance"}</span><span className="font-mono text-emerald-600">+{formatCurrency(detailData.weekend_allowance || 0)} {detailData.currency}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "بدل ميداني" : "Field Allowance"}</span><span className="font-mono text-emerald-600">+{formatCurrency(detailData.field_allowance || 0)} {detailData.currency}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "الراتب الإجمالي" : "Gross Salary"}</span><span className="font-mono font-bold text-emerald-700">{formatCurrency(detailData.gross_salary)} {detailData.currency}</span></div>
+                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "الراتب الأساسي" : "Basic Salary"}</span><span className="font-mono">{formatCurrency(detailData?.basic_salary || 0)} {detailData?.currency || ''}</span></div>
+                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "البدلات" : "Allowances"}</span><span className="font-mono text-emerald-600">+{formatCurrency(detailData.allowances_total)} {detailData?.currency || ''}</span></div>
+                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "المكافآت" : "Bonuses"}</span><span className="font-mono text-emerald-600">+{formatCurrency(detailData.bonuses_total)} {detailData?.currency || ''}</span></div>
+                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "الإضافي" : "Overtime"}</span><span className="font-mono text-emerald-600">+{formatCurrency(detailData.overtime_bonus)} {detailData?.currency || ''}</span></div>
+                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "بدل ليلي" : "Night Allowance"}</span><span className="font-mono text-emerald-600">+{formatCurrency(detailData.night_allowance || 0)} {detailData?.currency || ''}</span></div>
+                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "بدل راحة" : "Weekend Allowance"}</span><span className="font-mono text-emerald-600">+{formatCurrency(detailData.weekend_allowance || 0)} {detailData?.currency || ''}</span></div>
+                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "بدل ميداني" : "Field Allowance"}</span><span className="font-mono text-emerald-600">+{formatCurrency(detailData.field_allowance || 0)} {detailData?.currency || ''}</span></div>
+                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "الراتب الإجمالي" : "Gross Salary"}</span><span className="font-mono font-bold text-emerald-700">{formatCurrency(detailData.gross_salary)} {detailData?.currency || ''}</span></div>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardContent className="p-5 space-y-3">
                     <h3 className="font-semibold text-red-700">{lang === "ar" ? "الخصومات" : "Deductions"}</h3>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "خصم التأخير" : "Late Deduction"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.late_deduction)} {detailData.currency}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "خصم الغياب" : "Absence Deduction"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.absence_deduction)} {detailData.currency}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "خصم الانصراف المبكر" : "Early Leave"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.early_leave_deduction || 0)} {detailData.currency}</span></div>
+                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "خصم التأخير" : "Late Deduction"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.late_deduction)} {detailData?.currency || ''}</span></div>
+                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "خصم الغياب" : "Absence Deduction"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.absence_deduction)} {detailData?.currency || ''}</span></div>
+                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "خصم الانصراف المبكر" : "Early Leave"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.early_leave_deduction || 0)} {detailData?.currency || ''}</span></div>
 
                     {(detailData.social_insurance_employee || detailData.medical_insurance_employee) ? (
                       <>
-                        <div className="flex justify-between text-sm"><span>{lang === "ar" ? "تأمين اجتماعي" : "Social Insurance"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.social_insurance_employee || 0)} {detailData.currency}</span></div>
-                        <div className="flex justify-between text-sm"><span>{lang === "ar" ? "تأمين طبي" : "Medical Insurance"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.medical_insurance_employee || 0)} {detailData.currency}</span></div>
+                        <div className="flex justify-between text-sm"><span>{lang === "ar" ? "تأمين اجتماعي" : "Social Insurance"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.social_insurance_employee || 0)} {detailData?.currency || ''}</span></div>
+                        <div className="flex justify-between text-sm"><span>{lang === "ar" ? "تأمين طبي" : "Medical Insurance"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.medical_insurance_employee || 0)} {detailData?.currency || ''}</span></div>
                       </>
                     ) : (
-                      <div className="flex justify-between text-sm"><span>{lang === "ar" ? "التأمينات" : "Insurance"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.insurance_deduction)} {detailData.currency}</span></div>
+                      <div className="flex justify-between text-sm"><span>{lang === "ar" ? "التأمينات" : "Insurance"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.insurance_deduction)} {detailData?.currency || ''}</span></div>
                     )}
 
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "ضريبة الدخل" : "Income Tax"}</span><span className="font-mono text-orange-600">-{formatCurrency(detailData.tax_deduction || 0)} {detailData.currency}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "الأقساط" : "Installments"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.installments_total)} {detailData.currency}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "الجزاءات" : "Penalties"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.penalties_total)} {detailData.currency}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "خصومات إضافية" : "Extra Deductions"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.extra_deductions_total)} {detailData.currency}</span></div>
-                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "إجمالي الخصومات" : "Total Deductions"}</span><span className="font-mono font-bold text-red-700">-{formatCurrency(detailData.total_deductions)} {detailData.currency}</span></div>
+                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "ضريبة الدخل" : "Income Tax"}</span><span className="font-mono text-orange-600">-{formatCurrency(detailData.tax_deduction || 0)} {detailData?.currency || ''}</span></div>
+                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "الأقساط" : "Installments"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.installments_total)} {detailData?.currency || ''}</span></div>
+                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "الجزاءات" : "Penalties"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.penalties_total)} {detailData?.currency || ''}</span></div>
+                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "خصومات إضافية" : "Extra Deductions"}</span><span className="font-mono text-red-600">-{formatCurrency(detailData.extra_deductions_total)} {detailData?.currency || ''}</span></div>
+                    <div className="flex justify-between text-sm"><span>{lang === "ar" ? "إجمالي الخصومات" : "Total Deductions"}</span><span className="font-mono font-bold text-red-700">-{formatCurrency(detailData.total_deductions)} {detailData?.currency || ''}</span></div>
                   </CardContent>
                 </Card>
               </div>
 
               <div className="grid md:grid-cols-4 gap-3">
-                <Card><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "صافي المرتب" : "Net Salary"}</p><p className="text-xl font-bold text-brand-primary">{formatCurrency(detailData.net_salary)} {detailData.currency}</p></CardContent></Card>
+                <Card><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "صافي المرتب" : "Net Salary"}</p><p className="text-xl font-bold text-brand-primary">{formatCurrency(detailData.net_salary)} {detailData?.currency || ''}</p></CardContent></Card>
                 <Card><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "أيام العمل" : "Working Days"}</p><p className="text-xl font-bold">{detailData.total_working_days}</p></CardContent></Card>
                 <Card><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "الحضور" : "Present"}</p><p className="text-xl font-bold">{detailData.present_days}</p></CardContent></Card>
                 <Card><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground mb-1">{lang === "ar" ? "الغياب" : "Absent"}</p><p className="text-xl font-bold">{detailData.absent_days}</p></CardContent></Card>
