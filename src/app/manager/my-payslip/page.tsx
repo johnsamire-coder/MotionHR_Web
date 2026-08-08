@@ -35,6 +35,7 @@ interface PayslipData {
   medical_insurance_employee?: number;
   medical_insurance_company?: number;
   total_company_insurance_contribution?: number;
+  tax_deduction?: number;
   installments_total?: number;
   penalties_total?: number;
   total_deductions?: number;
@@ -222,6 +223,12 @@ export default function MyPayslipPage() {
                     <span className="font-mono text-red-600">-{formatMoney(data.insurance_deduction)} {data.currency}</span>
                   </div>
                 ) : null)}
+                {data.tax_deduction ? (
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-orange-50 border border-orange-100">
+                    <span className="text-sm text-orange-700">{ar ? "ضريبة الدخل" : "Income Tax"}</span>
+                    <span className="font-mono text-orange-600">-{formatMoney(data.tax_deduction)} {data.currency}</span>
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
                   <span className="text-sm">{d.installments}</span>
                   <span className="font-mono text-red-600">-{formatMoney(data.installments_total)} {data.currency}</span>
