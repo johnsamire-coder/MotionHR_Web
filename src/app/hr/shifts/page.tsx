@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import {
@@ -190,10 +191,24 @@ export default function ShiftsPage() {
           <h1 className="text-3xl font-bold tracking-tight">{d.shiftsTitle}</h1>
           <p className="text-muted-foreground mt-1">{d.shiftsDesc}</p>
         </div>
-        <Button onClick={openCreateDialog} className="gap-2">
-          <Plus className="w-4 h-4" />
-          {d.addShift}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/hr/shifts/exceptions">
+            <Button variant="outline" className="gap-2">
+              <Clock className="w-4 h-4" />
+              {lang === "ar" ? "استثناءات الشيفت" : "Shift Exceptions"}
+            </Button>
+          </Link>
+          <Link href="/hr/shifts/rotations">
+            <Button variant="outline" className="gap-2">
+              <Users className="w-4 h-4" />
+              {lang === "ar" ? "تناوب الشيفت" : "Shift Rotations"}
+            </Button>
+          </Link>
+          <Button onClick={openCreateDialog} className="gap-2">
+            <Plus className="w-4 h-4" />
+            {d.addShift}
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
