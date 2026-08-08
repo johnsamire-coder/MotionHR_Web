@@ -20,6 +20,7 @@ import AllowanceRuleDialog from "@/components/hr/policies/allowance-rule-dialog"
 import LeaveRuleDialog from "@/components/hr/policies/leave-rule-dialog";
 import TaxPolicyDialog from "@/components/hr/policies/tax-policy-dialog";
 import EosPolicyDialog from "@/components/hr/policies/eos-policy-dialog";
+import OfficialHolidayDialog from "@/components/hr/policies/official-holiday-dialog";
 import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
@@ -174,7 +175,7 @@ interface WorkPolicy {
   is_24_7: boolean;
 }
 
-type TabKey = "attendance" | "work" | "leave" | "allowance" | "deduction" | "bonus" | "insurance" | "payroll_cycle" | "penalty_rule" | "bonus_rule" | "allowance_rule" | "leave_rule" | "tax" | "eos";
+type TabKey = "attendance" | "work" | "leave" | "allowance" | "deduction" | "bonus" | "insurance" | "payroll_cycle" | "penalty_rule" | "bonus_rule" | "allowance_rule" | "leave_rule" | "tax" | "eos" | "holidays";
 
 const TABS = [
   { key: "attendance",  icon: Shield,       label_ar: "سياسة الحضور",   label_en: "Attendance",  color: "text-blue-600 bg-blue-500/10" },
@@ -191,6 +192,7 @@ const TABS = [
   { key: "leave_rule",    icon: Calendar,     label_ar: "قواعد الإجازات",       label_en: "Leave Rules",       color: "text-purple-700 bg-purple-500/10" },
   { key: "tax",           icon: TrendingDown, label_ar: "سياسة الضرائب",        label_en: "Tax Policy",        color: "text-orange-600 bg-orange-500/10" },
   { key: "eos",           icon: Award,        label_ar: "مكافأة نهاية الخدمة",  label_en: "End of Service",    color: "text-amber-600 bg-amber-500/10" },
+  { key: "holidays",      icon: Calendar,     label_ar: "الأعياد الرسمية",       label_en: "Official Holidays", color: "text-purple-600 bg-purple-500/10" },
 ] as const;
 
 const DAYS = [
@@ -225,6 +227,9 @@ export default function PoliciesHubPage() {
   const [leaveRules, setLeaveRules] = useState<LeaveRuleItem[]>([]);
   const [taxPolicies, setTaxPolicies] = useState<any[]>([]);
   const [eosPolicies, setEosPolicies] = useState<any[]>([]);
+  const [holidays, setHolidays] = useState<any[]>([]);
+  const [showHolidayDialog, setShowHolidayDialog] = useState(false);
+  const [editingHolidayId, setEditingHolidayId] = useState<number | null>(null);
   const [showTaxDialog, setShowTaxDialog] = useState(false);
   const [showEosDialog, setShowEosDialog] = useState(false);
   const [editingTax, setEditingTax] = useState<any>(null);
@@ -254,7 +259,7 @@ export default function PoliciesHubPage() {
     setLoading(true);
     try {
       const headers = { Authorization: authH, "Accept-Language": langH };
-      const [aRes, lRes, wRes, alRes, dRes, bRes, iRes, pcRes, prRes, brRes, arRes, lrRes, taxRes, eosRes] = await Promise.all([
+      const [aRes, lRes, wRes, alRes, dRes, bRes, iRes, pcRes, prRes, brRes, arRes, lrRes, taxRes, eosRes, holidaysRes] = await Promise.all([
         fetch("/api/hr/policies/attendance-policy", { headers }),
         fetch("/api/hr/policies/leave-policy", { headers }),
         fetch("/api/hr/policies/work-policy", { headers }),
@@ -269,9 +274,10 @@ export default function PoliciesHubPage() {
         fetch("/api/hr/policies/rules-leave", { headers }),
         fetch("/api/hr/policies/tax", { headers }),
         fetch("/api/hr/policies/eos", { headers }),
+        fetch("/api/hr/policies/official-holidays", { headers }),
       ]);
-      const [a, l, w, al, d, b, i, pc, pr, br, arRule, lr, taxData, eosData] = await Promise.all([
-        aRes.json(), lRes.json(), wRes.json(), alRes.json(), dRes.json(), bRes.json(), iRes.json(), pcRes.json(), prRes.json(), brRes.json(), arRes.json(), lrRes.json(), taxRes.json(), eosRes.json(),
+      const [a, l, w, al, d, b, i, pc, pr, br, arRule, lr, taxData, eosData, holidaysData] = await Promise.all([
+        aRes.json(), lRes.json(), wRes.json(), alRes.json(), dRes.json(), bRes.json(), iRes.json(), pcRes.json(), prRes.json(), brRes.json(), arRes.json(), lrRes.json(), taxRes.json(), eosRes.json(), holidaysRes.json(),
       ]);
       setAttendance(a?.policies || a?.results || []);
       setLeaves(l?.policies || l?.results || []);
@@ -287,6 +293,7 @@ export default function PoliciesHubPage() {
       setLeaveRules(lr?.results || []);
       setTaxPolicies(Array.isArray(taxData) ? taxData : (taxData?.results || []));
       setEosPolicies(Array.isArray(eosData) ? eosData : (eosData?.results || []));
+      setHolidays(holidaysData?.holidays || holidaysData?.results || []);
     } catch {
       toast.error(ar ? "فشل تحميل البيانات" : "Failed to load");
     } finally {
@@ -337,6 +344,7 @@ export default function PoliciesHubPage() {
       case "leave_rule":     return "rules-leave";
       case "tax":            return "tax";
       case "eos":            return "eos";
+      case "holidays":       return "official-holidays";
       default: return "";
     }
   };
@@ -419,6 +427,7 @@ export default function PoliciesHubPage() {
     else if (activeTab === "leave_rule") setShowLeaveRuleDialog(true);
     else if (activeTab === "tax") { setEditingTax(taxPolicies.find(p => p.id === id) || null); setShowTaxDialog(true); }
     else if (activeTab === "eos") { setEditingEos(eosPolicies.find(p => p.id === id) || null); setShowEosDialog(true); }
+    else if (activeTab === "holidays") { setEditingHolidayId(id); setShowHolidayDialog(true); }
     else {
       setPayrollKind(activeTab as "allowance" | "deduction" | "bonus");
       setShowPayrollDialog(true);
@@ -528,7 +537,14 @@ export default function PoliciesHubPage() {
                           <Trash2 className="w-3 h-3" />
                           {ar ? "حذف" : "Delete"}
                         </Button>
-                      </>
+                      <OfficialHolidayDialog
+        open={showHolidayDialog}
+        onClose={() => { setShowHolidayDialog(false); setEditingHolidayId(null); }}
+        onSaved={load}
+        holidayId={editingHolidayId}
+        ar={ar}
+      />
+      </>
                     ) : (
                       <>
                         {isDraft && (
@@ -1007,6 +1023,72 @@ export default function PoliciesHubPage() {
 
 
   // ═══ Render Leave Rules ═══
+
+  // ─── Render Official Holidays ───────────────────────────
+  const renderHolidaysList = () => {
+    return (
+      <div className="space-y-4">
+        {holidays.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-muted-foreground mb-4">{ar ? "لا توجد أعياد رسمية" : "No official holidays"}</p>
+            <button
+              onClick={openCreateDialog}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+            >
+              <span>+</span>
+              {ar ? "إضافة عيد رسمي" : "Add Official Holiday"}
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {holidays.map((h) => {
+              const isLoading = actionLoading === h.id;
+              return (
+                <div key={h.id} className="border-2 border-purple-200 rounded-xl p-4 space-y-3 bg-white hover:shadow-md transition">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-bold text-base">{h.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {h.start_date} → {h.end_date}
+                        {h.days_count && <span className="mr-2">({h.days_count} {ar ? "أيام" : "days"})</span>}
+                      </p>
+                    </div>
+                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-semibold">
+                      {ar ? `${h.rules?.length || 0} قواعد` : `${h.rules?.length || 0} rules`}
+                    </span>
+                  </div>
+                  {h.notes && (
+                    <p className="text-xs text-muted-foreground">{h.notes}</p>
+                  )}
+                  {h.rules?.slice(0, 2).map((r: any, i: number) => (
+                    <div key={i} className="text-xs bg-purple-50 rounded px-2 py-1">
+                      {r.scope_display} → {r.treatment_display}
+                    </div>
+                  ))}
+                  <div className="flex gap-2 pt-2 border-t">
+                    <button
+                      onClick={() => openEditDialog(h.id)}
+                      className="flex-1 flex items-center justify-center gap-1 border rounded-lg py-1.5 text-sm hover:bg-slate-50"
+                    >
+                      ✏️ {ar ? "تعديل" : "Edit"}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(h.id)}
+                      disabled={isLoading}
+                      className="border rounded-lg py-1.5 px-3 text-red-600 hover:bg-red-50 text-sm"
+                    >
+                      {isLoading ? "..." : "🗑"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderTaxList = () => {
     const active = taxPolicies.filter(p => !p.is_superseded);
     return (
@@ -1297,7 +1379,7 @@ export default function PoliciesHubPage() {
               </CardContent>
             </Card>
           ) : (
-            activeTab === "insurance" ? renderInsuranceList() : activeTab === "payroll_cycle" ? renderPayrollCycleList() : activeTab === "penalty_rule" ? renderPenaltyRuleList() : activeTab === "bonus_rule" ? renderBonusRuleList() : activeTab === "allowance_rule" ? renderAllowanceRuleList() : activeTab === "leave_rule" ? renderLeaveRuleList() : activeTab === "tax" ? renderTaxList() : activeTab === "eos" ? renderEosList() : renderPolicyList()
+            activeTab === "insurance" ? renderInsuranceList() : activeTab === "payroll_cycle" ? renderPayrollCycleList() : activeTab === "penalty_rule" ? renderPenaltyRuleList() : activeTab === "bonus_rule" ? renderBonusRuleList() : activeTab === "allowance_rule" ? renderAllowanceRuleList() : activeTab === "leave_rule" ? renderLeaveRuleList() : activeTab === "tax" ? renderTaxList() : activeTab === "eos" ? renderEosList() : activeTab === "holidays" ? renderHolidaysList() : renderPolicyList()
           )}
         </>
       )}
