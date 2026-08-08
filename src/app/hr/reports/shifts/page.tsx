@@ -75,7 +75,11 @@ export default function ShiftsReportPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-bold">{s.shift_name}</p>
-                      <p className="text-xs text-muted-foreground">{s.shift_type} · {s.start_time} → {s.end_time}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {s.shift_type} · {s.start_time} → {s.end_time}
+                        {s.shift_mode && <span> · {s.shift_mode}</span>}
+                        {s.crosses_midnight && <span> · {ar ? "يمتد لليوم التالي" : "Crosses Midnight"}</span>}
+                      </p>
                     </div>
                     <div className="text-end">
                       <p className="text-xs text-muted-foreground">{ar ? "عدد الموظفين" : "Employees"}</p>
@@ -85,7 +89,12 @@ export default function ShiftsReportPage() {
                   {Array.isArray(s.employees) && s.employees.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {s.employees.slice(0, 10).map((e: any, j: number) => (
-                        <span key={j} className="text-xs bg-slate-100 rounded-full px-3 py-1">{e.employee_name}</span>
+                        <span key={j} className="text-xs bg-slate-100 rounded-full px-3 py-1">
+                          {e.employee_name}
+                          {e.department && <span> · {e.department}</span>}
+                          {e.source && <span> · {e.source}</span>}
+                          {e.employee_id && <span> · #{e.employee_id}</span>}
+                        </span>
                       ))}
                     </div>
                   )}

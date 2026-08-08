@@ -85,6 +85,7 @@ export default function LeavesEnhancedReportPage() {
                         <span className="font-semibold">{b.leave_type}</span>
                         <span>{ar ? "إجمالي" : "Total"}: {b.total_days}</span>
                         <span>{ar ? "مستخدم" : "Used"}: {b.used_days}</span>
+                        <span>{ar ? "معلق" : "Pending"}: {b.pending_days || 0}</span>
                         <span className="text-emerald-700">{ar ? "متبقي" : "Remaining"}: {b.remaining_days}</span>
                       </div>
                     ))}
@@ -101,7 +102,11 @@ export default function LeavesEnhancedReportPage() {
                         <span className="font-semibold">{lv.leave_type}</span>
                         <span>{lv.start_date} → {lv.end_date}</span>
                         <span>{lv.days_count} {ar ? "يوم" : "days"}</span>
-                        <span>{lv.status}</span>
+                        <span>{ar ? "الحالة" : "Status"}: {lv.status}</span>
+                        <span>{ar ? "مدفوعة" : "Paid"}: {lv.is_paid ? (ar ? "نعم" : "Yes") : (ar ? "لا" : "No")}</span>
+                        <span>{ar ? "نصف يوم" : "Half Day"}: {lv.is_half_day ? (ar ? "نعم" : "Yes") : (ar ? "لا" : "No")}</span>
+                        {lv.half_day_type && <span>{ar ? "نوع النصف" : "Half Type"}: {lv.half_day_type}</span>}
+                        {lv.reason && <span>{ar ? "السبب" : "Reason"}: {lv.reason}</span>}
                       </div>
                     ))}
                   </div>
