@@ -1372,7 +1372,8 @@ export default function PoliciesHubPage() {
         open={showTaxDialog}
         onClose={() => { setShowTaxDialog(false); setEditingTax(null); }}
         onSaved={load}
-        existing={editingTax}
+        policyId={editingTax?.id ?? null}
+        ar={ar}
       />
 
       <EosPolicyDialog
