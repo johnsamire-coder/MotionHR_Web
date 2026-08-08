@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Plus, Trash2, Calculator, Award } from 'lucide-react';
+import { STORAGE_KEYS } from '@/lib/constants/config';
 
 interface EosTier {
   from_year: number;
@@ -81,6 +82,9 @@ export default function EosPolicyDialog({ open, onClose, onSaved, existing }: Pr
   const [calcResult, setCalcResult] = useState<any>(null);
   const [showCalc, setShowCalc]     = useState(false);
 
+  const token = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.token) : null;
+  const authH = token?.startsWith('Token') ? token : `Token ${token}`;
+
   useEffect(() => {
     if (existing) {
       setName(existing.name || '');
@@ -128,7 +132,7 @@ export default function EosPolicyDialog({ open, onClose, onSaved, existing }: Pr
     try {
       const res = await fetch('/api/hr/policies/eos/calculate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { Authorization: authH, 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
           years_of_service:    parseFloat(calcYears),
@@ -165,7 +169,7 @@ export default function EosPolicyDialog({ open, onClose, onSaved, existing }: Pr
 
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { Authorization: authH, 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(payload),
       });
