@@ -66,7 +66,7 @@ interface Props {
 
 export default function EosPolicyDialog({ open, onClose, onSaved, existing }: Props) {
   const [name, setName]                       = useState('سياسة مكافأة نهاية الخدمة');
-  const [salaryBase, setSalaryBase]           = useState<'last' | 'avg3' | 'avg12'>('last');
+  const [salaryBase, setSalaryBase]           = useState('last_basic');
   const [includeAllowances, setIncludeAllowances] = useState(false);
   const [minYears, setMinYears]               = useState(1);
   const [tiers, setTiers]                     = useState<EosTier[]>(DEFAULT_TIERS);
@@ -84,12 +84,12 @@ export default function EosPolicyDialog({ open, onClose, onSaved, existing }: Pr
   useEffect(() => {
     if (existing) {
       setName(existing.name || '');
-      setSalaryBase(existing.salary_base || 'last');
+      setSalaryBase(existing.salary_base_type || 'last_basic');
       setIncludeAllowances(existing.include_allowances || false);
-      setMinYears(existing.min_years_for_benefit || 1);
-      setTiers(existing.tiers || DEFAULT_TIERS);
+      setMinYears(existing.min_service_months ? Math.round(existing.min_service_months / 12) : 1);
+      setTiers(existing.service_tiers || DEFAULT_TIERS);
       setReasons(
-        Object.entries(existing.reason_rates || {}).map(([reason, rate]) => ({
+        Object.entries(existing.termination_adjustments || {}).map(([reason, rate]) => ({
           reason,
           rate: rate as number,
           label: REASON_LABELS[reason] || reason,
@@ -97,7 +97,7 @@ export default function EosPolicyDialog({ open, onClose, onSaved, existing }: Pr
       );
     } else {
       setName('سياسة مكافأة نهاية الخدمة');
-      setSalaryBase('last');
+      setSalaryBase('last_basic');
       setIncludeAllowances(false);
       setMinYears(1);
       setTiers(DEFAULT_TIERS);
@@ -134,9 +134,9 @@ export default function EosPolicyDialog({ open, onClose, onSaved, existing }: Pr
           years_of_service:    parseFloat(calcYears),
           monthly_salary:      parseFloat(calcSalary),
           termination_reason:  calcReason,
-          tiers,
-          reason_rates: Object.fromEntries(reasons.map((r) => [r.reason, r.rate])),
-          min_years_for_benefit: minYears,
+          service_tiers:       tiers,
+          termination_adjustments: Object.fromEntries(reasons.map((r) => [r.reason, r.rate])),
+          min_service_months:  minYears * 12,
         }),
       });
       const data = await res.json();
@@ -152,12 +152,12 @@ export default function EosPolicyDialog({ open, onClose, onSaved, existing }: Pr
       const reasonRates = Object.fromEntries(reasons.map((r) => [r.reason, r.rate]));
       const payload = {
         name,
-        salary_base:           salaryBase,
-        include_allowances:    includeAllowances,
-        min_years_for_benefit: minYears,
-        tiers,
-        reason_rates:          reasonRates,
-        change_reason:         changeReason || 'تحديث السياسة',
+        salary_base_type:        salaryBase,
+        include_allowances:      includeAllowances,
+        min_service_months:      minYears * 12,
+        service_tiers:           tiers.map(t => ({ from_year: t.from_year, to_year: t.to_year, months_per_year: t.months_per_year })),
+        termination_adjustments: reasonRates,
+        change_reason:           changeReason || 'تحديث السياسة',
       };
 
       const url    = existing ? `/api/hr/eos-policy/${existing.id}/` : '/api/hr/eos-policy/';
@@ -202,9 +202,10 @@ export default function EosPolicyDialog({ open, onClose, onSaved, existing }: Pr
               <Select value={salaryBase} onValueChange={(v: any) => setSalaryBase(v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="last">آخر مرتب</SelectItem>
-                  <SelectItem value="avg3">متوسط آخر 3 شهور</SelectItem>
-                  <SelectItem value="avg12">متوسط آخر 12 شهر</SelectItem>
+                  <SelectItem value="last_basic">آخر راتب أساسي</SelectItem>
+                  <SelectItem value="last_gross">آخر راتب إجمالي</SelectItem>
+                  <SelectItem value="avg_3_months">متوسط آخر 3 شهور</SelectItem>
+                  <SelectItem value="avg_12_months">متوسط آخر 12 شهر</SelectItem>
                 </SelectContent>
               </Select>
             </div>
