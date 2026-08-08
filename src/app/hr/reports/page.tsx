@@ -123,7 +123,7 @@ export default function ReportsHubPage() {
       icon: Clock,
       color: "text-blue-600",
       bgColor: "bg-blue-500/10",
-      href: "/hr/reports/monthly-attendance",
+      href: "/hr/reports/daily-attendance",
       status: "ready",
     },
     {
@@ -167,7 +167,7 @@ export default function ReportsHubPage() {
       icon: Sparkles,
       color: "text-emerald-600",
       bgColor: "bg-emerald-500/10",
-      href: "/hr/reports/leaves-basic",
+      href: "/hr/reports/leaves-enhanced",
       status: "ready",
     },
     {
@@ -187,7 +187,7 @@ export default function ReportsHubPage() {
       icon: FileText,
       color: "text-purple-600",
       bgColor: "bg-purple-500/10",
-      href: "/hr/requests",
+      href: "/hr/reports/requests",
       status: "ready",
     },
     {
@@ -234,7 +234,7 @@ export default function ReportsHubPage() {
       icon: DollarSign,
       color: "text-emerald-600",
       bgColor: "bg-emerald-500/10",
-      href: "/hr/payroll",
+      href: "/hr/reports/payroll",
       status: "ready",
     },
     {
@@ -244,7 +244,7 @@ export default function ReportsHubPage() {
       icon: TrendingUp,
       color: "text-orange-600",
       bgColor: "bg-orange-500/10",
-      href: "/hr/shifts",
+      href: "/hr/reports/shifts",
       status: "ready",
     },
     {
