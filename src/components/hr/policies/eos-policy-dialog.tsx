@@ -126,7 +126,7 @@ export default function EosPolicyDialog({ open, onClose, onSaved, existing }: Pr
   const runCalc = async () => {
     if (!calcYears || !calcSalary) return;
     try {
-      const res = await fetch('/api/hr/eos-policy/calculate/', {
+      const res = await fetch('/api/hr/policies/eos/calculate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -160,7 +160,7 @@ export default function EosPolicyDialog({ open, onClose, onSaved, existing }: Pr
         change_reason:           changeReason || 'تحديث السياسة',
       };
 
-      const url    = existing ? `/api/hr/eos-policy/${existing.id}/` : '/api/hr/eos-policy/';
+      const url    = existing ? `/api/hr/policies/eos/${existing.id}` : '/api/hr/policies/eos';
       const method = existing ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
