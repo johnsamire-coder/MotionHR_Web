@@ -46,3 +46,7 @@ inspect_*.txt
 analyze_*.txt
 patch_*.txt
 *_result.txt
+
+collect_step1_web.py
+short_mobile.py
+short_web.py
