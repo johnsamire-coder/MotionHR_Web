@@ -18,7 +18,6 @@ import PenaltyRuleDialog from "@/components/hr/policies/penalty-rule-dialog";
 import BonusRuleDialog from "@/components/hr/policies/bonus-rule-dialog";
 import AllowanceRuleDialog from "@/components/hr/policies/allowance-rule-dialog";
 import LeaveRuleDialog from "@/components/hr/policies/leave-rule-dialog";
-import TaxPolicyDialog from "@/components/hr/policies/tax-policy-dialog";
 import EosPolicyDialog from "@/components/hr/policies/eos-policy-dialog";
 import OfficialHolidayDialog from "@/components/hr/policies/official-holiday-dialog";
 import { useLangStore } from "@/lib/stores/language";
@@ -1450,13 +1449,7 @@ export default function PoliciesHubPage() {
         ar={ar}
       />
 
-      <TaxPolicyDialog
-        open={showTaxDialog}
-        onClose={() => { setShowTaxDialog(false); setEditingTax(null); }}
-        onSaved={load}
-        policyId={editingTax?.id ?? null}
-        ar={ar}
-      />
+      
 
       <EosPolicyDialog
         open={showEosDialog}

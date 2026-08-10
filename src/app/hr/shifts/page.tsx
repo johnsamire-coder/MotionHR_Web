@@ -195,38 +195,7 @@ export default function ShiftsPage() {
     }
   };
 
-  const openEditDialog = (shift: Shift) => {
-    setEditingShift(shift);
-    setFormData({
-      name: shift.name || "",
-      shift_type: shift.shift_type || "fixed",
-      start_time: shift.start_time || "09:00",
-      end_time: shift.end_time || "17:00",
-      required_daily_hours: shift.required_daily_hours || 8,
-      grace_period: shift.grace_period || 15,
-      break_duration: shift.break_duration || 60,
-    });
-    setDialogOpen(true);
-  };
-
-  const handleDelete = async () => {
-    if (!deleteShiftId) return;
-    setIsDeleting(true);
-    try {
-      await axios.delete(`/api/shifts?id=${deleteShiftId}`, {
-        headers: { Authorization: `Token ${token}` },
-      });
-      toast.success(lang === "ar" ? "تم حذف الشيفت" : "Shift deleted");
-      setDeleteShiftId(null);
-      loadShifts();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { error?: string; message?: string } } };
-      toast.error(err?.response?.data?.error || err?.response?.data?.message || (lang === "ar" ? "فشل الحذف" : "Delete failed"));
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
+  
   const handleSave = async () => {
     if (!formData.name.trim()) { toast.error(d.shiftNameRequired); return; }
     setIsSaving(true);
