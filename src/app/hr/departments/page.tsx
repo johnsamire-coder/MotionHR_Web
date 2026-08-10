@@ -315,7 +315,7 @@ export default function DepartmentsPage() {
                   <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <Users className="w-4 h-4" />
                     <span>
-                      {dep.employee_count || 0} {ar ? "موظف" : "employees"}
+                      {dep.employees_count || dep.employee_count || 0} {ar ? "موظف" : "employees"}
                     </span>
                   </div>
                 </div>
