@@ -1,4 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+"""
+Fix job-titles API route: use /manager/job-titles/{id}/ for update/delete
+"""
+from pathlib import Path
+
+path = Path("src/app/api/job-titles/route.ts")
+content = '''import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_BASE = "https://jssolutions-eg.com/attendance/api/mobile/manager/job-titles";
 
@@ -118,3 +124,8 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+'''
+
+path.write_text(content, encoding="utf-8")
+print(f"[OK] API Route updated!")
+print(f"     Size: {path.stat().st_size} bytes")
