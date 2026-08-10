@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function PUT(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const url = `${BACKEND}/attendance/api/mobile/manager/company-info/update/`;
     const res = await fetch(url, {
-      method: "POST",
+      method: "PUT",
       headers: {
         Authorization: authHeader,
         "Content-Type": "application/json",

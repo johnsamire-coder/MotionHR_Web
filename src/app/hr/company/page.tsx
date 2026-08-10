@@ -68,7 +68,7 @@ export default function CompanySettingsPage() {
     setSaving(true);
     try {
       const res = await fetch("/api/company/info", {
-        method: "POST",
+        method: "PUT",
         headers: {
           Authorization: authHeader,
           "Content-Type": "application/json",
