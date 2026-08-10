@@ -1,0 +1,2896 @@
+{
+  "project": "MotionHR Web",
+  "pages": [
+    {
+      "file": "src/app/page.tsx",
+      "apis": [],
+      "buttons": [
+        "{t.navDemo}"
+      ],
+      "links": [
+        "{label}"
+      ],
+      "tabs": [],
+      "headings": [
+        "MotionHR Dashboard",
+        "{f.title}",
+        "{portal.title}",
+        "{t.contactTitle}",
+        "{t.demoCard}",
+        "{t.demoTitle}",
+        "{t.featTitle}",
+        "{t.mail}",
+        "{t.painTitle}",
+        "{t.portTitle}",
+        "{t.wa}",
+        "{t.wfTitle}"
+      ],
+      "card_titles": [],
+      "route": "/"
+    },
+    {
+      "file": "src/app/login/page.tsx",
+      "apis": [],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "مرحباً بعودتك"
+      ],
+      "card_titles": [],
+      "route": "/login"
+    },
+    {
+      "file": "src/app/signup/page.tsx",
+      "apis": [
+        "/api/auth/signup"
+      ],
+      "buttons": [],
+      "links": [
+        "{t.login}"
+      ],
+      "tabs": [],
+      "headings": [
+        "{t.title}"
+      ],
+      "card_titles": [],
+      "route": "/signup"
+    },
+    {
+      "file": "src/app/manager/announcements/page.tsx",
+      "apis": [
+        "/api/employee/announcements"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ann.title}",
+        "{d.announcementsTitle}"
+      ],
+      "card_titles": [],
+      "route": "/manager/announcements"
+    },
+    {
+      "file": "src/app/manager/attendance/page.tsx",
+      "apis": [],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{lang === \"ar\" ? \"حضور الفريق\" : \"Team Attendance\"}"
+      ],
+      "card_titles": [],
+      "route": "/manager/attendance"
+    },
+    {
+      "file": "src/app/manager/dashboard/page.tsx",
+      "apis": [
+        "/api/manager/dashboard-stats",
+        "/api/manager/pending"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.managerWelcome}، {user?.first_name} 👋",
+        "{d.quickActionsManager}"
+      ],
+      "card_titles": [],
+      "route": "/manager/dashboard"
+    },
+    {
+      "file": "src/app/manager/locations/page.tsx",
+      "apis": [
+        "/api/manager/live-locations"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{lang === \"ar\" ? \"الفريق\" : \"Team\"}",
+        "{lang === \"ar\" ? \"المواقع المباشرة\" : \"Live Locations\"}"
+      ],
+      "card_titles": [],
+      "route": "/manager/locations"
+    },
+    {
+      "file": "src/app/manager/missions/page.tsx",
+      "apis": [
+        "/api/manager/mission-approve",
+        "/api/manager/missions",
+        "/api/manager/team-simple"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"مهمات الفريق\" : \"Team Missions\"}"
+      ],
+      "card_titles": [],
+      "route": "/manager/missions"
+    },
+    {
+      "file": "src/app/manager/my-attendance/page.tsx",
+      "apis": [
+        "/api/employee/attendance",
+        "/api/employee/field-visits",
+        "/api/employee/field-visits/${fieldData.active_visit.id}/end",
+        "/api/employee/field-visits/types",
+        "/api/employee/history",
+        "/api/employee/status",
+        "/api/employee/summary"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"سجل الحضور\" : \"Attendance History\"}",
+        "{ar ? \"سجل حضوري\" : \"My Attendance\"}"
+      ],
+      "card_titles": [],
+      "route": "/manager/my-attendance"
+    },
+    {
+      "file": "src/app/manager/my-field-visits/page.tsx",
+      "apis": [
+        "/api/employee/field-visits",
+        "/api/employee/status",
+        "/api/employee/work-locations"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"زياراتي الميدانية\" : \"My Field Visits\"}",
+        "{fmtDateLabel(date)}"
+      ],
+      "card_titles": [],
+      "route": "/manager/my-field-visits"
+    },
+    {
+      "file": "src/app/manager/my-leaves/page.tsx",
+      "apis": [
+        "/api/employee/my-leaves",
+        "/api/employee/submit-leave",
+        "/api/leaves/types"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.myLeaves}"
+      ],
+      "card_titles": [],
+      "route": "/manager/my-leaves"
+    },
+    {
+      "file": "src/app/manager/my-missions/page.tsx",
+      "apis": [
+        "/api/employee/missions"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"مهماتي\" : \"My Missions\"}"
+      ],
+      "card_titles": [],
+      "route": "/manager/my-missions"
+    },
+    {
+      "file": "src/app/manager/my-payslip/page.tsx",
+      "apis": [],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.attendanceSummary}",
+        "{d.myPayslip}"
+      ],
+      "card_titles": [],
+      "route": "/manager/my-payslip"
+    },
+    {
+      "file": "src/app/manager/my-permissions/page.tsx",
+      "apis": [
+        "/api/employee/permission-balance"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.myPermissions}"
+      ],
+      "card_titles": [],
+      "route": "/manager/my-permissions"
+    },
+    {
+      "file": "src/app/manager/my-profile/page.tsx",
+      "apis": [
+        "/api/profile"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.myProfile}",
+        "{displayName}"
+      ],
+      "card_titles": [],
+      "route": "/manager/my-profile"
+    },
+    {
+      "file": "src/app/manager/my-requests/page.tsx",
+      "apis": [
+        "/api/employee/my-requests",
+        "/api/employee/request-types"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"طلباتي\" : \"My Requests\"}"
+      ],
+      "card_titles": [],
+      "route": "/manager/my-requests"
+    },
+    {
+      "file": "src/app/manager/notifications/page.tsx",
+      "apis": [
+        "/api/employee/notifications"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.notifications}"
+      ],
+      "card_titles": [],
+      "route": "/manager/notifications"
+    },
+    {
+      "file": "src/app/manager/org-chart/page.tsx",
+      "apis": [
+        "/api/hierarchy"
+      ],
+      "buttons": [
+        "{ar ? \"توسيع الكل\" : \"Expand All\"}",
+        "{ar ? \"طي الكل\" : \"Collapse All\"}"
+      ],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"الهيكل التنظيمي\" : \"Organization Chart\"}"
+      ],
+      "card_titles": [],
+      "route": "/manager/org-chart"
+    },
+    {
+      "file": "src/app/manager/regulations/page.tsx",
+      "apis": [],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.companyRegulations}"
+      ],
+      "card_titles": [],
+      "route": "/manager/regulations"
+    },
+    {
+      "file": "src/app/manager/reports/page.tsx",
+      "apis": [
+        "/api/reports/hub-stats"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.reportsCategoryAttendance}",
+        "{d.reportsCategoryLeaves}",
+        "{d.reportsTitle}",
+        "{lang === \"ar\" ? \"لمحة سريعة\" : \"Quick Overview\"}",
+        "{report.title}"
+      ],
+      "card_titles": [],
+      "route": "/manager/reports"
+    },
+    {
+      "file": "src/app/manager/requests/page.tsx",
+      "apis": [
+        "/api/manager/action",
+        "/api/manager/pending"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{lang === \"ar\" ? \"الطلبات المعلقة\" : \"Pending Approvals\"}"
+      ],
+      "card_titles": [],
+      "route": "/manager/requests"
+    },
+    {
+      "file": "src/app/manager/team/page.tsx",
+      "apis": [
+        "/api/manager/team"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.myTeamTitle}"
+      ],
+      "card_titles": [],
+      "route": "/manager/team"
+    },
+    {
+      "file": "src/app/hr/announcements/page.tsx",
+      "apis": [
+        "/api/announcements",
+        "/api/hr/announcements/${deleteId}",
+        "/api/hr/announcements/${editItem.id}",
+        "/api/hr/announcements/${item.id}"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.announcementsTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/announcements"
+    },
+    {
+      "file": "src/app/hr/attendance/page.tsx",
+      "apis": [
+        "/api/branches",
+        "/api/departments"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.attendanceTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/attendance"
+    },
+    {
+      "file": "src/app/hr/branches/page.tsx",
+      "apis": [
+        "/api/branches",
+        "/api/employees/list"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.branchesTitle}",
+        "{getName(branch)}"
+      ],
+      "card_titles": [],
+      "route": "/hr/branches"
+    },
+    {
+      "file": "src/app/hr/company/page.tsx",
+      "apis": [
+        "/api/company/info",
+        "/api/company/upload-logo"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.companyLogo}",
+        "{d.companyTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/company"
+    },
+    {
+      "file": "src/app/hr/company-policies/page.tsx",
+      "apis": [],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.companyPoliciesTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/company-policies"
+    },
+    {
+      "file": "src/app/hr/dashboard/page.tsx",
+      "apis": [
+        "/api/dashboard"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.quickActions}",
+        "{d.recentActivity}",
+        "{d.welcome}، {user?.first_name} 👋"
+      ],
+      "card_titles": [],
+      "route": "/hr/dashboard"
+    },
+    {
+      "file": "src/app/hr/departments/page.tsx",
+      "apis": [
+        "/api/departments",
+        "/api/hr/departments",
+        "/api/hr/departments/${deleteId}",
+        "/api/hr/departments/${editItem.id}"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.departmentsTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/departments"
+    },
+    {
+      "file": "src/app/hr/employees/page.tsx",
+      "apis": [
+        "/api/branches",
+        "/api/departments",
+        "/api/employees/managers",
+        "/api/job-titles"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.employeesTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/employees"
+    },
+    {
+      "file": "src/app/hr/flex-shift/page.tsx",
+      "apis": [
+        "/api/hr/flex-adjustments/${id}/review"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"تعديلات الشيفت المرن\" : \"Flex Shift Adjustments\"}"
+      ],
+      "card_titles": [],
+      "route": "/hr/flex-shift"
+    },
+    {
+      "file": "src/app/hr/geofence/page.tsx",
+      "apis": [
+        "/api/hr/geofence",
+        "/api/hr/geofence-set"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.geofenceTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/geofence"
+    },
+    {
+      "file": "src/app/hr/job-titles/page.tsx",
+      "apis": [
+        "/api/employees/list",
+        "/api/job-titles"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.jobTitlesTitle}",
+        "{getJobTitleName(item)}"
+      ],
+      "card_titles": [],
+      "route": "/hr/job-titles"
+    },
+    {
+      "file": "src/app/hr/leave-recall/page.tsx",
+      "apis": [
+        "/api/hr/leave-recall",
+        "/api/hr/leave-recall/${id}/review"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"استدعاء الإجازات\" : \"Leave Recalls\"}"
+      ],
+      "card_titles": [],
+      "route": "/hr/leave-recall"
+    },
+    {
+      "file": "src/app/hr/leaves/page.tsx",
+      "apis": [
+        "/api/departments",
+        "/api/leaves/",
+        "/api/leaves/types"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.balancesTitle}",
+        "{d.leaveTypesTitle}",
+        "{d.leavesTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/leaves"
+    },
+    {
+      "file": "src/app/hr/locations/page.tsx",
+      "apis": [
+        "/api/locations/live"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.locationsTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/locations"
+    },
+    {
+      "file": "src/app/hr/manual-entries/page.tsx",
+      "apis": [
+        "/api/hr/manual-entries/${activeType}/${approveDialog.id}/approve",
+        "/api/hr/manual-entries/${activeType}/${entry.id}",
+        "/api/hr/manual-entries/${activeType}/${rejectDialog.id}/reject",
+        "/api/hr/manual-entries/summary"
+      ],
+      "buttons": [
+        "setApproveDialog(null)}>{ar ? \"إلغاء\" : \"Cancel\"}",
+        "setRejectDialog(null)}>{ar ? \"إلغاء\" : \"Cancel\"}"
+      ],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"الإدخالات اليدوية\" : \"Manual Entries\"}"
+      ],
+      "card_titles": [],
+      "route": "/hr/manual-entries"
+    },
+    {
+      "file": "src/app/hr/missions/page.tsx",
+      "apis": [
+        "/api/employees/list",
+        "/api/manager/create-mission",
+        "/api/manager/mission-approve",
+        "/api/missions",
+        "/api/missions/feedback",
+        "/api/missions/pending"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.missionsTitle}",
+        "بيانات العميل (اختياري)",
+        "داشبورد الفيدباك",
+        "معلومات المهمة"
+      ],
+      "card_titles": [],
+      "route": "/hr/missions"
+    },
+    {
+      "file": "src/app/hr/org-chart/page.tsx",
+      "apis": [
+        "/api/employees/list"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.orgChartTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/org-chart"
+    },
+    {
+      "file": "src/app/hr/payroll/page.tsx",
+      "apis": [
+        "/api/branches",
+        "/api/departments"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.monthlyComparison}",
+        "{d.payrollAnalytics}",
+        "{d.payrollTitle}",
+        "{lang === \"ar\" ? \"الإيرادات\" : \"Earnings\"}",
+        "{lang === \"ar\" ? \"الخصومات\" : \"Deductions\"}"
+      ],
+      "card_titles": [],
+      "route": "/hr/payroll"
+    },
+    {
+      "file": "src/app/hr/payroll-runs/page.tsx",
+      "apis": [
+        "/api/hr/payroll-runs",
+        "/api/hr/payroll-runs/${runId}",
+        "/api/hr/payroll-runs/${runId}/approve"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"تشغيل المرتبات\" : \"Payroll Runs\"}"
+      ],
+      "card_titles": [],
+      "route": "/hr/payroll-runs"
+    },
+    {
+      "file": "src/app/hr/permissions/page.tsx",
+      "apis": [],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"إدارة الصلاحيات\" : \"Permissions Management\"}"
+      ],
+      "card_titles": [],
+      "route": "/hr/permissions"
+    },
+    {
+      "file": "src/app/hr/policies/page.tsx",
+      "apis": [
+        "/api/hr/policies/${endpoint}/${id}",
+        "/api/hr/policies/${endpoint}/${id}/approve",
+        "/api/hr/policies/${endpoint}/${id}/clone",
+        "/api/hr/policies/allowance-policies",
+        "/api/hr/policies/attendance-policy",
+        "/api/hr/policies/bonus-policies",
+        "/api/hr/policies/deduction-policies",
+        "/api/hr/policies/eos",
+        "/api/hr/policies/insurance-policies",
+        "/api/hr/policies/leave-policy",
+        "/api/hr/policies/official-holidays",
+        "/api/hr/policies/payroll-cycle-policies",
+        "/api/hr/policies/rules-allowance",
+        "/api/hr/policies/rules-bonus",
+        "/api/hr/policies/rules-leave",
+        "/api/hr/policies/rules-penalty",
+        "/api/hr/policies/tax",
+        "/api/hr/policies/work-policy",
+        "/api/hr/policies/work-policy/save"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"السياسات\" : \"Policies\"}",
+        "{policy.name}"
+      ],
+      "card_titles": [],
+      "route": "/hr/policies"
+    },
+    {
+      "file": "src/app/hr/regulations/page.tsx",
+      "apis": [
+        "/api/hr/charter",
+        "/api/hr/charter/acceptances",
+        "/api/hr/charter/update"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"تعديل اللائحة\" : \"Edit Regulations\"}"
+      ],
+      "card_titles": [],
+      "route": "/hr/regulations"
+    },
+    {
+      "file": "src/app/hr/reminders/page.tsx",
+      "apis": [
+        "/api/hr/reminders"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"إعدادات التذكيرات\" : \"Reminder Settings\"}"
+      ],
+      "card_titles": [],
+      "route": "/hr/reminders"
+    },
+    {
+      "file": "src/app/hr/reports/page.tsx",
+      "apis": [
+        "/api/reports/hub-stats"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.reportsCategoryAttendance}",
+        "{d.reportsCategoryLeaves}",
+        "{d.reportsCategoryPayroll}",
+        "{d.reportsTitle}",
+        "{lang === \"ar\" ? \"لمحة سريعة\" : \"Quick Overview\"}",
+        "{report.title}"
+      ],
+      "card_titles": [],
+      "route": "/hr/reports"
+    },
+    {
+      "file": "src/app/hr/requests/page.tsx",
+      "apis": [
+        "/api/manager/action",
+        "/api/requests/types"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.requestCategories}",
+        "{d.requestsTitle}",
+        "{lang === \"ar\" ? \"تفاصيل الطلب\" : \"Request details\"}"
+      ],
+      "card_titles": [],
+      "route": "/hr/requests"
+    },
+    {
+      "file": "src/app/hr/settings/page.tsx",
+      "apis": [
+        "/api/change-password",
+        "/api/profile"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.languagePref}",
+        "{d.notificationsPref}",
+        "{d.profileInfo}",
+        "{d.settingsTitle}",
+        "{d.themePref}",
+        "{displayName}"
+      ],
+      "card_titles": [],
+      "route": "/hr/settings"
+    },
+    {
+      "file": "src/app/hr/shifts/page.tsx",
+      "apis": [
+        "/api/shifts"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.shiftsTitle}",
+        "{shift.name}"
+      ],
+      "card_titles": [],
+      "route": "/hr/shifts"
+    },
+    {
+      "file": "src/app/hr/termination/page.tsx",
+      "apis": [
+        "/api/hr/offboarding-list",
+        "/api/hr/reactivate"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.terminationTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/termination"
+    },
+    {
+      "file": "src/app/hr/work-locations/page.tsx",
+      "apis": [
+        "/api/hr/propose-location",
+        "/api/hr/work-location-types",
+        "/api/hr/work-locations"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.workLocationsTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/work-locations"
+    },
+    {
+      "file": "src/app/hr/shifts/exceptions/page.tsx",
+      "apis": [
+        "/api/employees/list",
+        "/api/hr/shifts/overrides",
+        "/api/hr/shifts/overrides/${id}",
+        "/api/shifts"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"إضافة استثناء جديد\" : \"Add New Override\"}",
+        "{ar ? \"استثناءات الشيفت\" : \"Shift Exceptions\"}"
+      ],
+      "card_titles": [],
+      "route": "/hr/shifts/exceptions"
+    },
+    {
+      "file": "src/app/hr/shifts/rotations/page.tsx",
+      "apis": [
+        "/api/employees/list",
+        "/api/hr/shifts/rotations",
+        "/api/hr/shifts/rotations/${id}",
+        "/api/hr/shifts/rotations/${selectedRotation}/assign",
+        "/api/shifts"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"إنشاء تناوب جديد\" : \"Create New Rotation\"}",
+        "{ar ? \"تعيين تناوب لموظف / الشركة\" : \"Assign Rotation\"}",
+        "{ar ? \"تناوب الشيفتات\" : \"Shift Rotations\"}"
+      ],
+      "card_titles": [],
+      "route": "/hr/shifts/rotations"
+    },
+    {
+      "file": "src/app/hr/reports/absence/page.tsx",
+      "apis": [
+        "/api/departments"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.absenceReportTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/reports/absence"
+    },
+    {
+      "file": "src/app/hr/reports/daily-attendance/page.tsx",
+      "apis": [],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"تقرير الحضور اليومي\" : \"Daily Attendance Report\"}"
+      ],
+      "card_titles": [],
+      "route": "/hr/reports/daily-attendance"
+    },
+    {
+      "file": "src/app/hr/reports/late/page.tsx",
+      "apis": [
+        "/api/departments"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.lateReportTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/reports/late"
+    },
+    {
+      "file": "src/app/hr/reports/leaves-basic/page.tsx",
+      "apis": [],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.leavesBasicTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/reports/leaves-basic"
+    },
+    {
+      "file": "src/app/hr/reports/leaves-enhanced/page.tsx",
+      "apis": [],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"تقرير الإجازات المتقدم\" : \"Enhanced Leaves Report\"}"
+      ],
+      "card_titles": [],
+      "route": "/hr/reports/leaves-enhanced"
+    },
+    {
+      "file": "src/app/hr/reports/location-tracking/page.tsx",
+      "apis": [],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"تتبع مواقع الموظفين\" : \"Location Tracking\"}",
+        "{ar ? \"سجل التحركات\" : \"Movement Log\"} ({selected.logs.length})"
+      ],
+      "card_titles": [],
+      "route": "/hr/reports/location-tracking"
+    },
+    {
+      "file": "src/app/hr/reports/monthly-attendance/page.tsx",
+      "apis": [
+        "/api/departments"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.monthlyAttReportTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/reports/monthly-attendance"
+    },
+    {
+      "file": "src/app/hr/reports/payroll/page.tsx",
+      "apis": [],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"تقرير الرواتب الشهري\" : \"Monthly Payroll Report\"}"
+      ],
+      "card_titles": [],
+      "route": "/hr/reports/payroll"
+    },
+    {
+      "file": "src/app/hr/reports/permissions/page.tsx",
+      "apis": [
+        "/api/departments"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.permissionsReportTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/reports/permissions"
+    },
+    {
+      "file": "src/app/hr/reports/requests/page.tsx",
+      "apis": [],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"تقرير الطلبات\" : \"Requests Report\"}"
+      ],
+      "card_titles": [],
+      "route": "/hr/reports/requests"
+    },
+    {
+      "file": "src/app/hr/reports/shifts/page.tsx",
+      "apis": [
+        "/api/reports/shifts-report"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"تقرير الشيفتات\" : \"Shifts Report\"}"
+      ],
+      "card_titles": [],
+      "route": "/hr/reports/shifts"
+    },
+    {
+      "file": "src/app/hr/reports/work-hours/page.tsx",
+      "apis": [
+        "/api/departments"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.workHoursReportTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/reports/work-hours"
+    },
+    {
+      "file": "src/app/hr/policies/allowance/page.tsx",
+      "apis": [
+        "/api/hr/policies-allowance"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.allowancePoliciesTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/policies/allowance"
+    },
+    {
+      "file": "src/app/hr/policies/attendance/page.tsx",
+      "apis": [
+        "/api/hr/policies-attendance"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.attendancePoliciesTitle}",
+        "{policy.name}"
+      ],
+      "card_titles": [],
+      "route": "/hr/policies/attendance"
+    },
+    {
+      "file": "src/app/hr/policies/bonus/page.tsx",
+      "apis": [
+        "/api/hr/policies-bonus"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.bonusPoliciesTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/policies/bonus"
+    },
+    {
+      "file": "src/app/hr/policies/deduction/page.tsx",
+      "apis": [
+        "/api/hr/policies-deduction"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.deductionPoliciesTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/policies/deduction"
+    },
+    {
+      "file": "src/app/hr/policies/leave/page.tsx",
+      "apis": [
+        "/api/hr/policies-leave"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.leavePoliciesTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/policies/leave"
+    },
+    {
+      "file": "src/app/hr/policies/work/page.tsx",
+      "apis": [
+        "/api/hr/policies-work"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.workPolicyTitle}"
+      ],
+      "card_titles": [],
+      "route": "/hr/policies/work"
+    },
+    {
+      "file": "src/app/hr/permissions/assign/page.tsx",
+      "apis": [
+        "/api/hr/permissions-assign",
+        "/api/hr/permissions-roles",
+        "/api/hr/permissions-users"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"تعيين الأدوار\" : \"Assign Roles\"}"
+      ],
+      "card_titles": [],
+      "route": "/hr/permissions/assign"
+    },
+    {
+      "file": "src/app/hr/permissions/defaults/page.tsx",
+      "apis": [],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"الصلاحيات الافتراضية\" : \"Default Permissions\"}"
+      ],
+      "card_titles": [],
+      "route": "/hr/permissions/defaults"
+    },
+    {
+      "file": "src/app/hr/permissions/exceptions/page.tsx",
+      "apis": [
+        "/api/hr/permissions-available",
+        "/api/hr/permissions-override",
+        "/api/hr/permissions-users"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"استثناءات المستخدمين\" : \"User Exceptions\"}"
+      ],
+      "card_titles": [],
+      "route": "/hr/permissions/exceptions"
+    },
+    {
+      "file": "src/app/hr/permissions/export/page.tsx",
+      "apis": [
+        "/api/employees/list",
+        "/api/hr/permissions-roles"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [],
+      "card_titles": [],
+      "route": "/hr/permissions/export"
+    },
+    {
+      "file": "src/app/hr/permissions/roles/page.tsx",
+      "apis": [
+        "/api/hr/permissions-available",
+        "/api/hr/permissions-role-create",
+        "/api/hr/permissions-role-delete/${role.id}",
+        "/api/hr/permissions-role-update/${editRole.id}",
+        "/api/hr/permissions-roles"
+      ],
+      "buttons": [
+        "{ar ? \"إلغاء\" : \"Cancel\"}"
+      ],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"إنشاء دور جديد\" : \"Create New Role\"}",
+        "{role.name}"
+      ],
+      "card_titles": [],
+      "route": "/hr/permissions/roles"
+    },
+    {
+      "file": "src/app/hr/employees/import/page.tsx",
+      "apis": [
+        "/api/employees/import",
+        "/api/employees/template"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.importInstructions}",
+        "{d.importNotes}",
+        "{d.importTitle}",
+        "{d.uploadFile}"
+      ],
+      "card_titles": [],
+      "route": "/hr/employees/import"
+    },
+    {
+      "file": "src/app/hr/employees/[id]/page.tsx",
+      "apis": [
+        "/api/branches",
+        "/api/departments",
+        "/api/employees/${params.id}",
+        "/api/hr/employees/${empId}/documents",
+        "/api/hr/employees/${empId}/movements",
+        "/api/hr/employees/${empId}/summary",
+        "/api/job-titles"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"البيانات الشخصية\" : \"Personal Info\"}",
+        "{ar ? \"البيانات الوظيفية\" : \"Job Info\"}",
+        "{ar ? \"الموظف غير موجود\" : \"Employee not found\"}",
+        "{ar ? \"بيانات الراتب\" : \"Salary Info\"}",
+        "{ar ? \"بيانات العقد\" : \"Contract Info\"}",
+        "{displayName}"
+      ],
+      "card_titles": [],
+      "route": "/hr/employees/[id]"
+    },
+    {
+      "file": "src/app/employee/announcements/page.tsx",
+      "apis": [
+        "/api/employee/announcements"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ann.title}",
+        "{d.announcementsTitle}"
+      ],
+      "card_titles": [],
+      "route": "/employee/announcements"
+    },
+    {
+      "file": "src/app/employee/attendance/page.tsx",
+      "apis": [
+        "/api/employee/attendance",
+        "/api/employee/field-visits",
+        "/api/employee/field-visits/${fieldData.active_visit.id}/end",
+        "/api/employee/field-visits/types",
+        "/api/employee/history",
+        "/api/employee/status",
+        "/api/employee/summary"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"سجل الحضور\" : \"Attendance History\"}",
+        "{ar ? \"سجل حضوري\" : \"My Attendance\"}"
+      ],
+      "card_titles": [],
+      "route": "/employee/attendance"
+    },
+    {
+      "file": "src/app/employee/dashboard/page.tsx",
+      "apis": [
+        "/api/employee/attendance",
+        "/api/employee/my-shift",
+        "/api/employee/partial-checkout",
+        "/api/employee/resume-checkin",
+        "/api/employee/status"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [],
+      "card_titles": [],
+      "route": "/employee/dashboard"
+    },
+    {
+      "file": "src/app/employee/field-visits/page.tsx",
+      "apis": [
+        "/api/employee/field-visits",
+        "/api/employee/status",
+        "/api/employee/work-locations"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"زياراتي الميدانية\" : \"My Field Visits\"}",
+        "{fmtDateLabel(date)}"
+      ],
+      "card_titles": [],
+      "route": "/employee/field-visits"
+    },
+    {
+      "file": "src/app/employee/leaves/page.tsx",
+      "apis": [
+        "/api/employee/my-leaves",
+        "/api/employee/submit-leave",
+        "/api/leaves/types"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.myLeaves}"
+      ],
+      "card_titles": [],
+      "route": "/employee/leaves"
+    },
+    {
+      "file": "src/app/employee/missions/page.tsx",
+      "apis": [
+        "/api/employee/missions"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"مهماتي\" : \"My Missions\"}"
+      ],
+      "card_titles": [],
+      "route": "/employee/missions"
+    },
+    {
+      "file": "src/app/employee/notifications/page.tsx",
+      "apis": [
+        "/api/employee/notifications"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.notifications}"
+      ],
+      "card_titles": [],
+      "route": "/employee/notifications"
+    },
+    {
+      "file": "src/app/employee/org-chart/page.tsx",
+      "apis": [
+        "/api/hierarchy"
+      ],
+      "buttons": [
+        "{ar ? \"توسيع الكل\" : \"Expand All\"}",
+        "{ar ? \"طي الكل\" : \"Collapse All\"}"
+      ],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"الهيكل التنظيمي\" : \"Organization Chart\"}"
+      ],
+      "card_titles": [],
+      "route": "/employee/org-chart"
+    },
+    {
+      "file": "src/app/employee/payslip/page.tsx",
+      "apis": [],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.attendanceSummary}",
+        "{d.myPayslip}"
+      ],
+      "card_titles": [],
+      "route": "/employee/payslip"
+    },
+    {
+      "file": "src/app/employee/permissions/page.tsx",
+      "apis": [
+        "/api/employee/permission-balance"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.myPermissions}"
+      ],
+      "card_titles": [],
+      "route": "/employee/permissions"
+    },
+    {
+      "file": "src/app/employee/profile/page.tsx",
+      "apis": [
+        "/api/profile"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.myProfile}",
+        "{displayName}"
+      ],
+      "card_titles": [],
+      "route": "/employee/profile"
+    },
+    {
+      "file": "src/app/employee/regulations/page.tsx",
+      "apis": [],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{d.companyRegulations}"
+      ],
+      "card_titles": [],
+      "route": "/employee/regulations"
+    },
+    {
+      "file": "src/app/employee/requests/page.tsx",
+      "apis": [
+        "/api/employee/my-requests",
+        "/api/employee/request-types"
+      ],
+      "buttons": [],
+      "links": [],
+      "tabs": [],
+      "headings": [
+        "{ar ? \"طلباتي\" : \"My Requests\"}"
+      ],
+      "card_titles": [],
+      "route": "/employee/requests"
+    }
+  ],
+  "api_routes": [
+    {
+      "route": "/api/announcements",
+      "file": "src/app/api/announcements/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/branches",
+      "file": "src/app/api/branches/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/change-password",
+      "file": "src/app/api/change-password/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/dashboard",
+      "file": "src/app/api/dashboard/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/departments",
+      "file": "src/app/api/departments/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/geocode",
+      "file": "src/app/api/geocode/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hierarchy",
+      "file": "src/app/api/hierarchy/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/job-titles",
+      "file": "src/app/api/job-titles/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/missions",
+      "file": "src/app/api/missions/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/profile",
+      "file": "src/app/api/profile/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/reverse-geocode",
+      "file": "src/app/api/reverse-geocode/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/shifts",
+      "file": "src/app/api/shifts/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/subscription/status",
+      "file": "src/app/api/subscription/status/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/requests/pending",
+      "file": "src/app/api/requests/pending/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/requests/report",
+      "file": "src/app/api/requests/report/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/requests/types",
+      "file": "src/app/api/requests/types/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/reports/absence",
+      "file": "src/app/api/reports/absence/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/reports/daily-attendance",
+      "file": "src/app/api/reports/daily-attendance/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/reports/hub-stats",
+      "file": "src/app/api/reports/hub-stats/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/reports/late",
+      "file": "src/app/api/reports/late/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/reports/leaves-basic",
+      "file": "src/app/api/reports/leaves-basic/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/reports/leaves-enhanced",
+      "file": "src/app/api/reports/leaves-enhanced/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/reports/location-tracking",
+      "file": "src/app/api/reports/location-tracking/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/reports/monthly-attendance",
+      "file": "src/app/api/reports/monthly-attendance/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/reports/payroll",
+      "file": "src/app/api/reports/payroll/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/reports/permissions",
+      "file": "src/app/api/reports/permissions/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/reports/requests-report",
+      "file": "src/app/api/reports/requests-report/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/reports/shifts-report",
+      "file": "src/app/api/reports/shifts-report/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/reports/work-hours",
+      "file": "src/app/api/reports/work-hours/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/reports/export/excel",
+      "file": "src/app/api/reports/export/excel/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/reports/export/pdf",
+      "file": "src/app/api/reports/export/pdf/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/payroll/summary",
+      "file": "src/app/api/payroll/summary/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/missions/feedback",
+      "file": "src/app/api/missions/feedback/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/missions/pending",
+      "file": "src/app/api/missions/pending/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/manager/action",
+      "file": "src/app/api/manager/action/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/manager/create-mission",
+      "file": "src/app/api/manager/create-mission/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/manager/dashboard-stats",
+      "file": "src/app/api/manager/dashboard-stats/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/manager/live-locations",
+      "file": "src/app/api/manager/live-locations/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/manager/mission-approve",
+      "file": "src/app/api/manager/mission-approve/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/manager/mission-requests",
+      "file": "src/app/api/manager/mission-requests/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/manager/missions",
+      "file": "src/app/api/manager/missions/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/manager/pending",
+      "file": "src/app/api/manager/pending/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/manager/shift-change-action",
+      "file": "src/app/api/manager/shift-change-action/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/manager/shift-changes",
+      "file": "src/app/api/manager/shift-changes/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/manager/team",
+      "file": "src/app/api/manager/team/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/manager/team-attendance",
+      "file": "src/app/api/manager/team-attendance/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/manager/team-simple",
+      "file": "src/app/api/manager/team-simple/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/manager/withdraw-requests",
+      "file": "src/app/api/manager/withdraw-requests/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/manager/withdraw-respond",
+      "file": "src/app/api/manager/withdraw-respond/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/locations/live",
+      "file": "src/app/api/locations/live/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/leaves/enhanced",
+      "file": "src/app/api/leaves/enhanced/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/leaves/hr-create",
+      "file": "src/app/api/leaves/hr-create/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/leaves/types",
+      "file": "src/app/api/leaves/types/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/leaves/[id]/cancel",
+      "file": "src/app/api/leaves/[id]/cancel/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/all-employees",
+      "file": "src/app/api/hr/all-employees/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/charter",
+      "file": "src/app/api/hr/charter/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/departments",
+      "file": "src/app/api/hr/departments/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/flex-adjustments",
+      "file": "src/app/api/hr/flex-adjustments/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/geofence",
+      "file": "src/app/api/hr/geofence/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/geofence-set",
+      "file": "src/app/api/hr/geofence-set/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/leave-recall",
+      "file": "src/app/api/hr/leave-recall/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/leave-recall-create",
+      "file": "src/app/api/hr/leave-recall-create/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/leave-recalls",
+      "file": "src/app/api/hr/leave-recalls/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/offboarding-list",
+      "file": "src/app/api/hr/offboarding-list/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/payroll-runs",
+      "file": "src/app/api/hr/payroll-runs/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/permissions-assign",
+      "file": "src/app/api/hr/permissions-assign/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/permissions-available",
+      "file": "src/app/api/hr/permissions-available/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/permissions-defaults",
+      "file": "src/app/api/hr/permissions-defaults/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/permissions-export",
+      "file": "src/app/api/hr/permissions-export/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/permissions-override",
+      "file": "src/app/api/hr/permissions-override/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/permissions-role-create",
+      "file": "src/app/api/hr/permissions-role-create/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/permissions-roles",
+      "file": "src/app/api/hr/permissions-roles/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/permissions-users",
+      "file": "src/app/api/hr/permissions-users/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/policies-allowance",
+      "file": "src/app/api/hr/policies-allowance/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/policies-attendance",
+      "file": "src/app/api/hr/policies-attendance/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/policies-bonus",
+      "file": "src/app/api/hr/policies-bonus/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/policies-deduction",
+      "file": "src/app/api/hr/policies-deduction/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/policies-leave",
+      "file": "src/app/api/hr/policies-leave/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/policies-work",
+      "file": "src/app/api/hr/policies-work/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/propose-location",
+      "file": "src/app/api/hr/propose-location/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/reactivate",
+      "file": "src/app/api/hr/reactivate/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/reminders",
+      "file": "src/app/api/hr/reminders/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/terminate",
+      "file": "src/app/api/hr/terminate/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/work-location-types",
+      "file": "src/app/api/hr/work-location-types/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/work-locations",
+      "file": "src/app/api/hr/work-locations/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/work-locations/[id]",
+      "file": "src/app/api/hr/work-locations/[id]/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/shifts/overrides",
+      "file": "src/app/api/hr/shifts/overrides/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/shifts/rotations",
+      "file": "src/app/api/hr/shifts/rotations/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/shifts/rotations/[id]",
+      "file": "src/app/api/hr/shifts/rotations/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/hr/shifts/rotations/[id]/assign",
+      "file": "src/app/api/hr/shifts/rotations/[id]/assign/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/shifts/rotations/[id]/assignments",
+      "file": "src/app/api/hr/shifts/rotations/[id]/assignments/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/shifts/overrides/[id]",
+      "file": "src/app/api/hr/shifts/overrides/[id]/route.ts",
+      "methods": [
+        "DELETE"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/allowance-policies",
+      "file": "src/app/api/hr/policies/allowance-policies/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/attendance-policy",
+      "file": "src/app/api/hr/policies/attendance-policy/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/bonus-policies",
+      "file": "src/app/api/hr/policies/bonus-policies/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/deduction-policies",
+      "file": "src/app/api/hr/policies/deduction-policies/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/insurance-policies",
+      "file": "src/app/api/hr/policies/insurance-policies/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/leave-policy",
+      "file": "src/app/api/hr/policies/leave-policy/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/official-holidays",
+      "file": "src/app/api/hr/policies/official-holidays/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/payroll-cycle-policies",
+      "file": "src/app/api/hr/policies/payroll-cycle-policies/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/rules-allowance",
+      "file": "src/app/api/hr/policies/rules-allowance/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/rules-bonus",
+      "file": "src/app/api/hr/policies/rules-bonus/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/rules-leave",
+      "file": "src/app/api/hr/policies/rules-leave/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/rules-penalty",
+      "file": "src/app/api/hr/policies/rules-penalty/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/work-policy",
+      "file": "src/app/api/hr/policies/work-policy/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/work-policy/save",
+      "file": "src/app/api/hr/policies/work-policy/save/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/rules-penalty/[id]",
+      "file": "src/app/api/hr/policies/rules-penalty/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PATCH",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/rules-leave/[id]",
+      "file": "src/app/api/hr/policies/rules-leave/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PATCH",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/rules-bonus/[id]",
+      "file": "src/app/api/hr/policies/rules-bonus/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PATCH",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/rules-allowance/[id]",
+      "file": "src/app/api/hr/policies/rules-allowance/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PATCH",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/payroll-cycle-policies/[id]",
+      "file": "src/app/api/hr/policies/payroll-cycle-policies/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PATCH",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/official-holidays/[id]",
+      "file": "src/app/api/hr/policies/official-holidays/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/leave-policy/[id]",
+      "file": "src/app/api/hr/policies/leave-policy/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/leave-policy/[id]/approve",
+      "file": "src/app/api/hr/policies/leave-policy/[id]/approve/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/insurance-policies/[id]",
+      "file": "src/app/api/hr/policies/insurance-policies/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PATCH",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/deduction-policies/[id]",
+      "file": "src/app/api/hr/policies/deduction-policies/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/bonus-policies/[id]",
+      "file": "src/app/api/hr/policies/bonus-policies/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/attendance-policy/[id]",
+      "file": "src/app/api/hr/policies/attendance-policy/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/attendance-policy/[id]/approve",
+      "file": "src/app/api/hr/policies/attendance-policy/[id]/approve/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/attendance-policy/[id]/clone",
+      "file": "src/app/api/hr/policies/attendance-policy/[id]/clone/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/policies/allowance-policies/[id]",
+      "file": "src/app/api/hr/policies/allowance-policies/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/hr/permissions-role-update/[id]",
+      "file": "src/app/api/hr/permissions-role-update/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/hr/permissions-role-delete/[id]",
+      "file": "src/app/api/hr/permissions-role-delete/[id]/route.ts",
+      "methods": [
+        "DELETE"
+      ]
+    },
+    {
+      "route": "/api/hr/payroll-runs/[id]",
+      "file": "src/app/api/hr/payroll-runs/[id]/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/payroll-runs/[id]/approve",
+      "file": "src/app/api/hr/payroll-runs/[id]/approve/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/payroll/employee-detail",
+      "file": "src/app/api/hr/payroll/employee-detail/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/manual-entries/allowance",
+      "file": "src/app/api/hr/manual-entries/allowance/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/manual-entries/bonus",
+      "file": "src/app/api/hr/manual-entries/bonus/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/manual-entries/penalty",
+      "file": "src/app/api/hr/manual-entries/penalty/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/manual-entries/summary",
+      "file": "src/app/api/hr/manual-entries/summary/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/manual-entries/penalty/[id]",
+      "file": "src/app/api/hr/manual-entries/penalty/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PATCH",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/hr/manual-entries/penalty/[id]/approve",
+      "file": "src/app/api/hr/manual-entries/penalty/[id]/approve/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/manual-entries/penalty/[id]/reject",
+      "file": "src/app/api/hr/manual-entries/penalty/[id]/reject/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/manual-entries/bonus/[id]",
+      "file": "src/app/api/hr/manual-entries/bonus/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PATCH",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/hr/manual-entries/bonus/[id]/approve",
+      "file": "src/app/api/hr/manual-entries/bonus/[id]/approve/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/manual-entries/bonus/[id]/reject",
+      "file": "src/app/api/hr/manual-entries/bonus/[id]/reject/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/manual-entries/allowance/[id]",
+      "file": "src/app/api/hr/manual-entries/allowance/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PATCH",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/hr/manual-entries/allowance/[id]/approve",
+      "file": "src/app/api/hr/manual-entries/allowance/[id]/approve/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/manual-entries/allowance/[id]/reject",
+      "file": "src/app/api/hr/manual-entries/allowance/[id]/reject/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/leave-recall/[id]/review",
+      "file": "src/app/api/hr/leave-recall/[id]/review/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/flex-adjustments/[id]/review",
+      "file": "src/app/api/hr/flex-adjustments/[id]/review/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/employees/create",
+      "file": "src/app/api/hr/employees/create/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/employees/[id]",
+      "file": "src/app/api/hr/employees/[id]/route.ts",
+      "methods": [
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/hr/employees/[id]/documents",
+      "file": "src/app/api/hr/employees/[id]/documents/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/employees/[id]/movements",
+      "file": "src/app/api/hr/employees/[id]/movements/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/employees/[id]/offboard",
+      "file": "src/app/api/hr/employees/[id]/offboard/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/employees/[id]/reset-password",
+      "file": "src/app/api/hr/employees/[id]/reset-password/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/employees/[id]/summary",
+      "file": "src/app/api/hr/employees/[id]/summary/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/departments/[id]",
+      "file": "src/app/api/hr/departments/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/hr/charter/acceptances",
+      "file": "src/app/api/hr/charter/acceptances/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/hr/charter/update",
+      "file": "src/app/api/hr/charter/update/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/hr/announcements/[id]",
+      "file": "src/app/api/hr/announcements/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/employees/import",
+      "file": "src/app/api/employees/import/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/employees/list",
+      "file": "src/app/api/employees/list/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/employees/managers",
+      "file": "src/app/api/employees/managers/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/employees/template",
+      "file": "src/app/api/employees/template/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/employees/[id]",
+      "file": "src/app/api/employees/[id]/route.ts",
+      "methods": [
+        "GET",
+        "PATCH",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/employee/announcements",
+      "file": "src/app/api/employee/announcements/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/employee/attendance",
+      "file": "src/app/api/employee/attendance/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/employee/attendance-history",
+      "file": "src/app/api/employee/attendance-history/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/employee/attendance-status",
+      "file": "src/app/api/employee/attendance-status/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/employee/cancel-leave",
+      "file": "src/app/api/employee/cancel-leave/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/employee/checkin",
+      "file": "src/app/api/employee/checkin/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/employee/field-visits",
+      "file": "src/app/api/employee/field-visits/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/employee/history",
+      "file": "src/app/api/employee/history/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/employee/leave-types",
+      "file": "src/app/api/employee/leave-types/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/employee/mission-end",
+      "file": "src/app/api/employee/mission-end/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/employee/mission-request",
+      "file": "src/app/api/employee/mission-request/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/employee/mission-start",
+      "file": "src/app/api/employee/mission-start/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/employee/missions",
+      "file": "src/app/api/employee/missions/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/employee/my-leaves",
+      "file": "src/app/api/employee/my-leaves/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/employee/my-missions",
+      "file": "src/app/api/employee/my-missions/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/employee/my-payslip",
+      "file": "src/app/api/employee/my-payslip/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/employee/my-permissions",
+      "file": "src/app/api/employee/my-permissions/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/employee/my-requests",
+      "file": "src/app/api/employee/my-requests/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/employee/my-shift",
+      "file": "src/app/api/employee/my-shift/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/employee/my-work-locations",
+      "file": "src/app/api/employee/my-work-locations/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/employee/notifications",
+      "file": "src/app/api/employee/notifications/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/employee/partial-checkout",
+      "file": "src/app/api/employee/partial-checkout/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/employee/payslip",
+      "file": "src/app/api/employee/payslip/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/employee/permission-balance",
+      "file": "src/app/api/employee/permission-balance/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/employee/request-types",
+      "file": "src/app/api/employee/request-types/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/employee/resume-checkin",
+      "file": "src/app/api/employee/resume-checkin/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/employee/status",
+      "file": "src/app/api/employee/status/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/employee/submit-leave",
+      "file": "src/app/api/employee/submit-leave/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/employee/submit-request",
+      "file": "src/app/api/employee/submit-request/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/employee/summary",
+      "file": "src/app/api/employee/summary/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/employee/today-sessions",
+      "file": "src/app/api/employee/today-sessions/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/employee/work-locations",
+      "file": "src/app/api/employee/work-locations/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/employee/field-visits/types",
+      "file": "src/app/api/employee/field-visits/types/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/employee/field-visits/[id]/end",
+      "file": "src/app/api/employee/field-visits/[id]/end/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/company/info",
+      "file": "src/app/api/company/info/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/company/payroll-settings",
+      "file": "src/app/api/company/payroll-settings/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/company/upload-logo",
+      "file": "src/app/api/company/upload-logo/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/auth/login",
+      "file": "src/app/api/auth/login/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/auth/signup",
+      "file": "src/app/api/auth/signup/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/attendance/daily",
+      "file": "src/app/api/attendance/daily/route.ts",
+      "methods": [
+        "GET"
+      ]
+    }
+  ]
+}
