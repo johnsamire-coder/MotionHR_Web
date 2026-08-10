@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Calendar, Plus, Trash2, Loader2 } from "lucide-react";
+import { Calendar, Plus, Trash2, Loader2, ArrowRight, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
@@ -127,7 +129,28 @@ export default function ShiftExceptionsPage() {
   };
 
   return (
-    <div className="space-y-6 pb-6" dir={ar ? "rtl" : "ltr"}>
+    <div className="space-y-6">
+      {/* Header with Back Button */}
+      <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b">
+        <div className="flex items-center gap-3">
+          <Link href="/hr/shifts">
+            <Button variant="outline" size="sm" className="gap-2">
+              {ar ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+              {ar ? "رجوع للشيفتات" : "Back to Shifts"}
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              {ar ? "استثناءات الشيفتات" : "Shift Exceptions"}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {ar ? "تغيير شيفت موظف ليوم واحد فقط" : "Change employee shift for a single day"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-6 pb-6" dir={ar ? "rtl" : "ltr"}>
       <div>
         <h1 className="text-3xl font-bold tracking-tight">
           {ar ? "استثناءات الشيفت" : "Shift Exceptions"}
@@ -269,6 +292,7 @@ export default function ShiftExceptionsPage() {
           ))}
         </div>
       )}
+    </div>
     </div>
   );
 }

@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { RotateCcw, Plus, Trash2, Loader2, Users, Building2, Layers } from "lucide-react";
+import { RotateCcw, Plus, Trash2, Loader2, Users, Building2, Layers, ArrowRight, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
@@ -148,7 +150,28 @@ export default function ShiftRotationsPage() {
   const removeSlot = (i: number) => { if (slots.length > 1) setSlots(prev => prev.filter((_, idx) => idx !== i)); };
 
   return (
-    <div className="space-y-6 pb-6" dir={ar ? "rtl" : "ltr"}>
+    <div className="space-y-6">
+      {/* Header with Back Button */}
+      <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b">
+        <div className="flex items-center gap-3">
+          <Link href="/hr/shifts">
+            <Button variant="outline" size="sm" className="gap-2">
+              {ar ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+              {ar ? "رجوع للشيفتات" : "Back to Shifts"}
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              {ar ? "تناوب الشيفتات" : "Shift Rotations"}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {ar ? "دورات تلقائية لتبديل الشيفتات" : "Automatic shift rotation cycles"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-6 pb-6" dir={ar ? "rtl" : "ltr"}>
       <div>
         <h1 className="text-3xl font-bold tracking-tight">{ar ? "تناوب الشيفتات" : "Shift Rotations"}</h1>
         <p className="text-muted-foreground mt-1">{ar ? "إنشاء دورات تناوب الشيفتات وتعيينها للموظفين" : "Create shift rotation cycles and assign them to employees"}</p>
@@ -296,6 +319,7 @@ export default function ShiftRotationsPage() {
           ))}
         </div>
       )}
+    </div>
     </div>
   );
 }
