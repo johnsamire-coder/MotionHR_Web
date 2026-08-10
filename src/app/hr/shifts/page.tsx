@@ -113,6 +113,9 @@ export default function ShiftsPage() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [editingShift, setEditingShift] = useState<Shift | null>(null);
+  const [deleteShiftId, setDeleteShiftId] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     shift_type: "fixed",
@@ -151,6 +154,7 @@ export default function ShiftsPage() {
   );
 
   const openCreateDialog = () => {
+    setEditingShift(null);
     setFormData({
       name: "", shift_type: "fixed",
       start_time: "09:00", end_time: "17:00",
@@ -159,19 +163,93 @@ export default function ShiftsPage() {
     setDialogOpen(true);
   };
 
+  const openEditDialog = (shift: Shift) => {
+    setEditingShift(shift);
+    setFormData({
+      name: shift.name || "",
+      shift_type: shift.shift_type || "fixed",
+      start_time: shift.start_time || "09:00",
+      end_time: shift.end_time || "17:00",
+      required_daily_hours: shift.required_daily_hours || 8,
+      grace_period: shift.grace_period || 15,
+      break_duration: shift.break_duration || 60,
+    });
+    setDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteShiftId) return;
+    setIsDeleting(true);
+    try {
+      await axios.delete(`/api/shifts?id=${deleteShiftId}`, {
+        headers: { Authorization: `Token ${token}` },
+      });
+      toast.success(lang === "ar" ? "تم حذف الشيفت" : "Shift deleted");
+      setDeleteShiftId(null);
+      loadShifts();
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string; message?: string } } };
+      toast.error(err?.response?.data?.error || err?.response?.data?.message || (lang === "ar" ? "فشل الحذف" : "Delete failed"));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const openEditDialog = (shift: Shift) => {
+    setEditingShift(shift);
+    setFormData({
+      name: shift.name || "",
+      shift_type: shift.shift_type || "fixed",
+      start_time: shift.start_time || "09:00",
+      end_time: shift.end_time || "17:00",
+      required_daily_hours: shift.required_daily_hours || 8,
+      grace_period: shift.grace_period || 15,
+      break_duration: shift.break_duration || 60,
+    });
+    setDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteShiftId) return;
+    setIsDeleting(true);
+    try {
+      await axios.delete(`/api/shifts?id=${deleteShiftId}`, {
+        headers: { Authorization: `Token ${token}` },
+      });
+      toast.success(lang === "ar" ? "تم حذف الشيفت" : "Shift deleted");
+      setDeleteShiftId(null);
+      loadShifts();
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string; message?: string } } };
+      toast.error(err?.response?.data?.error || err?.response?.data?.message || (lang === "ar" ? "فشل الحذف" : "Delete failed"));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!formData.name.trim()) { toast.error(d.shiftNameRequired); return; }
     setIsSaving(true);
     try {
-      await axios.post("/api/shifts", formData, {
-        headers: { Authorization: `Token ${token}` },
-      });
-      toast.success(d.createdShiftSuccess);
+      if (editingShift) {
+        // Edit mode
+        await axios.put(`/api/shifts?id=${editingShift.id}`, formData, {
+          headers: { Authorization: `Token ${token}` },
+        });
+        toast.success(lang === "ar" ? "تم تعديل الشيفت" : "Shift updated");
+      } else {
+        // Create mode
+        await axios.post("/api/shifts", formData, {
+          headers: { Authorization: `Token ${token}` },
+        });
+        toast.success(d.createdShiftSuccess);
+      }
       setDialogOpen(false);
+      setEditingShift(null);
       loadShifts();
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err?.response?.data?.message || d.failedCreateShift);
+      const err = error as { response?: { data?: { error?: string; message?: string } } };
+      toast.error(err?.response?.data?.error || err?.response?.data?.message || d.failedCreateShift);
     } finally {
       setIsSaving(false);
     }
@@ -290,13 +368,16 @@ export default function ShiftsPage() {
                         <MoreVertical className="w-4 h-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEditDialog(shift)}>
                           <Edit className="w-4 h-4 ml-2" />{d.edit}
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => toast.info(lang === "ar" ? "قريباً" : "Coming soon")}>
                           <Users className="w-4 h-4 ml-2" />{d.assignEmployees}
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
+                        <DropdownMenuItem 
+                          className="text-destructive"
+                          onClick={() => setDeleteShiftId(shift.id)}
+                        >
                           <Trash2 className="w-4 h-4 ml-2" />{d.delete}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -363,7 +444,7 @@ export default function ShiftsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{d.addShift}</DialogTitle>
+            <DialogTitle>{editingShift ? (lang === "ar" ? "تعديل الشيفت" : "Edit Shift") : d.addShift}</DialogTitle>
             <DialogDescription>{d.shiftsDesc}</DialogDescription>
           </DialogHeader>
 
@@ -438,7 +519,34 @@ export default function ShiftsPage() {
             <Button onClick={handleSave} disabled={isSaving} className="gap-2">
               {isSaving
                 ? <><Loader2 className="w-4 h-4 animate-spin" />{d.saving}</>
-                : <><Plus className="w-4 h-4" />{d.addShift}</>
+                : editingShift
+                  ? <>{lang === "ar" ? "حفظ التعديلات" : "Save Changes"}</>
+                  : <><Plus className="w-4 h-4" />{d.addShift}</>
+              }
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteShiftId} onOpenChange={(open) => !open && setDeleteShiftId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{lang === "ar" ? "تأكيد الحذف" : "Confirm Delete"}</DialogTitle>
+            <DialogDescription>
+              {lang === "ar" 
+                ? "هل أنت متأكد من حذف هذا الشيفت؟ لن يمكن التراجع." 
+                : "Are you sure you want to delete this shift? This cannot be undone."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteShiftId(null)} disabled={isDeleting}>
+              {d.cancel}
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={isDeleting} className="gap-2">
+              {isDeleting 
+                ? <><Loader2 className="w-4 h-4 animate-spin" />{lang === "ar" ? "جاري الحذف..." : "Deleting..."}</>
+                : <><Trash2 className="w-4 h-4" />{d.delete}</>
               }
             </Button>
           </DialogFooter>
