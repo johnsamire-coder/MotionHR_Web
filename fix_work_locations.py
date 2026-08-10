@@ -1,4 +1,10 @@
-"use client";
+import sys
+sys.stdout.reconfigure(encoding="utf-8")
+from pathlib import Path
+
+wl_file = Path("src/app/hr/work-locations/page.tsx")
+
+new_content = '''"use client";
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
@@ -360,3 +366,8 @@ export default function WorkLocationsPage() {
     </div>
   );
 }
+'''
+
+wl_file.write_text(new_content, encoding="utf-8")
+print(f"[OK] work-locations/page.tsx updated: {wl_file.stat().st_size} bytes")
+print("[SUCCESS] Map + fixed dropdown added to work-locations!")
