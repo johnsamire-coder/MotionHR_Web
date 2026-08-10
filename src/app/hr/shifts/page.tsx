@@ -116,6 +116,11 @@ export default function ShiftsPage() {
   const [editingShift, setEditingShift] = useState<Shift | null>(null);
   const [deleteShiftId, setDeleteShiftId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Assign Dialog
+  const [assignShift, setAssignShift] = useState<Shift | null>(null);
+  const [employees, setEmployees] = useState<Array<{id: number; name: string}>>([]);
+  const [assignForm, setAssignForm] = useState({ employee_ids: [] as number[], start_date: "", end_date: "" });
+  const [isAssigning, setIsAssigning] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     shift_type: "fixed",
@@ -130,6 +135,19 @@ export default function ShiftsPage() {
     if (!token) return;
     loadShifts();
   }, [token]);
+
+  const loadEmployees = async () => {
+    try {
+      const res = await fetch("/api/employees/list", {
+        headers: { Authorization: `Token ${token}` },
+      });
+      const data = await res.json();
+      setEmployees((data?.employees || data || []).map((e: any) => ({
+        id: e.id,
+        name: e.full_name_ar || e.name || `${e.first_name_ar || ""} ${e.last_name_ar || ""}`.trim(),
+      })));
+    } catch {}
+  };
 
   const loadShifts = async () => {
     setIsLoading(true);
@@ -221,6 +239,43 @@ export default function ShiftsPage() {
       toast.error(err?.response?.data?.error || err?.response?.data?.message || d.failedCreateShift);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const openAssignDialog = (shift: Shift) => {
+    setAssignShift(shift);
+    setAssignForm({ employee_ids: [], start_date: new Date().toISOString().split("T")[0], end_date: "" });
+    if (employees.length === 0) loadEmployees();
+  };
+
+  const handleAssign = async () => {
+    if (!assignShift || assignForm.employee_ids.length === 0 || !assignForm.start_date) {
+      toast.error(lang === "ar" ? "اختر موظف وتاريخ البداية" : "Select employee and start date");
+      return;
+    }
+    setIsAssigning(true);
+    try {
+      const res = await fetch("/api/hr/shifts/assign", {
+        method: "POST",
+        headers: { Authorization: `Token ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shift_id: assignShift.id,
+          employee_ids: assignForm.employee_ids,
+          start_date: assignForm.start_date,
+          end_date: assignForm.end_date || null,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(lang === "ar" ? `تم تعيين الشيفت لـ ${assignForm.employee_ids.length} موظف` : `Shift assigned to ${assignForm.employee_ids.length} employee(s)`);
+        setAssignShift(null);
+      } else {
+        toast.error(data.error || data.message || (lang === "ar" ? "فشل التعيين" : "Assignment failed"));
+      }
+    } catch {
+      toast.error(lang === "ar" ? "خطأ في الاتصال" : "Connection error");
+    } finally {
+      setIsAssigning(false);
     }
   };
 
@@ -340,7 +395,7 @@ export default function ShiftsPage() {
                         <DropdownMenuItem onClick={() => openEditDialog(shift)}>
                           <Edit className="w-4 h-4 ml-2" />{d.edit}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => toast.info(lang === "ar" ? "قريباً" : "Coming soon")}>
+                        <DropdownMenuItem onClick={() => openAssignDialog(shift)}>
                           <Users className="w-4 h-4 ml-2" />{d.assignEmployees}
                         </DropdownMenuItem>
                         <DropdownMenuItem 
@@ -516,6 +571,87 @@ export default function ShiftsPage() {
               {isDeleting 
                 ? <><Loader2 className="w-4 h-4 animate-spin" />{lang === "ar" ? "جاري الحذف..." : "Deleting..."}</>
                 : <><Trash2 className="w-4 h-4" />{d.delete}</>
+              }
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Employees Dialog */}
+      <Dialog open={!!assignShift} onOpenChange={(open) => !open && setAssignShift(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {lang === "ar" ? `تعيين موظفين للشيفت: ${assignShift?.name}` : `Assign to Shift: ${assignShift?.name}`}
+            </DialogTitle>
+            <DialogDescription>
+              {lang === "ar" ? "اختر موظف أو أكثر وتاريخ البداية" : "Select employee(s) and start date"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>{lang === "ar" ? "الموظفون *" : "Employees *"}</Label>
+              <div className="max-h-48 overflow-y-auto border rounded-lg p-2 space-y-1">
+                {employees.length === 0 ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : employees.map(emp => (
+                  <label key={emp.id} className="flex items-center gap-2 p-2 rounded hover:bg-muted/50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4"
+                      checked={assignForm.employee_ids.includes(emp.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setAssignForm(prev => ({ ...prev, employee_ids: [...prev.employee_ids, emp.id] }));
+                        } else {
+                          setAssignForm(prev => ({ ...prev, employee_ids: prev.employee_ids.filter(id => id !== emp.id) }));
+                        }
+                      }}
+                    />
+                    <span className="text-sm">{emp.name}</span>
+                  </label>
+                ))}
+              </div>
+              {assignForm.employee_ids.length > 0 && (
+                <p className="text-xs text-brand-primary">
+                  {lang === "ar" ? `تم اختيار ${assignForm.employee_ids.length} موظف` : `${assignForm.employee_ids.length} selected`}
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>{lang === "ar" ? "تاريخ البداية *" : "Start Date *"}</Label>
+                <input
+                  type="date"
+                  className="w-full border rounded-md px-3 py-2 text-sm"
+                  value={assignForm.start_date}
+                  onChange={e => setAssignForm(prev => ({ ...prev, start_date: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{lang === "ar" ? "تاريخ النهاية (اختياري)" : "End Date (optional)"}</Label>
+                <input
+                  type="date"
+                  className="w-full border rounded-md px-3 py-2 text-sm"
+                  value={assignForm.end_date}
+                  onChange={e => setAssignForm(prev => ({ ...prev, end_date: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignShift(null)} disabled={isAssigning}>
+              {d.cancel}
+            </Button>
+            <Button onClick={handleAssign} disabled={isAssigning || assignForm.employee_ids.length === 0} className="gap-2">
+              {isAssigning
+                ? <><Loader2 className="w-4 h-4 animate-spin" />{lang === "ar" ? "جاري التعيين..." : "Assigning..."}</>
+                : <><Users className="w-4 h-4" />{d.assignEmployees}</>
               }
             </Button>
           </DialogFooter>
