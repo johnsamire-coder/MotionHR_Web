@@ -298,7 +298,7 @@ export default function ImportPage() {
                           {result.error_details.map((err, i) => (
                             <div key={i} className="text-sm p-2 bg-red-500/5 rounded">
                               <span className="font-semibold">{d.row} {err.row}:</span>{" "}
-                              {err.errors.join(" | ")}
+                              {(err.errors || []).join(" | ")}
                             </div>
                           ))}
                         </div>
