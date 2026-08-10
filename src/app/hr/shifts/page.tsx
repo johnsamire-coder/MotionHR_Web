@@ -119,6 +119,7 @@ export default function ShiftsPage() {
   // Assign Dialog
   const [assignShift, setAssignShift] = useState<Shift | null>(null);
   const [employees, setEmployees] = useState<Array<{id: number; name: string}>>([]);
+  const [employeesLoading, setEmployeesLoading] = useState(false);
   const [assignForm, setAssignForm] = useState({ employee_ids: [] as number[], start_date: "", end_date: "" });
   const [isAssigning, setIsAssigning] = useState(false);
   const [formData, setFormData] = useState({
@@ -137,16 +138,40 @@ export default function ShiftsPage() {
   }, [token]);
 
   const loadEmployees = async () => {
+    setEmployeesLoading(true);
     try {
       const res = await fetch("/api/employees/list", {
         headers: { Authorization: `Token ${token}` },
       });
       const data = await res.json();
-      setEmployees((data?.employees || data || []).map((e: any) => ({
-        id: e.id,
-        name: e.full_name_ar || e.name || `${e.first_name_ar || ""} ${e.last_name_ar || ""}`.trim(),
-      })));
-    } catch {}
+
+      const rawList =
+        data?.employees ||
+        data?.items ||
+        data?.results ||
+        data?.data ||
+        (Array.isArray(data) ? data : []);
+
+      const normalized = Array.isArray(rawList)
+        ? rawList.map((e: any) => ({
+            id: e.id,
+            name:
+              e.full_name_ar ||
+              e.full_name ||
+              e.name ||
+              `${e.first_name_ar || e.first_name || ""} ${e.last_name_ar || e.last_name || ""}`.trim() ||
+              `#${e.id}`,
+          }))
+        : [];
+
+      setEmployees(normalized);
+    } catch (err) {
+      console.error("loadEmployees error:", err);
+      setEmployees([]);
+      toast.error(lang === "ar" ? "تعذر تحميل الموظفين" : "Failed to load employees");
+    } finally {
+      setEmployeesLoading(false);
+    }
   };
 
   const loadShifts = async () => {
@@ -593,9 +618,13 @@ export default function ShiftsPage() {
             <div className="space-y-2">
               <Label>{lang === "ar" ? "الموظفون *" : "Employees *"}</Label>
               <div className="max-h-48 overflow-y-auto border rounded-lg p-2 space-y-1">
-                {employees.length === 0 ? (
+                {employeesLoading ? (
                   <div className="flex justify-center py-4">
                     <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : employees.length === 0 ? (
+                  <div className="text-center py-4 text-sm text-muted-foreground">
+                    {lang === "ar" ? "لا يوجد موظفون متاحون" : "No employees available"}
                   </div>
                 ) : employees.map(emp => (
                   <label key={emp.id} className="flex items-center gap-2 p-2 rounded hover:bg-muted/50 cursor-pointer">
