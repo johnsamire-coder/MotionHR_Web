@@ -22,13 +22,15 @@ import { STORAGE_KEYS } from "@/lib/constants/config";
 
 interface Department {
   id: number;
-  name: string;
+  name_ar: string;
   name_en?: string;
+  code?: string;
   description?: string;
+  employees_count?: number;
   employee_count?: number;
 }
 
-const EMPTY = { name: "", name_en: "", description: "" };
+const EMPTY = { name_ar: "", name_en: "", code: "", description: "" };
 
 export default function DepartmentsPage() {
   const d = useDict();
@@ -63,7 +65,7 @@ export default function DepartmentsPage() {
 
   // ── Create ────────────────────────────────────────────────
   const handleCreate = async () => {
-    if (!form.name) {
+    if (!form.name_ar) {
       toast.error(ar ? "الاسم العربي مطلوب" : "Arabic name is required");
       return;
     }
@@ -81,7 +83,7 @@ export default function DepartmentsPage() {
         setForm({ ...EMPTY });
         load();
       } else {
-        toast.error(data.message || (ar ? "فشل" : "Failed"));
+        toast.error(data.error || data.message || (ar ? "فشل" : "Failed"));
       }
     } catch {
       toast.error(ar ? "خطأ" : "Error");
@@ -92,7 +94,7 @@ export default function DepartmentsPage() {
 
   // ── Edit ─────────────────────────────────────────────────
   const handleEdit = async () => {
-    if (!editItem || !form.name) return;
+    if (!editItem || !form.name_ar) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/hr/departments/${editItem.id}`, {
@@ -106,7 +108,7 @@ export default function DepartmentsPage() {
         setEditItem(null);
         load();
       } else {
-        toast.error(data.message || (ar ? "فشل" : "Failed"));
+        toast.error(data.error || data.message || (ar ? "فشل" : "Failed"));
       }
     } catch {
       toast.error(ar ? "خطأ" : "Error");
@@ -140,20 +142,25 @@ export default function DepartmentsPage() {
   };
 
   const openEdit = (item: Department) => {
-    setForm({ name: item.name, name_en: item.name_en || "", description: item.description || "" });
+    setForm({
+      name_ar: item.name_ar || "",
+      name_en: item.name_en || "",
+      code: item.code || "",
+      description: item.description || ""
+    });
     setEditItem(item);
   };
 
   const getName = (item: Department) =>
-    ar ? item.name : (item.name_en || item.name);
+    ar ? item.name_ar : (item.name_en || item.name_ar);
 
   const filtered = departments.filter(dep =>
     !search ||
-    dep.name.includes(search) ||
+    (dep.name_ar || "").includes(search) ||
     (dep.name_en || "").toLowerCase().includes(search.toLowerCase())
   );
 
-  const totalEmployees = departments.reduce((s, d) => s + (d.employee_count || 0), 0);
+  const totalEmployees = departments.reduce((s, d) => s + (d.employees_count || d.employee_count || 0), 0);
 
   // FormFields inline JSX (not as separate component to preserve input focus)
   const renderFormFields = () => (
@@ -161,8 +168,8 @@ export default function DepartmentsPage() {
       <div>
         <label className="text-sm font-medium mb-1 block">{ar ? "الاسم بالعربي *" : "Arabic Name *"}</label>
         <Input
-          value={form.name}
-          onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+          value={form.name_ar}
+          onChange={e => setForm(p => ({ ...p, name_ar: e.target.value }))}
           placeholder="الهندسة المدنية"
           dir="rtl"
         />
