@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
 import {
@@ -47,6 +47,7 @@ export default function CompanySettingsPage() {
   const [company, setCompany] = useState<CompanyInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
@@ -74,10 +75,18 @@ export default function CompanySettingsPage() {
         },
         body: JSON.stringify(company),
       });
-      if (!res.ok) throw new Error();
-      toast.success(d.settingsSaved);
-    } catch {
-      toast.error(d.settingsSaveFailed);
+      const data = await res.json();
+      if (res.ok && data.success !== false) {
+        toast.success(d.settingsSaved || (lang === "ar" ? "تم الحفظ بنجاح" : "Saved successfully"));
+        // إعادة تحميل البيانات المحدثة
+        const refreshRes = await fetch("/api/company/info", { headers: { Authorization: authHeader } });
+        const refreshData = await refreshRes.json();
+        if (refreshData?.company) setCompany(refreshData.company);
+      } else {
+        toast.error(data.error || data.message || d.settingsSaveFailed || (lang === "ar" ? "فشل الحفظ" : "Save failed"));
+      }
+    } catch (err) {
+      toast.error(lang === "ar" ? "خطأ في الاتصال" : "Network error");
     } finally {
       setSaving(false);
     }
@@ -184,9 +193,21 @@ export default function CompanySettingsPage() {
                   <p className="text-sm text-muted-foreground mb-3">
                     {lang === "ar" ? "PNG, JPG - حد أقصى 2 ميجا" : "PNG, JPG - max 2 MB"}
                   </p>
-                  <Button variant="outline" className="gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    onChange={handleUploadLogo}
+                    style={{ display: 'none' }}
+                  />
+                  <Button 
+                    variant="outline" 
+                    className="gap-2"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={saving}
+                  >
                     <Camera className="w-4 h-4" />
-                    {company.logo_url ? d.changeLogo : d.uploadLogo}
+                    {saving ? (lang === "ar" ? "جاري الرفع..." : "Uploading...") : (company.logo_url ? d.changeLogo : d.uploadLogo)}
                   </Button>
                 </div>
               </div>
