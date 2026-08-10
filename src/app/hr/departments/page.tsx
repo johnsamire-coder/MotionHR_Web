@@ -52,7 +52,7 @@ export default function DepartmentsPage() {
   const load = useCallback(() => {
     if (!token) return;
     setLoading(true);
-    fetch("/api/departments", { headers: { Authorization: authHeader } })
+    fetch("/api/hr/departments", { headers: { Authorization: authHeader } })
       .then(r => r.json())
       .then(data => setDepartments(data?.departments || data || []))
       .catch(() => toast.error(d.failedLoad))
@@ -155,7 +155,8 @@ export default function DepartmentsPage() {
 
   const totalEmployees = departments.reduce((s, d) => s + (d.employee_count || 0), 0);
 
-  const FormFields = () => (
+  // FormFields inline JSX (not as separate component to preserve input focus)
+  const renderFormFields = () => (
     <div className="space-y-4">
       <div>
         <label className="text-sm font-medium mb-1 block">{ar ? "الاسم بالعربي *" : "Arabic Name *"}</label>
@@ -324,7 +325,7 @@ export default function DepartmentsPage() {
             <DialogTitle>{ar ? "إضافة قسم جديد" : "Add Department"}</DialogTitle>
           </DialogHeader>
           <div className="pt-2">
-            <FormFields />
+            {renderFormFields()}
             <div className="flex gap-3 mt-5">
               <Button
                 onClick={handleCreate} disabled={saving}
@@ -348,7 +349,7 @@ export default function DepartmentsPage() {
             <DialogTitle>{ar ? "تعديل القسم" : "Edit Department"}</DialogTitle>
           </DialogHeader>
           <div className="pt-2">
-            <FormFields />
+            {renderFormFields()}
             <div className="flex gap-3 mt-5">
               <Button
                 onClick={handleEdit} disabled={saving}
