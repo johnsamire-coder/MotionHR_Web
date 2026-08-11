@@ -50,6 +50,9 @@ interface WorkLocation {
   employee_id?: number;
   latitude?: number;
   longitude?: number;
+  assigned_employee_ids?: number[];
+  assigned_employees_names?: string[];
+  assigned_count?: number;
 }
 
 interface LocationType {
@@ -186,10 +189,12 @@ export default function WorkLocationsPage() {
 
   const openAssignEmployees = async (loc: WorkLocation) => {
     setAssignLoc(loc);
-    setSelectedEmpIds([]);
     setAssignScope("employees");
     setSelectedBranchId("");
     setSelectedDeptId("");
+    // نجيب المخصصين حالياً من الـ location
+    const currentAssigned = (loc as any).assigned_employee_ids || [];
+    setSelectedEmpIds(currentAssigned);
     try {
       const [empRes, brRes, depRes] = await Promise.all([
         fetch("/api/employees/list", { headers: { Authorization: authHeader } }),
@@ -746,7 +751,12 @@ export default function WorkLocationsPage() {
               <Button variant="outline" onClick={() => setAssignLoc(null)}>{d.cancel}</Button>
               <Button
                 onClick={handleAssignEmployees}
-                disabled={assigning || selectedEmpIds.length === 0}
+                disabled={
+                  assigning ||
+                  (assignScope === "employees" && selectedEmpIds.length === 0) ||
+                  (assignScope === "department" && !selectedDeptId) ||
+                  (assignScope === "branch" && !selectedBranchId)
+                }
                 className="bg-brand-primary hover:bg-brand-primary/90 gap-2"
               >
                 {assigning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
