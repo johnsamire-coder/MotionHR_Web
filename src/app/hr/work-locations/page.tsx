@@ -179,6 +179,67 @@ export default function WorkLocationsPage() {
 
   const hasLocation = form.latitude && form.longitude;
 
+  const openAssignEmployees = async (loc: WorkLocation) => {
+    setAssignLoc(loc);
+    setSelectedEmpIds([]);
+    try {
+      const res = await fetch("/api/employees/list", { headers: { Authorization: authHeader } });
+      const data = await res.json();
+      const list = (data?.employees || data || []).map((e: any) => ({
+        id: e.id,
+        name: e.full_name_ar || e.name || `${e.first_name_ar || ""} ${e.last_name_ar || ""}`.trim() || `#${e.id}`,
+      }));
+      setAllEmployees(list);
+    } catch {
+      toast.error(ar ? "فشل تحميل الموظفين" : "Failed");
+    }
+  };
+
+  const handleAssignEmployees = async () => {
+    if (!assignLoc || selectedEmpIds.length === 0) {
+      toast.error(ar ? "اختر موظفين" : "Select employees");
+      return;
+    }
+    setAssigning(true);
+    try {
+      const res = await fetch(`/api/hr/work-locations/${assignLoc.id}/assign-employees`, {
+        method: "POST",
+        headers: { Authorization: authHeader, "Content-Type": "application/json" },
+        body: JSON.stringify({ employee_ids: selectedEmpIds }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(ar ? `تم تعيين ${selectedEmpIds.length} موظف` : `Assigned ${selectedEmpIds.length}`);
+        setAssignLoc(null);
+        loadData();
+      } else {
+        toast.error(data.message || (ar ? "فشل" : "Failed"));
+      }
+    } catch {
+      toast.error(ar ? "خطأ" : "Error");
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const handleDeleteLocation = async (loc: WorkLocation) => {
+    if (!confirm(ar ? `حذف "${loc.name}"؟` : `Delete "${loc.name}"?`)) return;
+    try {
+      const res = await fetch(`/api/hr/work-locations/${loc.id}`, {
+        method: "DELETE",
+        headers: { Authorization: authHeader },
+      });
+      if (res.ok) {
+        toast.success(ar ? "تم الحذف" : "Deleted");
+        loadData();
+      } else {
+        toast.error(ar ? "فشل الحذف" : "Failed");
+      }
+    } catch {
+      toast.error(ar ? "خطأ" : "Error");
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
