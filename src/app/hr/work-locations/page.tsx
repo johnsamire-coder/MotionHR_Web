@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import {
-  Map, Loader2, Plus, MapPin, Users,
+  Map as MapIcon, Loader2, Plus, MapPin, Users,
   CheckCircle, Clock, XCircle, Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -256,7 +256,7 @@ export default function WorkLocationsPage() {
             <Card>
               <CardContent className="py-20 text-center">
                 <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4 mx-auto">
-                  <Map className="w-8 h-8 text-muted-foreground/50" />
+                  <MapIcon className="w-8 h-8 text-muted-foreground/50" />
                 </div>
                 <p className="font-medium mb-4">{d.noWorkLocations}</p>
                 <Button onClick={() => setDialog(true)} className="gap-2">
