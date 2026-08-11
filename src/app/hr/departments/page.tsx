@@ -28,9 +28,17 @@ interface Department {
   description?: string;
   employees_count?: number;
   employee_count?: number;
+  branch_id?: number | null;
+  branch_name?: string | null;
 }
 
-const EMPTY = { name_ar: "", name_en: "", code: "", description: "" };
+interface BranchItem {
+  id: number;
+  name_ar: string;
+  name_en?: string;
+}
+
+const EMPTY = { name_ar: "", name_en: "", code: "", description: "", branch_id: "" };
 
 export default function DepartmentsPage() {
   const d = useDict();
@@ -38,6 +46,7 @@ export default function DepartmentsPage() {
   const ar = lang === "ar";
 
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [branches, setBranches] = useState<BranchItem[]>([]);
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState("");
   const [showCreate, setShowCreate]   = useState(false);
@@ -54,9 +63,14 @@ export default function DepartmentsPage() {
   const load = useCallback(() => {
     if (!token) return;
     setLoading(true);
-    fetch("/api/hr/departments", { headers: { Authorization: authHeader } })
-      .then(r => r.json())
-      .then(data => setDepartments(data?.departments || data || []))
+    Promise.all([
+      fetch("/api/hr/departments", { headers: { Authorization: authHeader } }).then(r => r.json()),
+      fetch("/api/branches", { headers: { Authorization: authHeader } }).then(r => r.json()),
+    ])
+      .then(([depData, brData]) => {
+        setDepartments(depData?.departments || depData || []);
+        setBranches(Array.isArray(brData) ? brData : brData?.branches || []);
+      })
       .catch(() => toast.error(d.failedLoad))
       .finally(() => setLoading(false));
   }, []);
@@ -146,7 +160,8 @@ export default function DepartmentsPage() {
       name_ar: item.name_ar || "",
       name_en: item.name_en || "",
       code: item.code || "",
-      description: item.description || ""
+      description: item.description || "",
+      branch_id: item.branch_id ? String(item.branch_id) : "",
     });
     setEditItem(item);
   };
@@ -182,6 +197,19 @@ export default function DepartmentsPage() {
           placeholder="Civil Engineering"
           dir="ltr"
         />
+      </div>
+      <div>
+        <label className="text-sm font-medium mb-1 block">{ar ? "الفرع *" : "Branch *"}</label>
+        <select
+          value={form.branch_id}
+          onChange={e => setForm(p => ({ ...p, branch_id: e.target.value }))}
+          className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background"
+        >
+          <option value="">{ar ? "-- اختر الفرع --" : "-- Select Branch --"}</option>
+          {branches.map(b => (
+            <option key={b.id} value={b.id}>{ar ? b.name_ar : (b.name_en || b.name_ar)}</option>
+          ))}
+        </select>
       </div>
       <div>
         <label className="text-sm font-medium mb-1 block">{ar ? "الوصف" : "Description"}</label>
@@ -279,9 +307,9 @@ export default function DepartmentsPage() {
                     </div>
                     <div>
                       <p className="font-semibold">{getName(dep)}</p>
-                      {dep.name_en && dep.name !== dep.name_en && (
-                        <p className="text-xs text-muted-foreground">
-                          {ar ? dep.name_en : dep.name}
+                      {dep.branch_name && (
+                        <p className="text-xs text-brand-primary flex items-center gap-1">
+                          🏢 {dep.branch_name}
                         </p>
                       )}
                     </div>
