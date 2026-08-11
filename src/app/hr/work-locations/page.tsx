@@ -79,6 +79,10 @@ export default function WorkLocationsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("locations");
   const [searchEmployee, setSearchEmployee] = useState("");
+  const [assignLoc, setAssignLoc] = useState<WorkLocation | null>(null);
+  const [allEmployees, setAllEmployees] = useState<Array<{id: number; name: string}>>([]);
+  const [selectedEmpIds, setSelectedEmpIds] = useState<number[]>([]);
+  const [assigning, setAssigning] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -298,6 +302,27 @@ export default function WorkLocationsPage() {
                         )}
                       </div>
                     </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 mt-3 pt-3 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 gap-1"
+                        onClick={() => openAssignEmployees(loc)}
+                      >
+                        <Users className="w-3 h-3" />
+                        {ar ? "تعيين موظفين" : "Assign"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 hover:bg-red-50 gap-1"
+                        onClick={() => handleDeleteLocation(loc)}
+                      >
+                        🗑️
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -506,6 +531,57 @@ export default function WorkLocationsPage() {
                   ? <><Loader2 className="w-4 h-4 animate-spin" />{d.saving}</>
                   : <><Plus className="w-4 h-4" />{d.addWorkLocation}</>
                 }
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Employees Dialog */}
+      <Dialog open={!!assignLoc} onOpenChange={(o) => !o && setAssignLoc(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {ar ? `تعيين موظفين للموقع: ${assignLoc?.name}` : `Assign to: ${assignLoc?.name}`}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="max-h-72 overflow-y-auto border rounded-lg p-2">
+              {allEmployees.length === 0 ? (
+                <div className="text-center py-8 text-sm text-muted-foreground">
+                  {ar ? "لا يوجد موظفون" : "No employees"}
+                </div>
+              ) : (
+                allEmployees.map((emp) => (
+                  <label key={emp.id} className="flex items-center gap-2 p-2 rounded hover:bg-muted/50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4"
+                      checked={selectedEmpIds.includes(emp.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedEmpIds([...selectedEmpIds, emp.id]);
+                        else setSelectedEmpIds(selectedEmpIds.filter((id) => id !== emp.id));
+                      }}
+                    />
+                    <span className="text-sm">{emp.name}</span>
+                  </label>
+                ))
+              )}
+            </div>
+            {selectedEmpIds.length > 0 && (
+              <p className="text-xs text-brand-primary">
+                {ar ? `تم اختيار ${selectedEmpIds.length} موظف` : `${selectedEmpIds.length} selected`}
+              </p>
+            )}
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setAssignLoc(null)}>{d.cancel}</Button>
+              <Button
+                onClick={handleAssignEmployees}
+                disabled={assigning || selectedEmpIds.length === 0}
+                className="bg-brand-primary hover:bg-brand-primary/90 gap-2"
+              >
+                {assigning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
+                {ar ? "تعيين" : "Assign"}
               </Button>
             </div>
           </div>
