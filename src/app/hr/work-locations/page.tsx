@@ -185,9 +185,10 @@ export default function WorkLocationsPage() {
     try {
       const res = await fetch("/api/employees/list", { headers: { Authorization: authHeader } });
       const data = await res.json();
-      const list = (data?.employees || data || []).map((e: any) => ({
+      const rawList = data?.employees || data?.results || data?.items || (Array.isArray(data) ? data : []);
+      const list = rawList.map((e: any) => ({
         id: e.id,
-        name: e.full_name_ar || e.name || `${e.first_name_ar || ""} ${e.last_name_ar || ""}`.trim() || `#${e.id}`,
+        name: e.full_name_ar || e.full_name || e.name || `${e.first_name_ar || ""} ${e.last_name_ar || ""}`.trim() || `#${e.id}`,
       }));
       setAllEmployees(list);
     } catch {
