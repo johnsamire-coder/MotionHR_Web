@@ -415,7 +415,7 @@ export default function JobTitlesPage() {
               >
                 <option value="">{ar ? "-- اختر القسم --" : "-- Select Department --"}</option>
                 {departments
-                  .filter((dep) => !formData.branch_id || String(dep.branch_id) === String(formData.branch_id))
+                  .filter((dep) => !formData.branch_id || !dep.branch_id || String(dep.branch_id) === String(formData.branch_id))
                   .map((dep) => (
                     <option key={dep.id} value={dep.id}>{ar ? dep.name_ar : (dep.name_en || dep.name_ar)}</option>
                   ))}
