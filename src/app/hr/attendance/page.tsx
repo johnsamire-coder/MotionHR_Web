@@ -38,6 +38,8 @@ interface AttendanceEmployee {
   is_night_shift: boolean;
   is_weekend_work: boolean;
   shift_name: string;
+  gps_disabled?: boolean;
+  gps_alert_note?: string;
 }
 
 interface AttendanceData {
@@ -95,7 +97,7 @@ export default function AttendancePage() {
     const escapeCsv = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
 
     const header = lang === "ar"
-      ? ["Ø§Ù„Ù…ÙˆØ¸Ù", "Ø§Ù„Ù‚Ø³Ù…", "Ø§Ù„ÙØ±Ø¹", "Ø§Ù„Ø­Ø§Ù„Ø©", "Ø§Ù„Ø­Ø¶ÙˆØ±", "Ø§Ù„Ø§Ù†ØµØ±Ø§Ù", "Ø³Ø§Ø¹Ø§Øª Ø§Ù„Ø¹Ù…Ù„", "Ø¯Ù‚Ø§Ø¦Ù‚ Ø§Ù„ØªØ£Ø®ÙŠØ±", "Ø¥Ø¶Ø§ÙÙŠ"]
+      ? ["الموظف", "القسم", "Ø§Ù„ÙØ±Ø¹", "الحالة", "الحضور", "الانصراف", "ساعات العمل", "دقائق التأخير", "Ø¥Ø¶Ø§ÙÙŠ"]
       : ["Employee", "Department", "Branch", "Status", "Check In", "Check Out", "Work Hours", "Late Minutes", "Overtime"];
 
     const rows = filtered.map(e => [
@@ -194,7 +196,7 @@ export default function AttendancePage() {
   };
 
   const formatTime = (time: string | null) => {
-    if (!time) return "â€”";
+    if (!time) return "—";
     try {
       const parts = time.split("T")[1]?.split(":") || time.split(":");
       return `${parts[0]}:${parts[1]}`;
@@ -301,7 +303,30 @@ export default function AttendancePage() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <>
+      {/* ATT-10b: GPS Alert Banner */}
+      {(data?.employees || []).filter(e => e.gps_disabled).length > 0 && (
+        <div className="rounded-lg border border-red-300 bg-red-50 p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+            <MapPin className="w-5 h-5 text-red-600" />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-red-700">
+              {lang === "ar"
+                ? `تحذير: ${(data?.employees || []).filter(e => e.gps_disabled).length} موظف GPS مغلق`
+                : `Warning: ${(data?.employees || []).filter(e => e.gps_disabled).length} employee(s) with GPS disabled`}
+            </p>
+            <p className="text-sm text-red-600 mt-1">
+              {(data?.employees || [])
+                .filter(e => e.gps_disabled)
+                .map(e => e.employee_name)
+                .join(" — ")}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           <StatCard
             icon={UserCheck}
             label={d.totalPresent}
@@ -351,8 +376,8 @@ export default function AttendancePage() {
             onClick={() => setStatusFilter(statusFilter === "mission" ? "all" : "mission")}
           />
         </div>
+      </>
       )}
-
       {/* Filters */}
       <Card>
         <CardContent className="p-4">
@@ -446,7 +471,15 @@ export default function AttendancePage() {
                             {emp.employee_name?.[0]}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="font-medium">{emp.employee_name}</span>
+                        <div>
+                          <span className="font-medium">{emp.employee_name}</span>
+                          {emp.gps_disabled && (
+                            <div className="mt-1 flex items-center gap-1 text-[11px] text-red-600">
+                              <MapPin className="w-3 h-3" />
+                              <span>{lang === "ar" ? "GPS مغلق / الموقع غير متاح" : "GPS Off / Location Unavailable"}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -465,14 +498,14 @@ export default function AttendancePage() {
                     <TableCell className="font-mono text-sm">{formatTime(emp.check_out)}</TableCell>
                     <TableCell>
                       <span className="font-mono text-sm">
-                        {emp.work_hours ? emp.work_hours.toFixed(1) : "â€”"}
+                        {emp.work_hours ? emp.work_hours.toFixed(1) : "—"}
                       </span>
                     </TableCell>
                     <TableCell>
                       {emp.late_minutes > 0 ? (
                         <span className="text-amber-600 font-mono">{emp.late_minutes}</span>
                       ) : (
-                        <span className="text-muted-foreground">â€”</span>
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
                     <TableCell>

@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   ArrowLeft, Edit, User, Briefcase, DollarSign, FileText,
-  Loader2, Save, X,
+  Loader2, Save, X, Clock, Calendar, FolderOpen, Inbox,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -241,7 +241,12 @@ export default function EmployeeDetailPage() {
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"personal" | "job" | "salary" | "contract" | "documents" | "movements" | "summary">("personal");
+  const [activeTab, setActiveTab] = useState<"personal" | "job" | "salary" | "contract" | "documents" | "movements" | "summary" | "credentials" | "attendance" | "leaves" | "requests" | "folder">("personal");
+  const [attendanceData, setAttendanceData] = useState<any[]>([]);
+  const [leavesData, setLeavesData] = useState<any[]>([]);
+  const [requestsData, setRequestsData] = useState<any[]>([]);
+  const [folderData, setFolderData] = useState<any[]>([]);
+  const [tabDataLoading, setTabDataLoading] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
 
   const [departments, setDepartments] = useState<Lookup[]>([]);
@@ -252,6 +257,9 @@ export default function EmployeeDetailPage() {
   const [movements, setMovements] = useState<Movement[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loadingTab, setLoadingTab] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [showTerminateDialog, setShowTerminateDialog] = useState(false);
+  const [terminateForm, setTerminateForm] = useState({ type: 'terminated', date: '', reason: '' });
 
   const loadTab = async (tab: string) => {
     if (!employee) return;
@@ -408,6 +416,91 @@ export default function EmployeeDetailPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!confirm(ar ? 'تاكيد حذف الموظف نهائيا؟ لا يمكن التراجع!' : 'Confirm permanent delete? Cannot be undone!')) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/hr/employees/${params.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: authH, 'Content-Type': 'application/json' },
+      });
+      if (res.ok) {
+        toast.success(ar ? 'تم حذف الموظف' : 'Employee deleted');
+        router.push('/hr/employees');
+        return;
+      }
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error || d.message || (ar ? 'فشل الحذف' : 'Delete failed'));
+    } catch { toast.error(ar ? 'خطأ في الشبكة' : 'Network error'); }
+    finally { setActionLoading(false); }
+  };
+
+  const handleToggleStatus = async (newStatus: string) => {
+    const labels: Record<string, string> = { active: ar ? 'نشط' : 'Active', suspended: ar ? 'موقوف' : 'Suspended' };
+    if (!confirm(ar ? `تغيير الحالة الى ${labels[newStatus]}؟` : `Change status to ${labels[newStatus]}?`)) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/hr/employees/${params.id}/toggle-status`, {
+        method: 'POST',
+        headers: { Authorization: authH, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const d = await res.json();
+      if (res.ok && d.success) {
+        toast.success(ar ? 'تم تغيير الحالة بنجاح' : 'Status updated successfully');
+        await loadEmployee();
+      } else {
+        toast.error(d.error || d.message || (ar ? 'فشل تغيير الحالة' : 'Failed'));
+      }
+    } catch { toast.error(ar ? 'خطأ في الشبكة' : 'Network error'); }
+    finally { setActionLoading(false); }
+  };
+
+  const handleResetPassword = async () => {
+    if (!confirm(ar ? 'اعادة تعيين كلمة المرور؟ ستصبح 12345678' : 'Reset password to 12345678?')) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/hr/employees/${params.id}/reset-password`, {
+        method: 'POST',
+        headers: { Authorization: authH, 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        toast.success(ar ? 'تم اعادة تعيين كلمة المرور بنجاح - كلمة المرور: 12345678' : 'Password reset to 12345678');
+      } else {
+        toast.error(d.error || d.message || (ar ? 'فشل اعادة التعيين' : 'Reset failed'));
+      }
+    } catch { toast.error(ar ? 'خطأ في الشبكة' : 'Network error'); }
+    finally { setActionLoading(false); }
+  };
+
+  const handleTerminate = async () => {
+    if (!terminateForm.date) { toast.error(ar ? 'حدد تاريخ انهاء الخدمة' : 'Select termination date'); return; }
+    if (!terminateForm.reason.trim()) { toast.error(ar ? 'اكتب سبب انهاء الخدمة' : 'Enter termination reason'); return; }
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/hr/employees/${params.id}/offboard`, {
+        method: 'POST',
+        headers: { Authorization: authH, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          termination_type: terminateForm.type,
+          termination_date: terminateForm.date,
+          termination_reason: terminateForm.reason,
+        }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        toast.success(ar ? 'تم انهاء خدمة الموظف' : 'Employee offboarded');
+        setShowTerminateDialog(false);
+        await loadEmployee();
+      } else {
+        toast.error(d.error || d.message || (ar ? 'فشل انهاء الخدمة' : 'Offboard failed'));
+      }
+    } catch { toast.error(ar ? 'خطأ في الشبكة' : 'Network error'); }
+    finally { setActionLoading(false); }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -438,7 +531,57 @@ export default function EmployeeDetailPage() {
     { key: "job" as const, label: ar ? "بيانات وظيفية" : "Job", icon: Briefcase },
     { key: "salary" as const, label: ar ? "الراتب" : "Salary", icon: DollarSign },
     { key: "contract" as const, label: ar ? "العقد" : "Contract", icon: FileText },
+    { key: "attendance" as const, label: ar ? "الحضور" : "Attendance", icon: Clock },
+    { key: "leaves" as const, label: ar ? "الإجازات" : "Leaves", icon: Calendar },
+    { key: "requests" as const, label: ar ? "الطلبات" : "Requests", icon: Inbox },
+    { key: "folder" as const, label: ar ? "ملف الموظف" : "Folder", icon: FolderOpen },
+    { key: "credentials" as const, label: ar ? "بيانات الدخول" : "Credentials", icon: User },
   ];
+
+  const loadTabData = async (tab: string) => {
+    if (!employee) return;
+    if ((tab === "attendance" && attendanceData.length > 0) ||
+        (tab === "leaves" && leavesData.length > 0) ||
+        (tab === "requests" && requestsData.length > 0) ||
+        (tab === "folder" && folderData.length > 0)) return;
+
+    setTabDataLoading(true);
+    try {
+      if (tab === "attendance") {
+        const today = new Date();
+        const dates: string[] = [];
+        for (let i = 0; i < 30; i++) {
+          const d = new Date(today);
+          d.setDate(today.getDate() - i);
+          dates.push(d.toISOString().split("T")[0]);
+        }
+        const promises = dates.map(d =>
+          fetch(`/api/attendance/daily?date=${d}`, { headers: { Authorization: authH } })
+            .then(r => r.json())
+            .then(data => {
+              const emp = (data?.employees || []).find((e: any) => e.employee_id === employee.id);
+              return emp ? { ...emp, date: d } : null;
+            })
+            .catch(() => null)
+        );
+        const results = await Promise.all(promises);
+        setAttendanceData(results.filter(Boolean));
+      } else if (tab === "leaves") {
+        const res = await fetch(`/api/hr/employees/${employee.id}/summary`, { headers: { Authorization: authH } });
+        const data = await res.json();
+        setLeavesData(Array.isArray(data?.leaves_list) ? data.leaves_list : []);
+      } else if (tab === "requests") {
+        const res = await fetch(`/api/hr/employees/${employee.id}/summary`, { headers: { Authorization: authH } });
+        const data = await res.json();
+        setRequestsData(Array.isArray(data?.requests_list) ? data.requests_list : []);
+      } else if (tab === "folder") {
+        const res = await fetch(`/api/hr/employees/${employee.id}/documents`, { headers: { Authorization: authH } });
+        const data = await res.json();
+        const docsRaw = data?.documents ?? data?.results ?? data;
+        setFolderData(Array.isArray(docsRaw) ? docsRaw : []);
+      }
+    } catch {} finally { setTabDataLoading(false); }
+  };
 
   const showBank = form.salary_payment_method === "bank";
   const showInstapay = form.salary_payment_method === "instapay";
@@ -494,10 +637,42 @@ export default function EmployeeDetailPage() {
                   </Button>
                 </>
               ) : (
-                <Button variant="outline" onClick={() => setEditMode(true)} className="bg-white/10 border-white/20 text-white hover:bg-white/20 gap-2">
-                  <Edit className="w-4 h-4" />
-                  {ar ? "تعديل" : "Edit"}
-                </Button>
+                <div className="flex gap-2 flex-wrap">
+                  <Button variant="outline" onClick={() => setEditMode(true)} className="bg-white/10 border-white/20 text-white hover:bg-white/20 gap-2">
+                    <Edit className="w-4 h-4" />
+                    {ar ? "تعديل" : "Edit"}
+                  </Button>
+
+                  <Button variant="outline" onClick={handleResetPassword} disabled={actionLoading}
+                    className="bg-yellow-500/20 border-yellow-300/30 text-white hover:bg-yellow-500/30 gap-2 text-xs">
+                    {ar ? "اعادة كلمة المرور" : "Reset Password"}
+                  </Button>
+
+                  {employee.status === 'active' && (
+                    <Button variant="outline" onClick={() => handleToggleStatus('suspended')} disabled={actionLoading}
+                      className="bg-orange-500/20 border-orange-300/30 text-white hover:bg-orange-500/30 gap-2 text-xs">
+                      {ar ? "ايقاف" : "Suspend"}
+                    </Button>
+                  )}
+                  {employee.status === 'suspended' && (
+                    <Button variant="outline" onClick={() => handleToggleStatus('active')} disabled={actionLoading}
+                      className="bg-green-500/20 border-green-300/30 text-white hover:bg-green-500/30 gap-2 text-xs">
+                      {ar ? "تفعيل" : "Activate"}
+                    </Button>
+                  )}
+
+                  {!['terminated','resigned','retired'].includes(employee.status || '') && (
+                    <Button variant="outline" onClick={() => setShowTerminateDialog(true)} disabled={actionLoading}
+                      className="bg-red-500/20 border-red-300/30 text-white hover:bg-red-500/30 gap-2 text-xs">
+                      {ar ? "انهاء الخدمة" : "Terminate"}
+                    </Button>
+                  )}
+
+                  <Button variant="outline" onClick={handleDelete} disabled={actionLoading}
+                    className="bg-red-700/30 border-red-400/30 text-white hover:bg-red-700/40 gap-2 text-xs">
+                    {ar ? "حذف نهائي" : "Delete"}
+                  </Button>
+                </div>
               )}
             </div>
           </div>
@@ -508,7 +683,7 @@ export default function EmployeeDetailPage() {
             {tabs.map(tab => (
               <button
                 key={tab.key}
-                onClick={() => { setActiveTab(tab.key as any); loadTab(tab.key); }}
+                onClick={() => { setActiveTab(tab.key as any); loadTab(tab.key); loadTabData(tab.key); }}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
                   activeTab === tab.key
                     ? "border-brand-primary text-brand-primary"
@@ -785,6 +960,196 @@ export default function EmployeeDetailPage() {
             </div>
           )}
 
+
+          {activeTab === "credentials" && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">{ar ? "بيانات الدخول" : "Login Credentials"}</h3>
+
+              <div className="rounded-lg border border-border p-4 bg-muted/30 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">{ar ? "اسم الدخول المرجعي" : "Reference Login Username"}</p>
+                    <p className="font-mono font-bold text-sm">{employee.employee_code || "—"}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {ar ? "لو تم إنشاء الحساب حديثاً أو إعادة تعيينه، استخدم هذه البيانات المبدئية." : "If the account was newly created or reset, use these initial credentials."}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">{ar ? "كلمة المرور الافتراضية بعد الريسِت" : "Default Password After Reset"}</p>
+                    <p className="font-mono font-bold text-sm">12345678</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {ar ? "يُطلب من الموظف تغييرها عند أول دخول." : "Employee will be asked to change it on first login."}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">{ar ? "رابط الدخول" : "Login URL"}</p>
+                    <p className="font-mono text-xs break-all">https://app.jssolutions-eg.com/login</p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">{ar ? "ملاحظة" : "Note"}</p>
+                    <p className="text-sm">
+                      {ar ? "لو الحساب قديم ومختلف، استخدم زر إعادة تعيين كلمة المرور ثم ابعت البيانات للموظف." : "If this is an old account with different credentials, reset the password and share the updated credentials with the employee."}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border-t pt-3 flex flex-wrap gap-2">
+                  <Button
+                    onClick={handleResetPassword}
+                    disabled={actionLoading}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    {ar ? "إعادة تعيين كلمة المرور" : "Reset Password"}
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => {
+                      const payload = ar
+                        ? `بيانات الدخول:\nاسم الدخول المرجعي: ${employee.employee_code || "-"}\nكلمة المرور بعد الريسِت: 12345678\nرابط الدخول: https://app.jssolutions-eg.com/login`
+                        : `Login Credentials:\nReference Username: ${employee.employee_code || "-"}\nPassword after reset: 12345678\nLogin URL: https://app.jssolutions-eg.com/login`;
+
+                      navigator.clipboard.writeText(payload);
+                      toast.success(ar ? "تم نسخ البيانات" : "Credentials copied");
+                    }}
+                  >
+                    {ar ? "نسخ البيانات" : "Copy Credentials"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "attendance" && (
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold">{ar ? "حضور آخر 30 يوم" : "Last 30 Days Attendance"}</h3>
+              {tabDataLoading ? (
+                <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+              ) : attendanceData.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">{ar ? "لا توجد بيانات" : "No data"}</p>
+              ) : (
+                <div className="space-y-2">
+                  {attendanceData.map((att, i) => (
+                    <Card key={i}>
+                      <CardContent className="p-3 flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-sm">{att.date}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {ar ? "دخول" : "In"}: {att.check_in || "—"} | {ar ? "خروج" : "Out"}: {att.check_out || "—"}
+                          </p>
+                        </div>
+                        <Badge className={
+                          att.status === "present" ? "bg-emerald-100 text-emerald-700" :
+                          att.status === "late" ? "bg-amber-100 text-amber-700" :
+                          att.status === "absent" ? "bg-red-100 text-red-700" :
+                          att.status === "on_leave" ? "bg-blue-100 text-blue-700" :
+                          "bg-gray-100 text-gray-700"
+                        }>{att.status}</Badge>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "leaves" && (
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold">{ar ? "الإجازات" : "Leaves"}</h3>
+              {tabDataLoading ? (
+                <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+              ) : leavesData.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">{ar ? "لا توجد إجازات" : "No leaves"}</p>
+              ) : (
+                <div className="space-y-2">
+                  {leavesData.map((lv: any, i: number) => (
+                    <Card key={i}>
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-sm">{lv.leave_type || lv.type || "—"}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {lv.start_date} → {lv.end_date} ({lv.days_count || lv.days || "—"} {ar ? "يوم" : "days"})
+                            </p>
+                          </div>
+                          <Badge>{lv.status}</Badge>
+                        </div>
+                        {lv.reason && <p className="text-xs text-muted-foreground mt-2">{lv.reason}</p>}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "requests" && (
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold">{ar ? "الطلبات" : "Requests"}</h3>
+              {tabDataLoading ? (
+                <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+              ) : requestsData.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">{ar ? "لا توجد طلبات" : "No requests"}</p>
+              ) : (
+                <div className="space-y-2">
+                  {requestsData.map((req: any, i: number) => (
+                    <Card key={i}>
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-sm">{req.subject || req.type_name || "—"}</p>
+                            <p className="text-xs text-muted-foreground">{req.created_at || req.date}</p>
+                          </div>
+                          <Badge>{req.status}</Badge>
+                        </div>
+                        {req.details && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{req.details}</p>}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "folder" && (
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold">{ar ? "ملف الموظف - المستندات" : "Employee Folder - Documents"}</h3>
+              {tabDataLoading ? (
+                <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+              ) : folderData.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">{ar ? "لا توجد مستندات" : "No documents"}</p>
+              ) : (
+                <div className="space-y-2">
+                  {folderData.map((doc: any, i: number) => (
+                    <Card key={i}>
+                      <CardContent className="p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <FileText className="w-5 h-5 text-brand-primary" />
+                          <div>
+                            <p className="font-semibold text-sm">{doc.title || doc.document_type}</p>
+                            {doc.expiry_date && <p className="text-xs text-muted-foreground">{ar ? "ينتهي:" : "Expires:"} {doc.expiry_date}</p>}
+                          </div>
+                        </div>
+                        {doc.file_url && (
+                          <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="text-brand-primary text-xs hover:underline">
+                            {ar ? "فتح" : "Open"}
+                          </a>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === "contract" && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">{ar ? "بيانات العقد" : "Contract Info"}</h3>
@@ -831,6 +1196,64 @@ export default function EmployeeDetailPage() {
           )}
         </CardContent>
       </Card>
+      {showTerminateDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <h3 className="text-lg font-bold text-red-600">{ar ? "انهاء خدمة الموظف" : "Terminate Employee"}</h3>
+            <p className="text-sm text-muted-foreground">{displayName}</p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1">{ar ? "نوع انهاء الخدمة" : "Termination Type"}</label>
+                <select
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                  value={terminateForm.type}
+                  onChange={e => setTerminateForm(p => ({ ...p, type: e.target.value }))}
+                >
+                  <option value="terminated">{ar ? "فصل من الخدمة" : "Terminated"}</option>
+                  <option value="resigned">{ar ? "استقالة" : "Resigned"}</option>
+                  <option value="retired">{ar ? "تقاعد" : "Retired"}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1">{ar ? "تاريخ انهاء الخدمة *" : "Termination Date *"}</label>
+                <input
+                  type="date"
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                  value={terminateForm.date}
+                  onChange={e => setTerminateForm(p => ({ ...p, date: e.target.value }))}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1">{ar ? "سبب انهاء الخدمة *" : "Reason *"}</label>
+                <textarea
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                  rows={3}
+                  placeholder={ar ? "اكتب السبب بالتفصيل..." : "Enter reason..."}
+                  value={terminateForm.reason}
+                  onChange={e => setTerminateForm(p => ({ ...p, reason: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowTerminateDialog(false)} disabled={actionLoading}>
+                {ar ? "الغاء" : "Cancel"}
+              </Button>
+              <Button
+                onClick={handleTerminate}
+                disabled={actionLoading}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {actionLoading ? (ar ? "جاري..." : "Loading...") : (ar ? "تاكيد انهاء الخدمة" : "Confirm Terminate")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

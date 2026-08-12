@@ -141,7 +141,7 @@ export default function ShiftsPage() {
     setEmployeesLoading(true);
     try {
       const res = await fetch("/api/employees/list", {
-        headers: { Authorization: `Token ${token}` },
+        headers: { Authorization: token.startsWith("Token ") ? token : (token.startsWith("Token ") ? token : `Token ${token}`) },
       });
       const data = await res.json();
 
@@ -178,7 +178,7 @@ export default function ShiftsPage() {
     setIsLoading(true);
     try {
       const response = await axios.get<{ shifts?: Shift[] } | Shift[]>("/api/shifts", {
-        headers: { Authorization: `Token ${token}` },
+        headers: { Authorization: token.startsWith("Token ") ? token : (token.startsWith("Token ") ? token : `Token ${token}`) },
       });
       const list = Array.isArray(response.data)
         ? response.data
@@ -192,7 +192,7 @@ export default function ShiftsPage() {
   };
 
   const filteredShifts = useMemo(() =>
-    shifts.filter((s) => !search || (s.name || "").toLowerCase().includes(search.toLowerCase())),
+    shifts.filter((s) => (s.is_active !== false) && (!search || (s.name || "").toLowerCase().includes(search.toLowerCase()))),
     [shifts, search]
   );
 
@@ -224,10 +224,17 @@ export default function ShiftsPage() {
     if (!deleteShiftId) return;
     setIsDeleting(true);
     try {
-      await axios.delete(`/api/shifts?id=${deleteShiftId}`, {
-        headers: { Authorization: `Token ${token}` },
+      const res = await axios.delete(`/api/shifts?id=${deleteShiftId}`, {
+        headers: { Authorization: token.startsWith("Token ") ? token : `Token ${token}` },
       });
-      toast.success(lang === "ar" ? "تم حذف الشيفت" : "Shift deleted");
+      const data = res.data;
+
+      if (data?.soft_deleted) {
+        // Soft delete - الشيفت اتعطل مش اتمسح
+        toast.success(data.message || (lang === "ar" ? "تم إلغاء تفعيل الشيفت (مرتبط ببيانات)" : "Shift deactivated (has related data)"));
+      } else {
+        toast.success(lang === "ar" ? "تم حذف الشيفت نهائياً" : "Shift permanently deleted");
+      }
       setDeleteShiftId(null);
       loadShifts();
     } catch (error: unknown) {
@@ -246,13 +253,13 @@ export default function ShiftsPage() {
       if (editingShift) {
         // Edit mode
         await axios.put(`/api/shifts?id=${editingShift.id}`, formData, {
-          headers: { Authorization: `Token ${token}` },
+          headers: { Authorization: token.startsWith("Token ") ? token : (token.startsWith("Token ") ? token : `Token ${token}`) },
         });
         toast.success(lang === "ar" ? "تم تعديل الشيفت" : "Shift updated");
       } else {
         // Create mode
         await axios.post("/api/shifts", formData, {
-          headers: { Authorization: `Token ${token}` },
+          headers: { Authorization: token.startsWith("Token ") ? token : (token.startsWith("Token ") ? token : `Token ${token}`) },
         });
         toast.success(d.createdShiftSuccess);
       }
@@ -282,7 +289,7 @@ export default function ShiftsPage() {
     try {
       const res = await fetch("/api/hr/shifts/assign", {
         method: "POST",
-        headers: { Authorization: `Token ${token}`, "Content-Type": "application/json" },
+        headers: { Authorization: (token.startsWith("Token ") ? token : `Token ${token}`), "Content-Type": "application/json" },
         body: JSON.stringify({
           shift_id: assignShift.id,
           employee_ids: assignForm.employee_ids,

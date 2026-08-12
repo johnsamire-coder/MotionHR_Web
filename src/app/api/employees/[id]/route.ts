@@ -86,3 +86,43 @@ export async function PATCH(
 ) {
   return PUT(request, ctx);
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const authHeader = request.headers.get("authorization");
+
+    const response = await fetch(
+      `${BACKEND}/employees/${id}/delete/`,
+      {
+        method: "POST",
+        headers: {
+          ...(authHeader ? { Authorization: authHeader } : {}),
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "X-CSRFToken": "delete-via-api",
+        },
+        body: JSON.stringify({ confirm: true }),
+      }
+    );
+
+    if (response.ok || response.status === 302 || response.status === 200) {
+      return NextResponse.json({ success: true, message: "تم الحذف" });
+    }
+
+    const text = await response.text();
+    return NextResponse.json(
+      { success: false, error: "فشل الحذف", detail: text.substring(0, 200) },
+      { status: response.status }
+    );
+  } catch (error) {
+    console.error("Employee delete error:", error);
+    return NextResponse.json(
+      { success: false, message: "Network error" },
+      { status: 500 }
+    );
+  }
+}

@@ -4,7 +4,13 @@ const BACKEND_BASE = "https://jssolutions-eg.com/attendance/api/mobile/manager/s
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization");
+    let authHeader = request.headers.get("authorization") || "";
+    // نتأكد إن الـ Token متكتب مرة واحدة بس
+    if (authHeader.startsWith("Token Token ")) {
+      authHeader = authHeader.replace("Token Token ", "Token ");
+    } else if (authHeader && !authHeader.startsWith("Token ") && !authHeader.startsWith("Bearer ")) {
+      authHeader = `Token ${authHeader}`;
+    }
     const response = await fetch(`${BACKEND_BASE}/`, {
       method: "GET",
       headers: {
@@ -33,7 +39,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization");
+    let _authHeader = request.headers.get("authorization") || "";
+    if (_authHeader.startsWith("Token Token ")) { _authHeader = _authHeader.replace("Token Token ", "Token "); }
+    const authHeader = _authHeader;
     const body = await request.json();
 
     const response = await fetch(`${BACKEND_BASE}/create/`, {
@@ -59,7 +67,9 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization");
+    let _authHeader = request.headers.get("authorization") || "";
+    if (_authHeader.startsWith("Token Token ")) { _authHeader = _authHeader.replace("Token Token ", "Token "); }
+    const authHeader = _authHeader;
     const { searchParams } = new URL(request.url);
     const shiftId = searchParams.get("id");
 
@@ -95,7 +105,9 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization");
+    let _authHeader = request.headers.get("authorization") || "";
+    if (_authHeader.startsWith("Token Token ")) { _authHeader = _authHeader.replace("Token Token ", "Token "); }
+    const authHeader = _authHeader;
     const { searchParams } = new URL(request.url);
     const shiftId = searchParams.get("id");
 

@@ -111,6 +111,52 @@ export default function EmployeesPage() {
   }, []);
 
   // â”€â”€ Load Employees â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const handleExportExcel = async () => {
+    if (!data?.results?.length) {
+      toast.error(lang === "ar" ? "لا يوجد موظفين للتصدير" : "No employees to export");
+      return;
+    }
+    try {
+      const ExcelJS = (await import("exceljs")).default;
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet(lang === "ar" ? "الموظفين" : "Employees");
+
+      ws.columns = [
+        { header: lang === "ar" ? "الكود" : "Code", key: "code", width: 12 },
+        { header: lang === "ar" ? "الاسم" : "Name", key: "name", width: 30 },
+        { header: lang === "ar" ? "القسم" : "Department", key: "dept", width: 20 },
+        { header: lang === "ar" ? "المسمى الوظيفي" : "Job Title", key: "job", width: 20 },
+        { header: lang === "ar" ? "الموبايل" : "Phone", key: "phone", width: 15 },
+        { header: lang === "ar" ? "الحالة" : "Status", key: "status", width: 12 },
+        { header: lang === "ar" ? "تاريخ التعيين" : "Hire Date", key: "hire", width: 15 },
+      ];
+
+      data.results.forEach(emp => {
+        ws.addRow({
+          code: emp.employee_code || "",
+          name: emp.full_name || "",
+          dept: emp.department || "",
+          job: emp.job_title || "",
+          phone: emp.phone || "",
+          status: emp.status || "",
+          hire: emp.hire_date || "",
+        });
+      });
+
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `employees_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(lang === "ar" ? "تم التصدير بنجاح" : "Exported successfully");
+    } catch (e) {
+      toast.error(lang === "ar" ? "فشل التصدير" : "Export failed");
+    }
+  };
+
   const loadEmployees = useCallback(() => {
     if (!token) return;
     setLoading(true);
@@ -168,6 +214,14 @@ export default function EmployeesPage() {
           <p className="text-muted-foreground mt-1">{d.employeesDesc}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline" size="sm"
+            onClick={handleExportExcel}
+            className="gap-2"
+          >
+            <Download className="w-4 h-4" />
+            {lang === "ar" ? "تصدير Excel" : "Export Excel"}
+          </Button>
           <Button
             variant="outline" size="sm"
             onClick={() => router.push("/hr/employees/import")}
@@ -275,11 +329,17 @@ export default function EmployeesPage() {
                 <SelectItem value="active">
                   {lang === "ar" ? "نشط" : "Active"}
                 </SelectItem>
-                <SelectItem value="inactive">
-                  {lang === "ar" ? "غير نشط" : "Inactive"}
-                </SelectItem>
                 <SelectItem value="on_leave">
                   {lang === "ar" ? "في إجازة" : "On Leave"}
+                </SelectItem>
+                <SelectItem value="suspended">
+                  {lang === "ar" ? "موقوف" : "Suspended"}
+                </SelectItem>
+                <SelectItem value="resigned">
+                  {lang === "ar" ? "مستقيل" : "Resigned"}
+                </SelectItem>
+                <SelectItem value="terminated">
+                  {lang === "ar" ? "منتهي الخدمة" : "Terminated"}
                 </SelectItem>
               </SelectContent>
             </Select>

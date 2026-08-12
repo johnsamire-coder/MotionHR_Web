@@ -173,12 +173,34 @@ export default function WorkLocationsPage() {
 
   // Group locations by employee
   const employeeMap = new Map<number, { name: string; locations: WorkLocation[] }>();
+
   allLocations.forEach((loc) => {
-    if (!loc.employee_id) return;
-    if (!employeeMap.has(loc.employee_id)) {
-      employeeMap.set(loc.employee_id, { name: loc.employee_name || "—", locations: [] });
+    // 1) الموظف الأصلي المرتبط (owner)
+    if (loc.employee_id) {
+      if (!employeeMap.has(loc.employee_id)) {
+        employeeMap.set(loc.employee_id, { name: loc.employee_name || "—", locations: [] });
+      }
+      const bucket = employeeMap.get(loc.employee_id)!;
+      if (!bucket.locations.find(l => l.id === loc.id)) {
+        bucket.locations.push(loc);
+      }
     }
-    employeeMap.get(loc.employee_id)!.locations.push(loc);
+
+    // 2) الموظفين المخصصين (WL-TAB Fix)
+    const assignedIds: number[] = (loc as any).assigned_employee_ids || [];
+    const assignedNames: string[] = (loc as any).assigned_employees_names || [];
+
+    assignedIds.forEach((empId, idx) => {
+      if (!empId) return;
+      const empName = assignedNames[idx] || `#${empId}`;
+      if (!employeeMap.has(empId)) {
+        employeeMap.set(empId, { name: empName, locations: [] });
+      }
+      const bucket = employeeMap.get(empId)!;
+      if (!bucket.locations.find(l => l.id === loc.id)) {
+        bucket.locations.push(loc);
+      }
+    });
   });
 
   const employeeEntries = Array.from(employeeMap.entries()).filter(([, emp]) =>

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLangStore } from "@/lib/stores/language";
+import { useAuthStore } from "@/lib/stores/auth";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
 const WHATSAPP_URL = "https://wa.me/201501551593";
@@ -38,6 +39,7 @@ export default function SignupPage() {
   const router = useRouter();
   const lang = useLangStore((s) => s.lang);
   const setLang = useLangStore((s) => s.setLang);
+  const setAuth = useAuthStore((s) => s.setAuth);
   const ar = lang === "ar";
   const dir = ar ? "rtl" : "ltr";
 
@@ -55,6 +57,14 @@ export default function SignupPage() {
     password: "",
     confirm_password: "",
   });
+
+  const [planLimits, setPlanLimits] = useState({ max_employees: 5, trial_days: 14 });
+
+  useEffect(() => {
+    fetch("/api/plan-info").then(r => r.json()).then(data => {
+      if (data?.max_employees) setPlanLimits(data);
+    }).catch(() => {});
+  }, []);
 
   const t = {
     title:          ar ? "ابدأ تجربتك المجانية" : "Start Your Free Trial",
@@ -75,7 +85,7 @@ export default function SignupPage() {
     passMismatch:   ar ? "كلمة السر غير متطابقة" : "Passwords don't match",
     passTooShort:   ar ? "كلمة السر يجب 6 حروف على الأقل" : "Password must be at least 6 chars",
     features: [
-      ar ? "5 موظفين + مدير" : "5 employees + admin",
+      ar ? `${planLimits.max_employees} موظفين + مدير` : `${planLimits.max_employees} employees + admin`,
       ar ? "كل ميزات النظام" : "All system features",
       ar ? "دعم فني على واتساب" : "WhatsApp support",
       ar ? "بدون بطاقة ائتمان" : "No credit card",
@@ -148,9 +158,25 @@ export default function SignupPage() {
 
   const handleGoToDashboard = () => {
     if (!result) return;
-    localStorage.setItem(STORAGE_KEYS.token, `Token ${result.token}`);
-    localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(result.user));
-    router.push("/hr/dashboard");
+
+    // SIGNUP-1: نستخدم Zustand store - نبعت الـ token خام بدون prefix
+    const rawToken = result.token.replace(/^Token\s+/i, "").replace(/^Bearer\s+/i, "").trim();
+    const tokenValue = `Token ${rawToken}`;
+
+    setAuth({
+      user: {
+        ...result.user,
+        full_name: `${result.user.first_name} ${result.user.last_name}`.trim(),
+      } as any,
+      company: { name: result.companyName } as any,
+      employee: null as any,
+      token: tokenValue,
+    });
+
+    // redirect بعد شوية
+    setTimeout(() => {
+      window.location.href = "/hr/dashboard";
+    }, 200);
   };
 
   // ── SUCCESS SCREEN ─────────────────────────────

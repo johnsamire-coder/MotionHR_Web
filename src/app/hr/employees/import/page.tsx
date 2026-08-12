@@ -295,12 +295,19 @@ export default function ImportPage() {
                           {d.errorDetails}
                         </h4>
                         <div className="space-y-2 max-h-60 overflow-y-auto">
-                          {result.error_details.map((err, i) => (
-                            <div key={i} className="text-sm p-2 bg-red-500/5 rounded">
-                              <span className="font-semibold">{d.row} {err.row}:</span>{" "}
-                              {(err.errors || []).join(" | ")}
-                            </div>
-                          ))}
+                          {result.error_details.map((err: any, i: number) => {
+                            // نتعامل مع صيغ مختلفة للأخطاء
+                            const errMsg = typeof err === 'string'
+                              ? err
+                              : (err?.errors && Array.isArray(err.errors))
+                                ? err.errors.join(' | ')
+                                : (err?.message || err?.error || JSON.stringify(err));
+                            return (
+                              <div key={i} className="text-sm p-2 bg-red-500/5 rounded border border-red-200/50">
+                                <p className="text-red-700">{errMsg}</p>
+                              </div>
+                            );
+                          })}
                         </div>
                       </CardContent>
                     </Card>
