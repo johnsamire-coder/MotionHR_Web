@@ -90,8 +90,6 @@ export function LoginForm() {
         redirectPath = ROUTES.hr.dashboard;
       } else if (response.role === ROLES.manager) {
         redirectPath = ROUTES.manager.dashboard;
-      } else {
-        redirectPath = ROUTES.employee.dashboard;
       }
 
       router.push(redirectPath);
