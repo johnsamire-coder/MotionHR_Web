@@ -16,6 +16,9 @@ import {
   Dialog, DialogContent, DialogHeader,
   DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
@@ -59,6 +62,8 @@ export default function MyLeavesPage() {
     end_date: "",
     reason: "",
   });
+  const [substitutes, setSubstitutes] = useState<{id: number; name: string; department: string}[]>([]);
+  const [selectedSubstituteId, setSelectedSubstituteId] = useState<string>("");
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
@@ -68,9 +73,11 @@ export default function MyLeavesPage() {
     Promise.all([
       fetch("/api/leaves/types", { headers: { Authorization: authHeader } }).then(r => r.json()),
       fetch("/api/employee/my-leaves", { headers: { Authorization: authHeader } }).then(r => r.json()),
-    ]).then(([typesData, leavesData]) => {
+      fetch("/api/leaves/substitutes", { headers: { Authorization: authHeader } }).then(r => r.json()),
+    ]).then(([typesData, leavesData, subData]) => {
       setLeaveTypes(typesData?.leave_types || []);
       setLeaves(leavesData?.leaves || leavesData?.items || []);
+      setSubstitutes(subData?.substitutes || []);
     })
       .catch(() => toast.error(d.failedLoad))
       .finally(() => setLoading(false));
@@ -93,6 +100,7 @@ export default function MyLeavesPage() {
           start_date: form.start_date,
           end_date: form.end_date,
           reason: form.reason,
+          ...(selectedSubstituteId ? { substitute_employee_id: selectedSubstituteId } : {}),
         }),
       });
       const data = await res.json();
@@ -100,6 +108,7 @@ export default function MyLeavesPage() {
         toast.success(lang === "ar" ? "تم تقديم الطلب" : "Submitted");
         setSelectedType(null);
         setForm({ start_date: "", end_date: "", reason: "" });
+        setSelectedSubstituteId("");
         loadData();
       } else {
         toast.error(data.message || (lang === "ar" ? "فشل" : "Failed"));
@@ -321,6 +330,23 @@ export default function MyLeavesPage() {
                 placeholder={lang === "ar" ? "اذكر السبب..." : "Enter reason..."}
                 rows={3} />
             </div>
+            {substitutes.length > 0 && (
+              <div className="space-y-2">
+                <Label>{lang === "ar" ? "الموظف البديل (اختياري)" : "Substitute Employee (Optional)"}</Label>
+                <Select value={selectedSubstituteId} onValueChange={setSelectedSubstituteId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={lang === "ar" ? "اختر موظف بديل..." : "Select substitute..."} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {substitutes.map(s => (
+                      <SelectItem key={s.id} value={String(s.id)}>
+                        {s.name}{s.department ? ` — ${s.department}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setSelectedType(null)} disabled={submitting}>
                 {d.cancel}

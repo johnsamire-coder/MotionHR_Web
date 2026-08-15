@@ -76,6 +76,8 @@ export default function ReportPage() {
     branch_name: "الفرع", employees_count: "عدد الموظفين",
     total_salary: "إجمالي الرواتب", avg_salary: "متوسط الراتب",
     max_salary: "أعلى راتب", min_salary: "أقل راتب",
+    present_days: "أيام الحضور (30 يوم)", absent_days: "أيام الغياب (30 يوم)",
+    total_late_minutes: "إجمالي دقائق التأخير", total_overtime_hours: "إجمالي الأوفر تايم",
     contract_end: "تاريخ الانتهاء", status: "الحالة", days: "الأيام",
     type: "النوع", subject: "الموضوع", created_at: "التاريخ",
     total_missions: "إجمالي المهام", completed: "المكتملة",

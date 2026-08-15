@@ -4,13 +4,16 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   FileText, Calendar, Loader2, CheckCircle2, XCircle,
-  Clock, Search, Filter,
+  Clock, Search, UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
@@ -21,11 +24,20 @@ interface PendingItem {
   employee_id?: number;
   request_type?: string;
   leave_type?: string;
+  leave_type_category?: string;
+  substitute_employee_id?: number;
+  substitute_employee_name?: string;
   start_date?: string;
   end_date?: string;
   submitted_at?: string;
   reason?: string;
   amount?: number;
+}
+
+interface Substitute {
+  id: number;
+  name: string;
+  department: string;
 }
 
 export default function ManagerRequestsPage() {
@@ -39,6 +51,13 @@ export default function ManagerRequestsPage() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<"all" | "leaves" | "requests">("all");
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [substituteDialog, setSubstituteDialog] = useState<{
+    item: PendingItem;
+    isLeave: boolean;
+  } | null>(null);
+  const [substitutes, setSubstitutes] = useState<Substitute[]>([]);
+  const [selectedSubstituteId, setSelectedSubstituteId] = useState<string>("");
+  const [loadingSubstitutes, setLoadingSubstitutes] = useState(false);
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
@@ -60,12 +79,38 @@ export default function ManagerRequestsPage() {
 
   useEffect(() => { loadData(); }, []);
 
+  const loadSubstitutes = async (excludeEmployeeId?: number) => {
+    setLoadingSubstitutes(true);
+    try {
+      const url = excludeEmployeeId
+        ? `/api/leaves/substitutes?exclude_employee_id=${excludeEmployeeId}`
+        : "/api/leaves/substitutes";
+      const res = await fetch(url, { headers: { Authorization: authHeader } });
+      const data = await res.json();
+      setSubstitutes(data?.substitutes || []);
+    } catch {}
+    setLoadingSubstitutes(false);
+  };
+
   const handleAction = async (item: PendingItem, action: "approve" | "reject", isLeave: boolean) => {
+    // لو مرضية + approve → نفتح dialog البديل لو مفيش بديل محدد مسبقًا
+    if (isLeave && action === "approve" && item.leave_type_category === "sick" && !item.substitute_employee_id) {
+      setSubstituteDialog({ item, isLeave });
+      setSelectedSubstituteId("");
+      loadSubstitutes(item.employee_id);
+      return;
+    }
+    await doAction(item, action, isLeave, "");
+  };
+
+  const doAction = async (item: PendingItem, action: "approve" | "reject", isLeave: boolean, substituteId: string) => {
     setActionLoading(item.id);
     try {
-      const body = isLeave
-        ? { leave_id: item.id, action }
-        : { request_id: item.id, action };
+      const body: Record<string, unknown> = isLeave
+        ? { type: "leave", id: item.id, action }
+        : { type: "request", id: item.id, action };
+
+      if (substituteId) body["substitute_employee_id"] = substituteId;
 
       const res = await fetch("/api/manager/action", {
         method: "POST",
@@ -77,6 +122,7 @@ export default function ManagerRequestsPage() {
         toast.success(action === "approve"
           ? (lang === "ar" ? "تم القبول" : "Approved")
           : (lang === "ar" ? "تم الرفض" : "Rejected"));
+        setSubstituteDialog(null);
         loadData();
       } else {
         toast.error(data.message || (lang === "ar" ? "فشل" : "Failed"));
@@ -261,6 +307,61 @@ export default function ManagerRequestsPage() {
             );
           })}
         </div>
+      )}
+      {/* Dialog البديل للمرضية */}
+      {substituteDialog && (
+        <Dialog open={true} onOpenChange={() => setSubstituteDialog(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <UserCheck className="w-5 h-5 text-emerald-600" />
+                {lang === "ar" ? "تحديد موظف بديل" : "Select Substitute Employee"}
+              </DialogTitle>
+              <DialogDescription>
+                {lang === "ar"
+                  ? `الإجازة المرضية للموظف ${substituteDialog.item.employee_name} تحتاج تحديد بديل قبل الاعتماد`
+                  : `Sick leave for ${substituteDialog.item.employee_name} requires a substitute before approval`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>{lang === "ar" ? "الموظف البديل" : "Substitute Employee"}</Label>
+                {loadingSubstitutes ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {lang === "ar" ? "جاري التحميل..." : "Loading..."}
+                  </div>
+                ) : (
+                  <Select value={selectedSubstituteId} onValueChange={setSelectedSubstituteId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={lang === "ar" ? "اختر موظف بديل..." : "Select substitute..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {substitutes.map(s => (
+                        <SelectItem key={s.id} value={String(s.id)}>
+                          {s.name}{s.department ? ` — ${s.department}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setSubstituteDialog(null)}>
+                  {lang === "ar" ? "إلغاء" : "Cancel"}
+                </Button>
+                <Button
+                  onClick={() => doAction(substituteDialog.item, "approve", substituteDialog.isLeave, selectedSubstituteId)}
+                  disabled={!selectedSubstituteId || actionLoading !== null}
+                  className="bg-emerald-600 hover:bg-emerald-700 gap-1"
+                >
+                  {actionLoading !== null ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  {lang === "ar" ? "اعتماد مع البديل" : "Approve with Substitute"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

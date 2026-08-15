@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تحميل MotionHR — نظام إدارة الموارد البشرية</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--primary:#1565C0;--dark:#0D47A1;--accent:#7B1FA2;--green:#2E7D32;--bg:#F0F4FF;--white:#fff;--text:#1A1A2E;--muted:#6B7280;--border:#E5E7EB}
+    body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+    header{background:linear-gradient(135deg,var(--dark),var(--primary),var(--accent));padding:18px 24px;display:flex;align-items:center;justify-content:space-between}
+    .logo{display:flex;align-items:center;gap:12px;text-decoration:none}
+    .logo-icon{width:44px;height:44px;background:rgba(255,255,255,.2);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;border:1px solid rgba(255,255,255,.3)}
+    .logo-name{color:#fff;font-size:22px;font-weight:800}
+    .logo-by{color:rgba(255,255,255,.7);font-size:11px}
+    .hbadge{background:rgba(255,255,255,.15);color:#fff;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid rgba(255,255,255,.3)}
+    .hero{padding:56px 24px 36px;text-align:center}
+    .hero-chip{display:inline-flex;align-items:center;gap:8px;background:rgba(21,101,192,.1);color:var(--primary);padding:8px 20px;border-radius:30px;font-size:13px;font-weight:600;margin-bottom:20px;border:1px solid rgba(21,101,192,.2)}
+    .hero h1{font-size:clamp(26px,6vw,46px);font-weight:800;line-height:1.2;margin-bottom:14px}
+    .hero h1 span{background:linear-gradient(135deg,var(--primary),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .hero p{font-size:16px;color:var(--muted);max-width:460px;margin:0 auto 36px;line-height:1.8}
+    .wrap{max-width:580px;margin:0 auto;padding:0 24px 60px;width:100%}
+    .card{background:var(--white);border-radius:24px;box-shadow:0 20px 60px rgba(21,101,192,.12);overflow:hidden;border:1px solid var(--border)}
+    .card-top{background:linear-gradient(135deg,var(--primary),var(--accent));padding:26px 28px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+    .app-icon{width:70px;height:70px;background:rgba(255,255,255,.2);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:34px;flex-shrink:0;border:2px solid rgba(255,255,255,.3)}
+    .app-name{color:#fff;font-size:22px;font-weight:800}
+    .app-sub{color:rgba(255,255,255,.8);font-size:13px;margin-top:3px}
+    .ver{margin-right:auto;background:rgba(255,255,255,.2);color:#fff;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid rgba(255,255,255,.3)}
+    .card-body{padding:26px 28px}
+    .meta{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px}
+    .mi{background:var(--bg);border-radius:14px;padding:14px;text-align:center;border:1px solid var(--border)}
+    .mi-icon{font-size:20px;margin-bottom:6px}
+    .mi-label{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+    .mi-val{font-size:15px;font-weight:700;margin-top:3px}
+    .dl-btn{display:flex;align-items:center;justify-content:center;gap:14px;width:100%;padding:18px 28px;background:linear-gradient(135deg,#1B5E20,#2E7D32,#388E3C);color:#fff;text-decoration:none;border-radius:16px;font-size:17px;font-weight:800;box-shadow:0 8px 24px rgba(46,125,50,.35);transition:all .3s;position:relative;overflow:hidden}
+    .dl-btn::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent);transition:left .5s}
+    .dl-btn:hover::before{left:100%}
+    .dl-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(46,125,50,.45)}
+    .dl-icon{font-size:26px}
+    .dl-main{font-size:17px;font-weight:800}
+    .dl-sub{font-size:12px;opacity:.8;font-weight:400}
+    .trust{margin-top:18px;display:flex;flex-direction:column;gap:10px}
+    .ti{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:12px;font-size:13px;font-weight:600}
+    .ti.g{background:rgba(46,125,50,.08);color:#2E7D32;border:1px solid rgba(46,125,50,.2)}
+    .ti.b{background:rgba(21,101,192,.08);color:var(--primary);border:1px solid rgba(21,101,192,.2)}
+    .ti.p{background:rgba(123,31,162,.08);color:var(--accent);border:1px solid rgba(123,31,162,.2)}
+    .ti-icon{font-size:18px;flex-shrink:0}
+    .steps{margin-top:24px;background:linear-gradient(135deg,rgba(21,101,192,.04),rgba(123,31,162,.04));border-radius:16px;padding:22px;border:1px solid var(--border)}
+    .steps-title{font-size:15px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+    .slist{list-style:none;display:flex;flex-direction:column;gap:12px}
+    .si{display:flex;align-items:flex-start;gap:12px}
+    .snum{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0}
+    .stxt{font-size:14px;color:var(--muted);line-height:1.6;padding-top:3px}
+    .stxt strong{color:var(--text)}
+    .warn{margin-top:14px;background:rgba(255,152,0,.08);border:1px solid rgba(255,152,0,.3);border-radius:12px;padding:14px 16px;display:flex;align-items:flex-start;gap:10px}
+    .warn-icon{font-size:20px;flex-shrink:0}
+    .warn-txt{font-size:13px;color:#E65100;line-height:1.6;font-weight:500}
+    .feats{padding:0 24px 56px;max-width:680px;margin:0 auto;width:100%}
+    .feats-title{text-align:center;font-size:21px;font-weight:800;margin-bottom:20px}
+    .fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px}
+    .fc{background:var(--white);border-radius:16px;padding:18px;border:1px solid var(--border);text-align:center;transition:all .3s}
+    .fc:hover{transform:translateY(-4px);box-shadow:0 12px 28px rgba(21,101,192,.12)}
+    .fe{font-size:26px;margin-bottom:8px}
+    .fn{font-size:14px;font-weight:700}
+    .fd{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5}
+    footer{margin-top:auto;background:var(--text);color:rgba(255,255,255,.8);padding:28px 24px;text-align:center}
+    .fl{font-size:19px;font-weight:800;color:#fff;margin-bottom:6px}
+    .flinks{display:flex;gap:20px;justify-content:center;margin:14px 0;flex-wrap:wrap}
+    .flink{color:rgba(255,255,255,.7);text-decoration:none;font-size:13px;transition:color .2s}
+    .flink:hover{color:#fff}
+    .fcopy{font-size:11px;color:rgba(255,255,255,.35);margin-top:12px}
+    @media(max-width:460px){.meta{grid-template-columns:1fr 1fr}.card-top{flex-wrap:wrap}.ver{margin-right:0}}
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="https://jssolutions-eg.com" class="logo">
+    <div class="logo-icon">⚡</div>
+    <div>
+      <div class="logo-name">MotionHR</div>
+      <div class="logo-by">by JS Solutions</div>
+    </div>
+  </a>
+  <div class="hbadge">نظام HR للشركات</div>
+</header>
+
+<section class="hero">
+  <div class="hero-chip">📱 تطبيق أندرويد الرسمي</div>
+  <h1>حمّل <span>MotionHR</span><br/>وابدأ الآن</h1>
+  <p>نظام إدارة الموارد البشرية المتكامل للشركات المصرية والعربية — حضور ذكي، رواتب، تقارير، وأكثر</p>
+</section>
+
+<div class="wrap">
+  <div class="card">
+    <div class="card-top">
+      <div class="app-icon">⚡</div>
+      <div>
+        <div class="app-name">MotionHR</div>
+        <div class="app-sub">نظام إدارة الموارد البشرية</div>
+      </div>
+      <div class="ver">v1.0.0</div>
+    </div>
+    <div class="card-body">
+      <div class="meta">
+        <div class="mi"><div class="mi-icon">📦</div><div class="mi-label">الحجم</div><div class="mi-val">39 MB</div></div>
+        <div class="mi"><div class="mi-icon">🤖</div><div class="mi-label">المنصة</div><div class="mi-val">Android</div></div>
+        <div class="mi"><div class="mi-icon">📅</div><div class="mi-label">الإصدار</div><div class="mi-val">أغسطس 2026</div></div>
+      </div>
+
+      <a href="/MotionHR.apk" class="dl-btn" download="MotionHR.apk">
+        <span class="dl-icon">⬇️</span>
+        <div>
+          <div class="dl-main">تحميل التطبيق مجاناً</div>
+          <div class="dl-sub">MotionHR.apk — 39 MB</div>
+        </div>
+      </a>
+
+      <div class="trust">
+        <div class="ti g"><span class="ti-icon">✅</span> ملف آمن — موقّع رقمياً من JS Solutions</div>
+        <div class="ti b"><span class="ti-icon">🔒</span> يُحمَّل من سيرفر HTTPS رسمي مشفّر بالكامل</div>
+        <div class="ti p"><span class="ti-icon">🏢</span> تطبيق B2B للشركات — com.jssolutions.motionhr</div>
+      </div>
+
+      <div class="steps">
+        <div class="steps-title">📋 خطوات التثبيت</div>
+        <ul class="slist">
+          <li class="si"><div class="snum">1</div><div class="stxt">اضغط <strong>"تحميل التطبيق"</strong> وانتظر اكتمال التحميل</div></li>
+          <li class="si"><div class="snum">2</div><div class="stxt">افتح الملف من إشعارات التحميل أو مجلد <strong>Downloads</strong></div></li>
+          <li class="si"><div class="snum">3</div><div class="stxt">لو ظهر <strong>"مصادر غير معروفة"</strong> — اضغط <strong>الإعدادات</strong> وفعّلها</div></li>
+          <li class="si"><div class="snum">4</div><div class="stxt">اضغط <strong>"تثبيت"</strong> ثم <strong>"فتح"</strong> — وابدأ رحلتك مع MotionHR 🎉</div></li>
+        </ul>
+        <div class="warn">
+          <span class="warn-icon">⚠️</span>
+          <div class="warn-txt">قد يظهر تنبيه من نظام الحماية — هذا طبيعي تماماً لأي تطبيق شركات يُثبَّت خارج المتجر. التطبيق موقّع رسمياً وآمن. اضغط <strong>"التثبيت على أي حال"</strong> للمتابعة.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="feats">
+  <div class="feats-title">✨ ماذا يقدم MotionHR؟</div>
+  <div class="fg">
+    <div class="fc"><div class="fe">📍</div><div class="fn">حضور GPS</div><div class="fd">حضور وانصراف بالموقع</div></div>
+    <div class="fc"><div class="fe">🤖</div><div class="fn">Auto Check-in</div><div class="fd">تسجيل تلقائي عند الوصول</div></div>
+    <div class="fc"><div class="fe">🗺️</div><div class="fn">تتبع ميداني</div><div class="fd">مواقع الموظفين لحظياً</div></div>
+    <div class="fc"><div class="fe">💰</div><div class="fn">الرواتب</div><div class="fd">رواتب وخصومات وسلف</div></div>
+    <div class="fc"><div class="fe">📊</div><div class="fn">التقارير</div><div class="fd">24+ تقرير Excel و PDF</div></div>
+    <div class="fc"><div class="fe">📢</div><div class="fn">الإعلانات</div><div class="fd">Push Notifications فورية</div></div>
+  </div>
+</div>
+
+<footer>
+  <div class="fl">⚡ MotionHR by JS Solutions</div>
+  <div class="flinks">
+    <a href="https://jssolutions-eg.com" class="flink">🌐 الموقع الرسمي</a>
+    <a href="https://app.jssolutions-eg.com" class="flink">💻 تطبيق الويب</a>
+    <a href="mailto:jssolutions.eg@gmail.com" class="flink">📩 راسلنا</a>
+    <a href="https://wa.me/201501551593" class="flink">💬 واتساب</a>
+  </div>
+  <div class="fcopy">© 2026 JS Solutions. جميع الحقوق محفوظة.</div>
+</footer>
+
+</body>
+</html>

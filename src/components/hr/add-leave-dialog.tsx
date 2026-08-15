@@ -18,6 +18,8 @@ export function AddLeaveDialog({ open, onClose, onSuccess }: { open: boolean; on
   const [leaveTypes, setLeaveTypes] = useState<LT[]>([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ employee_id: "", leave_type_id: "", start_date: "", end_date: "", reason: "", status: "approved" });
+  const [substitutes, setSubstitutes] = useState<{id: number; name: string; department: string}[]>([]);
+  const [substituteId, setSubstituteId] = useState("");
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authH = token?.startsWith("Token") ? token : `Token ${token}`;
@@ -30,6 +32,9 @@ export function AddLeaveDialog({ open, onClose, onSuccess }: { open: boolean; on
     fetch("/api/leaves/types", { headers: { Authorization: authH } })
       .then(r => r.json())
       .then(d => setLeaveTypes(d.leave_types || d.results || []));
+    fetch("/api/leaves/substitutes", { headers: { Authorization: authH } })
+      .then(r => r.json())
+      .then(d => setSubstitutes(d.substitutes || []));
   }, [open]);
 
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
@@ -50,15 +55,30 @@ export function AddLeaveDialog({ open, onClose, onSuccess }: { open: boolean; on
     }
     setLoading(true);
     try {
+      // لو مرضية + approved → لازم بديل
+      const selectedLT = leaveTypes.find(lt => String(lt.id) === form.leave_type_id) as (LT & {category?: string}) | undefined;
+      const ltCategory = (selectedLT as any)?.category || "";
+      if (ltCategory === "sick" && form.status === "approved" && !substituteId) {
+        toast.error(ar ? "الإجازة المرضية تحتاج تحديد موظف بديل" : "Sick leave requires a substitute employee");
+        setLoading(false);
+        return;
+      }
+      const payload: Record<string, unknown> = {
+        ...form,
+        employee_id: Number(form.employee_id),
+        leave_type_id: Number(form.leave_type_id),
+      };
+      if (substituteId) payload.substitute_employee_id = substituteId;
       const res = await fetch("/api/leaves/hr-create", {
         method: "POST",
         headers: { Authorization: authH, "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, employee_id: Number(form.employee_id), leave_type_id: Number(form.leave_type_id) }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (res.ok && data.success !== false) {
         toast.success(data.message || (ar ? "تم بنجاح" : "Success"));
         setForm({ employee_id: "", leave_type_id: "", start_date: "", end_date: "", reason: "", status: "approved" });
+        setSubstituteId("");
         onSuccess();
         onClose();
       } else {
@@ -121,6 +141,14 @@ export function AddLeaveDialog({ open, onClose, onSuccess }: { open: boolean; on
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">{ar ? "السبب *" : "Reason *"}</label>
             <Input value={form.reason} onChange={e => set("reason", e.target.value)} className="h-9" placeholder={ar ? "سبب الإجازة" : "Reason"} />
+          </div>
+
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">{ar ? "الموظف البديل (مطلوب للمرضية)" : "Substitute Employee (Required for Sick)"}</label>
+            <select value={substituteId} onChange={e => setSubstituteId(e.target.value)} className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background h-9">
+              <option value="">{ar ? "اختر بديل..." : "Select substitute..."}</option>
+              {substitutes.map(s => <option key={s.id} value={s.id}>{s.name}{s.department ? ` — ${s.department}` : ""}</option>)}
+            </select>
           </div>
 
           <div>

@@ -5,7 +5,7 @@ export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
-    const res = await fetch(`/attendance/api/mobile/manager/pending/`, {
+    const res = await fetch(`${BACKEND}/attendance/api/mobile/manager/pending/`, {
       headers: { Authorization: authHeader, "Accept-Language": "ar" },
       cache: "no-store",
     });

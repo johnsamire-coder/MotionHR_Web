@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   Users, UserCheck, UserX, Clock, Briefcase, FileText,
   Building2, MapPin, ChevronRight, Activity, TrendingUp,
-  AlertCircle, CheckCircle2, Loader2,
+  AlertCircle, CheckCircle2, Loader2, Eye,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -71,6 +71,7 @@ export default function ManagerDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [pending, setPending] = useState<{ leaves?: PendingItem[]; requests?: PendingItem[] }>({});
   const [loading, setLoading] = useState(true);
+  const [subSummary, setSubSummary] = useState<any>(null);
 
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
@@ -80,12 +81,16 @@ export default function ManagerDashboardPage() {
     Promise.all([
       fetch("/api/manager/dashboard-stats", { headers: { Authorization: authHeader } }).then(r => r.json()),
       fetch("/api/manager/pending", { headers: { Authorization: authHeader } }).then(r => r.json()),
-    ]).then(([statsData, pendingData]) => {
+      fetch("/api/manager/substitution-summary", { headers: { Authorization: authHeader } }).then(r => r.json()),
+    ]).then(([statsData, pendingData, subData]) => {
       setStats(statsData);
       setPending({
         leaves: pendingData?.pending_leaves || [],
         requests: pendingData?.pending_requests || [],
       });
+      if (subData?.has_summary && !subData?.summary_viewed) {
+        setSubSummary(subData);
+      }
     })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -116,6 +121,38 @@ export default function ManagerDashboardPage() {
           <span>{formatDate()}</span>
         </div>
       </div>
+
+      {/* Banner ملخص فترة الغياب */}
+      {subSummary && (
+        <Card className="border-blue-500/30 bg-blue-500/5">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                  <Eye className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="font-semibold">
+                    {lang === "ar"
+                      ? `اطلع على اللي حصل أثناء غيابك (${subSummary.stats?.total_requests + subSummary.stats?.total_leaves + subSummary.stats?.total_missions} إجراء)`
+                      : `Review what happened during your absence (${subSummary.stats?.total_requests + subSummary.stats?.total_leaves + subSummary.stats?.total_missions} actions)`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {subSummary.absence_period?.start} → {subSummary.absence_period?.end}
+                    {subSummary.absence_period?.substitute_name && ` | ${lang === "ar" ? "البديل" : "Substitute"}: ${subSummary.absence_period?.substitute_name}`}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => router.push("/manager/substitution-summary")}
+                className="text-sm font-semibold text-blue-700 hover:text-blue-800 flex items-center gap-1"
+              >
+                {lang === "ar" ? "عرض" : "View"} <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Alert للطلبات المعلقة */}
       {totalPending > 0 && (
