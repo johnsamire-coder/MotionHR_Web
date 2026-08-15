@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { Play,
   LayoutDashboard, Users, Clock, Calendar, FileText,
   DollarSign, MapPin, Settings, Building2, Upload,
-  Briefcase, Bell, FileBarChart, Shield, BookOpen, GitBranch, UserMinus, Map, ScrollText, Zap,
+  Briefcase, Bell, FileBarChart, Shield, BookOpen, GitBranch, UserMinus, Map, ScrollText, Zap, Smartphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDict } from "@/lib/stores/language";
@@ -45,6 +45,7 @@ export function Sidebar() {
     { key: "leaveRecallTitle",  href: "/hr/leave-recall",      icon: Calendar },
     { key: "flexShiftTitle",    href: "/hr/flex-shift",        icon: Zap },
     { key: "dailyReports", href: "/hr/reminders", icon: Bell },
+    { key: "trustedDevices",   href: "/hr/devices",           icon: Smartphone },
     { key: "settings",         href: "/hr/settings",          icon: Settings },
   ] as const;
 
