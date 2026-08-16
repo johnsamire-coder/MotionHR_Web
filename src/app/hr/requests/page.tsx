@@ -20,6 +20,9 @@ import {
   TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
@@ -110,6 +113,9 @@ export default function RequestsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeTab, setActiveTab] = useState<"all" | "pending">("all");
   const [selectedReq, setSelectedReq] = useState<RequestReport["details"][number] | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<number | null>(null);
+  const [rejectNotes, setRejectNotes] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
@@ -201,39 +207,40 @@ export default function RequestsPage() {
     toast.success(lang === "ar" ? "تم التصدير" : "Exported");
   };
 
-  const handleAction = async (requestId: number, action: "approve" | "reject") => {
-    const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
-    const notes = action === "reject"
-      ? (window.prompt(lang === "ar" ? "اكتب سبب الرفض" : "Enter rejection reason") || "").trim()
-      : "";
-
-    if (action === "reject" && !notes) {
-      toast.error(lang === "ar" ? "سبب الرفض مطلوب" : "Rejection reason is required");
+  const handleAction = async (requestId: number, action: "approve" | "reject", notes = "") => {
+    if (action === "reject" && !rejectTarget) {
+      setRejectTarget(requestId);
       return;
     }
-
+    setActionLoading(true);
     try {
       const res = await fetch("/api/manager/action", {
         method: "POST",
         headers: { Authorization: authHeader, "Content-Type": "application/json" },
         body: JSON.stringify({ type: "request", id: requestId, action, notes }),
       });
-
       const data = await res.json();
-
       if (data.success) {
-        toast.success(
-          action === "approve"
-            ? (lang === "ar" ? "تم القبول" : "Approved")
-            : (lang === "ar" ? "تم الرفض" : "Rejected")
-        );
+        toast.success(action === "approve" ? (lang === "ar" ? "تم القبول" : "Approved") : (lang === "ar" ? "تم الرفض" : "Rejected"));
+        setRejectTarget(null);
+        setRejectNotes("");
         setTimeout(() => window.location.reload(), 500);
       } else {
         toast.error(data.message || (lang === "ar" ? "فشل العملية" : "Failed"));
       }
     } catch {
       toast.error(lang === "ar" ? "خطأ في الاتصال" : "Connection error");
+    } finally {
+      setActionLoading(false);
     }
+  };
+
+  const confirmReject = async () => {
+    if (!rejectNotes.trim()) {
+      toast.error(lang === "ar" ? "سبب الرفض مطلوب" : "Rejection reason is required");
+      return;
+    }
+    if (rejectTarget) await handleAction(rejectTarget, "reject", rejectNotes.trim());
   };
 
   const getStatusBadge = (status?: string) => {
@@ -472,6 +479,29 @@ export default function RequestsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Reject Dialog */}
+      <Dialog open={!!rejectTarget} onOpenChange={v => { if (!v) { setRejectTarget(null); setRejectNotes(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{lang === "ar" ? "سبب الرفض" : "Rejection Reason"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>{lang === "ar" ? "اكتب سبب الرفض" : "Enter rejection reason"}</Label>
+              <Textarea value={rejectNotes} onChange={e => setRejectNotes(e.target.value)} rows={3} placeholder={lang === "ar" ? "السبب..." : "Reason..."} />
+            </div>
+            <div className="flex gap-3">
+              <Button onClick={confirmReject} disabled={actionLoading} className="flex-1 bg-red-600 hover:bg-red-700">
+                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (lang === "ar" ? "تأكيد الرفض" : "Confirm Reject")}
+              </Button>
+              <Button variant="outline" onClick={() => { setRejectTarget(null); setRejectNotes(""); }} className="flex-1">
+                {lang === "ar" ? "إلغاء" : "Cancel"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Requests Table */}
       <Card className="border-border/50">

@@ -154,14 +154,15 @@ export default function MyAttendancePage() {
   useEffect(() => { load(); }, [load]);
 
   // ── GPS Helper ───────────────────────────────────
-  const getGPS = async (): Promise<{ lat: number; lng: number }> => {
+  const getGPS = async (): Promise<{ lat: number; lng: number } | null> => {
+    if (!navigator.geolocation) return null;
     try {
       const pos = await new Promise<GeolocationPosition>((res, rej) =>
         navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000 })
       );
       return { lat: pos.coords.latitude, lng: pos.coords.longitude };
     } catch {
-      return { lat: 30.0444, lng: 31.2357 };
+      return null;
     }
   };
 
@@ -170,6 +171,12 @@ export default function MyAttendancePage() {
     setChecking(true);
     try {
       const gps = await getGPS();
+      if (!gps) {
+        toast.error(ar
+          ? "الموقع الجغرافي غير متاح. يرجى تفعيل GPS والسماح بالصلاحية."
+          : "Location is unavailable. Please enable GPS and allow location permission.");
+        return;
+      }
       const res = await fetch("/api/employee/attendance", {
         method: "POST",
         headers: { Authorization: authH, "Content-Type": "application/json", "Accept-Language": langH },
@@ -182,9 +189,9 @@ export default function MyAttendancePage() {
           : (ar ? "تم تسجيل الانصراف ✅" : "Checked out ✅"));
         await load();
       } else {
-        toast.error(data.message || (ar ? "فشل" : "Failed"));
+        toast.error(data.message_ar || data.message || (ar ? "فشل" : "Failed"));
       }
-    } catch { toast.error(ar ? "خطأ" : "Error"); }
+    } catch { toast.error(ar ? "خطأ في الاتصال" : "Connection error"); }
     finally { setChecking(false); }
   };
 

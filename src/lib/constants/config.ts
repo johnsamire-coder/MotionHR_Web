@@ -65,7 +65,7 @@ export const ROUTES = {
   },
 
   admin: {
-    dashboard: "/admin/dashboard",
+    dashboard: "https://jssolutions-eg.com/admin/",
     companies: "/admin/companies",
     users: "/admin/users",
     settings: "/admin/settings",
@@ -80,6 +80,8 @@ export const STORAGE_KEYS = {
   employee: "motionhr_employee",
   language: "motionhr_language",
   theme: "motionhr_theme",
+  rememberMe: "motionhr_remember_me",
+  savedUsername: "motionhr_saved_username",
 } as const;
 
 export const ROLES = {

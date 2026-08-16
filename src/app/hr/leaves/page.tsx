@@ -21,6 +21,8 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { XCircle as XIcon } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 import { AddLeaveDialog } from "@/components/hr/add-leave-dialog";
@@ -121,6 +123,8 @@ export default function LeavesPage() {
   const [showAddLeave, setShowAddLeave] = useState(false);
   const [selectedEmp, setSelectedEmp] = useState<EmployeeLeaves | null>(null);
   const [cancelling, setCancelling] = useState<number | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<number | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
@@ -168,25 +172,34 @@ export default function LeavesPage() {
   const departments = [...new Set(employees.map(e => e.department))].sort();
 
   const handleCancelLeave = async (leaveId: number) => {
-    const reason = window.prompt("سبب الإلغاء:");
-    if (!reason || !reason.trim()) return;
-    setCancelling(leaveId);
+    setCancelTarget(leaveId);
+  };
+
+  const confirmCancelLeave = async () => {
+    if (!cancelReason.trim()) {
+      toast.error(lang === "ar" ? "سبب الإلغاء مطلوب" : "Cancellation reason is required");
+      return;
+    }
+    if (!cancelTarget) return;
+    setCancelling(cancelTarget);
     try {
-      const res = await fetch("/api/leaves/" + leaveId + "/cancel", {
+      const res = await fetch("/api/leaves/" + cancelTarget + "/cancel", {
         method: "POST",
         headers: { Authorization: authHeader, "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: reason.trim() }),
+        body: JSON.stringify({ reason: cancelReason.trim() }),
       });
       const data = await res.json();
       if (res.ok && data.success !== false) {
-        toast.success(data.message || "تم الإلغاء");
+        toast.success(data.message || (lang === "ar" ? "تم الإلغاء" : "Cancelled"));
+        setCancelTarget(null);
+        setCancelReason("");
         setSelectedEmp(null);
         reloadData();
       } else {
-        toast.error(data.error || data.message || "فشل الإلغاء");
+        toast.error(data.error || data.message || (lang === "ar" ? "فشل الإلغاء" : "Failed"));
       }
     } catch {
-      toast.error("خطأ في الشبكة");
+      toast.error(lang === "ar" ? "خطأ في الشبكة" : "Network error");
     } finally {
       setCancelling(null);
     }
@@ -490,6 +503,29 @@ export default function LeavesPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Cancel Leave Dialog */}
+      <Dialog open={!!cancelTarget} onOpenChange={v => { if (!v) { setCancelTarget(null); setCancelReason(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{lang === "ar" ? "سبب إلغاء الإجازة" : "Leave Cancellation Reason"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>{lang === "ar" ? "اكتب سبب الإلغاء" : "Enter cancellation reason"}</Label>
+              <Textarea value={cancelReason} onChange={e => setCancelReason(e.target.value)} rows={3} placeholder={lang === "ar" ? "السبب..." : "Reason..."} />
+            </div>
+            <div className="flex gap-3">
+              <Button onClick={confirmCancelLeave} disabled={cancelling !== null} className="flex-1 bg-red-600 hover:bg-red-700 text-white">
+                {cancelling !== null ? <Loader2 className="w-4 h-4 animate-spin" /> : (lang === "ar" ? "تأكيد الإلغاء" : "Confirm Cancel")}
+              </Button>
+              <Button variant="outline" onClick={() => { setCancelTarget(null); setCancelReason(""); }} className="flex-1">
+                {lang === "ar" ? "تراجع" : "Back"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AddLeaveDialog open={showAddLeave} onClose={() => setShowAddLeave(false)} onSuccess={reloadData} />
     </div>

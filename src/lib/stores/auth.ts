@@ -57,8 +57,17 @@ export const useAuthStore = create<AuthState>()(
         });
       },
 
-      logout: () => {
+      logout: async () => {
         if (typeof window !== "undefined") {
+          const token = localStorage.getItem(STORAGE_KEYS.token);
+          if (token) {
+            try {
+              await fetch("https://jssolutions-eg.com/attendance/api/mobile/logout/", {
+                method: "POST",
+                headers: { "Authorization": `Token ${token}` }
+              });
+            } catch (e) { console.error("Logout API error", e); }
+          }
           localStorage.removeItem(STORAGE_KEYS.token);
           localStorage.removeItem(STORAGE_KEYS.refreshToken);
           localStorage.removeItem(STORAGE_KEYS.user);

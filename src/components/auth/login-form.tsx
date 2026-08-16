@@ -21,7 +21,16 @@ export function LoginForm() {
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotDialog, setShowForgotDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Remember Me — جلب الداتا المحفوظة
+  const savedUsername = typeof window !== "undefined"
+    ? localStorage.getItem(STORAGE_KEYS.savedUsernamee) || ""
+    : "";
+  const savedRememberMe = typeof window !== "undefined"
+    ? localStorage.getItem(STORAGE_KEYS.rememberMe) === "true"
+    : false;
 
   const {
     register,
@@ -30,9 +39,9 @@ export function LoginForm() {
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      username: "",
+      username: savedUsername,
       password: "",
-      remember_me: false,
+      remember_me: savedRememberMe,
     },
   });
 
@@ -54,6 +63,14 @@ export function LoginForm() {
         localStorage.setItem(STORAGE_KEYS.token, response.token);
         if (response.refresh) {
           localStorage.setItem(STORAGE_KEYS.refreshToken, response.refresh);
+        }
+        // Remember Me
+        if (values.remember_me) {
+          localStorage.setItem(STORAGE_KEYS.rememberMe, "true");
+          localStorage.setItem(STORAGE_KEYS.savedUsernamee, values.username);
+        } else {
+          localStorage.removeItem(STORAGE_KEYS.rememberMe);
+          localStorage.removeItem(STORAGE_KEYS.savedUsernamee);
         }
       }
 
@@ -78,6 +95,12 @@ export function LoginForm() {
 
       toast.success(`أهلاً بيك، ${response.first_name}`);
 
+      // must_change_password check
+      if (response.must_change_password) {
+        router.push("/change-password");
+        return;
+      }
+
       // Redirect based on role
       let redirectPath = ROUTES.employee.dashboard;
 
@@ -94,7 +117,11 @@ export function LoginForm() {
         redirectPath = ROUTES.employee.dashboard;
       }
 
-      router.push(redirectPath);
+      if (redirectPath.startsWith("http")) {
+        window.location.href = redirectPath;
+      } else {
+        router.push(redirectPath);
+      }
     } catch (error: unknown) {
       const err = error as {
         response?: {
@@ -173,12 +200,13 @@ export function LoginForm() {
           />
           <span>تذكرني</span>
         </label>
-        <a
-          href="#"
+        <button
+          type="button"
+          onClick={() => toast.info("من فضلك تواصل مع مسئول الموارد البشرية لإعادة تعيين كلمة المرور الخاصة بك.")}
           className="text-sm text-brand-accent hover:underline"
         >
           نسيت كلمة المرور؟
-        </a>
+        </button>
       </div>
 
       <Button
