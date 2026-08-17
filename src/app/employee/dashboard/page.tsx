@@ -65,7 +65,7 @@ const STATUS_LABELS: Record<string, { ar: string; en: string; color: string }> =
 
 export default function EmployeeDashboardPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, employee } = useAuthStore();
   const lang = useLangStore((s) => s.lang);
   const ar = lang === "ar";
 
@@ -305,6 +305,9 @@ export default function EmployeeDashboardPage() {
           <div className="text-end">
             <p className="text-white/70 text-xs">{ar ? "مرحباً" : "Welcome"}</p>
             <p className="font-semibold text-sm">{user?.first_name || user?.username}</p>
+            {employee?.job_title && (
+              <p className="text-white/80 text-xs mt-0.5">{employee.job_title}</p>
+            )}
             <Badge className={`mt-1 text-[10px] border-0 ${workerInfo?.color || ""}`}>
               {ar ? workerInfo?.ar : workerInfo?.en}
             </Badge>

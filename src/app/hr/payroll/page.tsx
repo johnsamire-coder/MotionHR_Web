@@ -256,6 +256,34 @@ export default function PayrollPage() {
       .finally(() => setDetailLoading(false));
   }, [selectedEmp, year, month]);
 
+  const handleExportPDF = async () => {
+    try {
+      const token = localStorage.getItem(STORAGE_KEYS.token);
+      const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
+      toast.info(lang === "ar" ? "جاري تجهيز PDF..." : "Preparing PDF...");
+      const res = await fetch(
+        `/api/hr/payroll-pdf?year=${year}&month=${month}`,
+        { headers: { Authorization: authHeader } }
+      );
+      if (!res.ok) {
+        toast.error(lang === "ar" ? "فشل تصدير PDF" : "PDF export failed");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `payroll_${year}_${String(month).padStart(2, "0")}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(lang === "ar" ? "تم تحميل PDF" : "PDF downloaded");
+    } catch (e) {
+      toast.error(lang === "ar" ? "خطأ في التصدير" : "Export error");
+    }
+  };
+
   const handleExportExcel = () => {
     if (!sorted.length) { toast.error(lang === "ar" ? "لا توجد بيانات" : "No data"); return; }
     const header = lang === "ar" ? ["الموظف","الكود","القسم","الأساسي","البدلات","الخصومات","الصافي"] : ["Employee","Code","Department","Basic","Allowances","Deductions","Net"];
@@ -312,7 +340,7 @@ export default function PayrollPage() {
             <Download className="w-4 h-4" />
             {d.exportExcel}
           </Button>
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={handleExportPDF}>
             <FileText className="w-4 h-4" />
             {d.exportPDF}
           </Button>

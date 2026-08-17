@@ -5,39 +5,31 @@ export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
-    const today = new Date().toISOString().split("T")[0];
-    const [empRes, attRes] = await Promise.all([
-      fetch(`${BACKEND}/attendance/api/mobile/manager/employees/`, {
-        headers: { Authorization: authHeader }, cache: "no-store",
-      }),
-      fetch(`${BACKEND}/attendance/api/mobile/manager/attendance/?date=${today}`, {
-        headers: { Authorization: authHeader }, cache: "no-store",
-      }),
-    ]);
-    const empData = await empRes.json();
-    const attData = await attRes.json();
+    const res = await fetch(`${BACKEND}/attendance/api/mobile/manager/dashboard/`, {
+      headers: { Authorization: authHeader },
+      cache: "no-store",
+    });
+    const data = await res.json();
 
-    const employees = empData?.employees || [];
-    const records = attData?.records || attData || [];
-
-    const present = records.filter((r: { status_code?: string }) =>
-      r.status_code === "present" || r.status_code === "late"
-    ).length;
-    const absent = records.filter((r: { status_code?: string }) =>
-      r.status_code === "absent"
-    ).length;
-    const late = records.filter((r: { status_code?: string }) =>
-      r.status_code === "late"
-    ).length;
+    const pulse = data?.pulse || {};
+    const decisions = data?.decisions || {};
 
     return NextResponse.json({
-      team_size: employees.length,
-      present_today: present,
-      absent_today: absent,
-      late_today: late,
+      team_size: pulse.total_employees || 0,
+      present_today: pulse.present || 0,
+      absent_today: pulse.absent || 0,
+      late_today: pulse.late || 0,
+      on_leave_today: pulse.on_leave || 0,
+      attendance_rate: pulse.attendance_rate || 0,
+      pending_requests: decisions.pending_requests || 0,
+      pending_leaves: decisions.pending_leaves || 0,
       active_missions: 0,
     });
   } catch {
-    return NextResponse.json({ team_size: 0, present_today: 0, absent_today: 0, late_today: 0, active_missions: 0 });
+    return NextResponse.json({
+      team_size: 0, present_today: 0, absent_today: 0,
+      late_today: 0, on_leave_today: 0, attendance_rate: 0,
+      pending_requests: 0, pending_leaves: 0, active_missions: 0,
+    });
   }
 }
