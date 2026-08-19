@@ -17,7 +17,7 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <EmployeeSidebar />
-      <div className="mr-64">
+      <div className="lg:mr-64">
         <TrialBanner />
         <Header />
         <main className="p-6">{children}</main>

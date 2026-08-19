@@ -149,7 +149,7 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
   return (
     <div className="min-h-screen bg-background" dir={ar ? "rtl" : "ltr"}>
       <Sidebar />
-      <div className={ar ? "mr-64" : "ml-64"}>
+      <div className={ar ? "lg:mr-64" : "lg:ml-64"}>
         <Header />
         <main className="p-6">{children}</main>
       </div>

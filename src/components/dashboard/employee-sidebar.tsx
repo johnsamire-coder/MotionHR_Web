@@ -6,10 +6,11 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Clock, Calendar, FileText, Briefcase,
   Wallet, User, MapPin, Bell, ScrollText, GitBranch,
-  ShieldCheck, Megaphone,
+  ShieldCheck, Megaphone, Menu, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDict } from "@/lib/stores/language";
+import { useState, useEffect } from "react";
 
 export function EmployeeSidebar() {
   const pathname = usePathname();
@@ -31,8 +32,50 @@ export function EmployeeSidebar() {
     { key: "myProfile",      href: "/employee/profile",       icon: User },
   ] as const;
 
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsOpen(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
   return (
-    <aside className="w-64 h-screen bg-sidebar text-sidebar-foreground flex flex-col fixed right-0 top-0 z-50 border-l border-sidebar-border pointer-events-auto">
+    <>
+      <button
+        onClick={() => setIsOpen(true)}
+        className="lg:hidden fixed top-3 right-3 z-[60] bg-brand-primary text-white p-2.5 rounded-lg shadow-xl border border-white/20"
+        aria-label="Open menu"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
+
+      {isOpen && (
+        <div
+          onClick={() => setIsOpen(false)}
+          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          aria-hidden="true"
+        />
+      )}
+
+      <aside className={cn(
+        "w-64 h-screen bg-sidebar text-sidebar-foreground flex flex-col fixed right-0 top-0 z-50 border-l border-sidebar-border pointer-events-auto transition-transform",
+        "lg:translate-x-0",
+        isOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
+      )}>
+        <button
+          onClick={() => setIsOpen(false)}
+          className="lg:hidden absolute top-4 left-4 text-sidebar-foreground/70 hover:text-sidebar-foreground z-10"
+          aria-label="Close menu"
+        >
+          <X className="w-5 h-5" />
+        </button>
       <div className="h-16 flex items-center gap-3 px-6 border-b border-sidebar-border">
         <Image
           src="/brand/icon/icon-white.png"
@@ -77,5 +120,6 @@ export function EmployeeSidebar() {
         </div>
       </div>
     </aside>
+    </>
   );
 }

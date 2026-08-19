@@ -88,6 +88,38 @@ export default function AttendancePolicyPage() {
         </Button>
       </div>
 
+      {/* Info Alert — Grace Period Explanation */}
+      <Card className="border-blue-200 bg-blue-50/50">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="w-4 h-4 text-blue-600" />
+            </div>
+            <div className="flex-1 text-sm">
+              <p className="font-semibold text-blue-900 mb-1">
+                {lang === "ar" ? "ملاحظة مهمة عن فترة السماحية" : "Important Note about Grace Period"}
+              </p>
+              <p className="text-blue-800 mb-2">
+                {lang === "ar"
+                  ? "فترة السماحية المحددة في إعدادات الشيفت تعتبر إعفاء كامل من التأخير. السياسة أدناه تبدأ الحساب من الدقيقة الأولى بعد انتهاء فترة السماحية."
+                  : "The grace period defined in shift settings is considered a full exemption. The policy below starts counting from the first minute after the grace period ends."}
+              </p>
+              <div className="bg-white/70 rounded-lg p-3 text-xs text-blue-900 border border-blue-200">
+                <p className="font-semibold mb-1">
+                  {lang === "ar" ? "مثال توضيحي:" : "Example:"}
+                </p>
+                <ul className="space-y-1 mr-4 list-disc">
+                  <li>{lang === "ar" ? "شيفت يبدأ 9:00 صباحًا بفترة سماحية 30 دقيقة" : "Shift starts 9:00 AM with 30 min grace period"}</li>
+                  <li>{lang === "ar" ? "الموظف حضر الساعة 9:45 (متأخر 45 دقيقة عن البداية)" : "Employee arrives at 9:45 (45 min after start)"}</li>
+                  <li>{lang === "ar" ? "التأخير الفعلي المحسوب = 15 دقيقة فقط (بعد الـ 30 دقيقة السماحية)" : "Actual counted lateness = only 15 minutes"}</li>
+                  <li>{lang === "ar" ? "السياسة تطبق قواعدها على الـ 15 دقيقة هذه" : "Policy applies its rules on these 15 minutes"}</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {loading ? (
         <div className="flex items-center justify-center py-24">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />

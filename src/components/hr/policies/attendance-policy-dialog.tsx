@@ -58,6 +58,12 @@ interface Policy {
   permission_max_hours_per_request: number;
   permission_fraction_as_full: boolean;
   permission_reset_cycle: string;
+  late_warning_enabled: boolean;
+  late_warning_threshold: number;
+  late_warning_deduction_type: string;
+  late_warning_deduction_value: number;
+  late_warning_max_deduction: number;
+  late_warning_step_rate: number;
   late_rules: LateRule[];
   absence_rules: AbsenceRule[];
   overtime_rules: OvertimeRule[];
@@ -75,6 +81,12 @@ const EMPTY: Policy = {
   permission_max_hours_per_request: 2,
   permission_fraction_as_full: false,
   permission_reset_cycle: "monthly",
+  late_warning_enabled: false,
+  late_warning_threshold: 2,
+  late_warning_deduction_type: "fixed",
+  late_warning_deduction_value: 0.25,
+  late_warning_max_deduction: 1.0,
+  late_warning_step_rate: 1,
   late_rules: [],
   absence_rules: [],
   overtime_rules: [],
@@ -136,7 +148,7 @@ const EMPTY_OVERTIME_RULE: OvertimeRule = {
   requires_approval: false,
 };
 
-type Section = "basic" | "permissions" | "late" | "absence" | "overtime";
+type Section = "basic" | "permissions" | "late" | "warnings" | "absence" | "overtime";
 
 export default function AttendancePolicyDialog({ open, onClose, onSaved, policyId, ar }: Props) {
   const [form, setForm]           = useState<Policy>({ ...EMPTY });
@@ -197,6 +209,12 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
         permission_max_hours_per_request: Number(form.permission_max_hours_per_request),
         permission_fraction_as_full:   form.permission_fraction_as_full,
         permission_reset_cycle:        form.permission_reset_cycle,
+        late_warning_enabled:          form.late_warning_enabled,
+        late_warning_threshold:        form.late_warning_threshold,
+        late_warning_deduction_type:   form.late_warning_deduction_type,
+        late_warning_deduction_value:  form.late_warning_deduction_value,
+        late_warning_max_deduction:    form.late_warning_max_deduction,
+        late_warning_step_rate:        form.late_warning_step_rate,
         late_rules:    form.late_rules.map(r => ({
           from_minutes:    Number(r.from_minutes),
           to_minutes:      Number(r.to_minutes),
@@ -260,6 +278,7 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
     { key: "basic",       label: "البيانات الأساسية", count: null },
     { key: "permissions", label: "الأذونات",           count: null },
     { key: "late",        label: "قوانين التأخير",     count: form.late_rules.length },
+    { key: "warnings",    label: "الإنذارات والخصم",   count: form.late_warning_enabled ? 1 : null },
     { key: "absence",     label: "قوانين الغياب",      count: form.absence_rules.length },
     { key: "overtime",    label: "الأوفرتايم",          count: form.overtime_rules.length },
   ] as const;
@@ -484,6 +503,105 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
               )}
 
               {/* ── ABSENCE RULES ── */}
+              {activeSection === "warnings" && (
+                <div className="space-y-4">
+                  <label className="flex items-center gap-2 p-3 bg-brand-primary/5 rounded-lg cursor-pointer border border-brand-primary/20">
+                    <input type="checkbox" checked={form.late_warning_enabled}
+                      onChange={e => setForm(p => ({ ...p, late_warning_enabled: e.target.checked }))} className="w-4 h-4" />
+                    <span className="text-sm font-semibold">تفعيل نظام الإنذارات والخصم التلقائي</span>
+                  </label>
+
+                  {form.late_warning_enabled && (
+                    <div className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border">
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 leading-relaxed">
+                        <p className="font-semibold mb-1">📌 كيف يعمل النظام؟</p>
+                        <p>• يُحسب التأخير فقط <strong>بعد انتهاء فترة السماحية</strong> في الشيفت</p>
+                        <p>• أول <strong>{form.late_warning_threshold}</strong> مرات في الشهر = إنذار فقط (بدون خصم)</p>
+                        <p>• بعد ذلك يبدأ الخصم من راتب الموظف حسب النوع المحدد</p>
+                        <p>• إعادة العد تحدث تلقائياً في بداية كل شهر (حسب دورة المرتب)</p>
+                      </div>
+
+                      <div>
+                        <label className="text-sm mb-1 block font-medium">عدد الإنذارات المسموحة قبل الخصم</label>
+                        <Input type="number" min={1} max={10} value={form.late_warning_threshold}
+                          onChange={e => setForm(p => ({ ...p, late_warning_threshold: Number(e.target.value) }))} />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          مثال: {form.late_warning_threshold} = أول {form.late_warning_threshold} مرات في الشهر إنذار فقط
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="text-sm mb-1 block font-medium">نوع الخصم</label>
+                        <select value={form.late_warning_deduction_type}
+                          onChange={e => setForm(p => ({ ...p, late_warning_deduction_type: e.target.value }))}
+                          className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background">
+                          <option value="fixed">🟢 ثابت — نفس القيمة كل مرة</option>
+                          <option value="progressive">🟡 تصاعدي بحد أقصى — يزيد كل مرة لحد قيمة معينة</option>
+                          <option value="progressive_step">🔵 تصاعدي كل عدد مرات — يزيد بعد N مرات</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-sm mb-1 block font-medium">قيمة الخصم الأساسية (جزء من يوم)</label>
+                        <Input type="number" step="0.05" min={0.05} max={1} value={form.late_warning_deduction_value}
+                          onChange={e => setForm(p => ({ ...p, late_warning_deduction_value: Number(e.target.value) }))} />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          مثال: 0.25 = ربع يوم | 0.5 = نص يوم | 1.0 = يوم كامل
+                        </p>
+                      </div>
+
+                      {(form.late_warning_deduction_type === "progressive" || form.late_warning_deduction_type === "progressive_step") && (
+                        <div>
+                          <label className="text-sm mb-1 block font-medium">الحد الأقصى للخصم (جزء من يوم)</label>
+                          <Input type="number" step="0.25" min={0.25} max={1} value={form.late_warning_max_deduction}
+                            onChange={e => setForm(p => ({ ...p, late_warning_max_deduction: Number(e.target.value) }))} />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            الخصم لن يتجاوز هذه القيمة حتى لو تكرر التأخير
+                          </p>
+                        </div>
+                      )}
+
+                      {form.late_warning_deduction_type === "progressive_step" && (
+                        <div>
+                          <label className="text-sm mb-1 block font-medium">معدل الزيادة (كل كام مرة يزيد)</label>
+                          <Input type="number" min={1} max={5} value={form.late_warning_step_rate}
+                            onChange={e => setForm(p => ({ ...p, late_warning_step_rate: Number(e.target.value) }))} />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            مثال: 2 = يزيد كل مرتين
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900">
+                        <p className="font-semibold mb-1">📊 مثال توضيحي:</p>
+                        {form.late_warning_deduction_type === "fixed" && (
+                          <div>
+                            <p>• المرات 1 و {form.late_warning_threshold} → إنذار فقط</p>
+                            <p>• من المرة {form.late_warning_threshold + 1} فما فوق → خصم <strong>{form.late_warning_deduction_value}</strong> يوم كل مرة</p>
+                          </div>
+                        )}
+                        {form.late_warning_deduction_type === "progressive" && (
+                          <div>
+                            <p>• أول {form.late_warning_threshold} مرات → إنذار</p>
+                            <p>• المرة {form.late_warning_threshold + 1} → خصم {form.late_warning_deduction_value} يوم</p>
+                            <p>• المرة {form.late_warning_threshold + 2} → خصم {Math.min(form.late_warning_deduction_value * 2, form.late_warning_max_deduction)} يوم</p>
+                            <p>• المرة {form.late_warning_threshold + 3} → خصم {Math.min(form.late_warning_deduction_value * 3, form.late_warning_max_deduction)} يوم (حد أقصى: {form.late_warning_max_deduction})</p>
+                          </div>
+                        )}
+                        {form.late_warning_deduction_type === "progressive_step" && (
+                          <div>
+                            <p>• أول {form.late_warning_threshold} مرات → إنذار</p>
+                            <p>• أول {form.late_warning_step_rate} مرة خصم → {form.late_warning_deduction_value} يوم</p>
+                            <p>• بعد {form.late_warning_step_rate} مرات → يزيد إلى {Math.min(form.late_warning_deduction_value * 2, form.late_warning_max_deduction)} يوم</p>
+                            <p>• الحد الأقصى: {form.late_warning_max_deduction} يوم</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {activeSection === "absence" && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
