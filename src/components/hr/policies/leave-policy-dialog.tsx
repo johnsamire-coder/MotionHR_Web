@@ -20,6 +20,14 @@ interface Props {
   ar: boolean;
 }
 
+
+interface LeaveTier {
+  from_months: number;
+  to_months: number | null;
+  annual_entitlement_days: number;
+  description?: string;
+}
+
 interface LeavePolicy {
   id?: number;
   name: string;
@@ -35,6 +43,7 @@ interface LeavePolicy {
   unpaid_allowed: boolean;
   carry_forward_enabled: boolean;
   max_carry_forward_days: number;
+  tiers?: LeaveTier[];
 }
 
 const EMPTY: LeavePolicy = {
@@ -51,12 +60,47 @@ const EMPTY: LeavePolicy = {
   unpaid_allowed: true,
   carry_forward_enabled: false,
   max_carry_forward_days: 0,
+  tiers: [
+    { from_months: 0, to_months: 3, annual_entitlement_days: 0, description: "فترة الاختبار (أول 3 شهور)" },
+    { from_months: 4, to_months: 6, annual_entitlement_days: 6, description: "من الشهر 4 إلى 6" },
+    { from_months: 7, to_months: null, annual_entitlement_days: 21, description: "بعد 6 شهور (الرصيد السنوي الكامل)" },
+  ],
 };
 
 export default function LeavePolicyDialog({ open, onClose, onSaved, policyId, ar }: Props) {
   const [form, setForm] = useState<LeavePolicy>({ ...EMPTY });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const addTier = () => {
+    setForm(p => {
+      const currentTiers = p.tiers || [];
+      const lastTier = currentTiers[currentTiers.length - 1];
+      const nextFrom = lastTier ? (lastTier.to_months ? lastTier.to_months + 1 : 12) : 0;
+      return {
+        ...p,
+        tiers: [
+          ...currentTiers,
+          { from_months: nextFrom, to_months: null, annual_entitlement_days: 21, description: "" }
+        ]
+      };
+    });
+  };
+
+  const removeTier = (index: number) => {
+    setForm(p => ({
+      ...p,
+      tiers: (p.tiers || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateTier = (index: number, key: keyof LeaveTier, val: any) => {
+    setForm(p => ({
+      ...p,
+      tiers: (p.tiers || []).map((t, i) => i === index ? { ...t, [key]: val } : t)
+    }));
+  };
+
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authH = token?.startsWith("Token") ? token : `Token ${token}`;
@@ -203,6 +247,75 @@ export default function LeavePolicyDialog({ open, onClose, onSaved, policyId, ar
                   </div>
                 )}
               </div>
+
+              
+              {/* Service Tenure Tiers */}
+              <div className="p-4 bg-muted/30 border border-border rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Info className="w-4 h-4 text-brand-primary" />
+                    <span>{ar ? "تدرج رصيد الإجازات حسب مدة الخدمة (بالأشهر)" : "Pro-rated Leave Accrual Tiers (by Months)"}</span>
+                  </p>
+                  <Button type="button" size="sm" variant="outline" onClick={addTier} className="h-7 text-xs">
+                    {ar ? "+ إضافة شريحة" : "+ Add Tier"}
+                  </Button>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  {ar
+                    ? "حدد الرصيد المستحق بناءً على تاريخ تعيين الموظف (مثال: أول 3 شهور = 0، من 4-6 شهور = 6، بعد 6 شهور = 21 يوم)."
+                    : "Configure entitlement days based on tenure months from hire date."}
+                </p>
+
+                <div className="space-y-2 pt-1">
+                  {(form.tiers || []).map((tier, idx) => (
+                    <div key={idx} className="flex items-center gap-2 bg-background p-2.5 rounded-lg border border-border/60 text-xs">
+                      <div className="flex items-center gap-1.5 flex-1">
+                        <span className="text-muted-foreground whitespace-nowrap">{ar ? "من شهر:" : "From m:"}</span>
+                        <Input
+                          type="number"
+                          className="h-8 text-xs w-16"
+                          value={tier.from_months}
+                          onChange={e => updateTier(idx, "from_months", Number(e.target.value))}
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-1">
+                        <span className="text-muted-foreground whitespace-nowrap">{ar ? "إلى شهر:" : "To m:"}</span>
+                        <Input
+                          type="number"
+                          placeholder={ar ? "فأكثر" : "Infinity"}
+                          className="h-8 text-xs w-16"
+                          value={tier.to_months !== null && tier.to_months !== undefined ? tier.to_months : ""}
+                          onChange={e => updateTier(idx, "to_months", e.target.value ? Number(e.target.value) : null)}
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-1">
+                        <span className="text-muted-foreground whitespace-nowrap">{ar ? "الرصيد:" : "Days:"}</span>
+                        <Input
+                          type="number"
+                          step="0.5"
+                          className="h-8 text-xs w-16 font-bold text-brand-primary"
+                          value={tier.annual_entitlement_days}
+                          onChange={e => updateTier(idx, "annual_entitlement_days", Number(e.target.value))}
+                        />
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                        onClick={() => removeTier(idx)}
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
 
               {/* Notes */}
               <div>

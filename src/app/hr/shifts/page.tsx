@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,6 +39,10 @@ interface Shift {
   required_daily_hours?: number;
   grace_period?: number;
   break_duration?: number;
+  early_checkout_allowed?: boolean;
+  early_checkout_minutes?: number;
+  late_checkout_allowed?: boolean;
+  late_checkout_minutes?: number;
   is_default?: boolean;
   is_active?: boolean;
   work_sunday?: boolean;
@@ -130,6 +135,10 @@ export default function ShiftsPage() {
     required_daily_hours: 8,
     grace_period: 15,
     break_duration: 60,
+    early_checkout_allowed: false,
+    early_checkout_minutes: 0,
+    late_checkout_allowed: false,
+    late_checkout_minutes: 0,
   });
 
   useEffect(() => {
@@ -568,6 +577,72 @@ export default function ShiftsPage() {
             </div>
           </div>
 
+          
+            {/* Flex Checkout Section */}
+            <div className="p-3.5 border rounded-lg bg-muted/20 space-y-3.5 col-span-2">
+              <div className="text-xs font-semibold text-brand-primary flex items-center justify-between">
+                <span>{lang === "ar" ? "مرونة الانصراف (المواقع والميدانيين)" : "Checkout Flexibility (Sites & Field)"}</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* Early Checkout */}
+                <div className="space-y-2 p-2.5 bg-background rounded border border-border/60">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="early_allowed" className="text-xs cursor-pointer">
+                      {lang === "ar" ? "السماح بالانصراف المبكر" : "Allow Early Checkout"}
+                    </Label>
+                    <Switch
+                      id="early_allowed"
+                      checked={formData.early_checkout_allowed}
+                      onCheckedChange={(v) => setFormData({ ...formData, early_checkout_allowed: v })}
+                    />
+                  </div>
+                  {formData.early_checkout_allowed && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="5"
+                        placeholder="60"
+                        className="h-8 text-xs"
+                        value={formData.early_checkout_minutes || ""}
+                        onChange={(e) => setFormData({ ...formData, early_checkout_minutes: Number(e.target.value) })}
+                      />
+                      <span className="text-[11px] text-muted-foreground whitespace-nowrap">{d.shiftMin}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Late Checkout */}
+                <div className="space-y-2 p-2.5 bg-background rounded border border-border/60">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="late_allowed" className="text-xs cursor-pointer">
+                      {lang === "ar" ? "السماح بالانصراف المتأخر" : "Allow Late Checkout"}
+                    </Label>
+                    <Switch
+                      id="late_allowed"
+                      checked={formData.late_checkout_allowed}
+                      onCheckedChange={(v) => setFormData({ ...formData, late_checkout_allowed: v })}
+                    />
+                  </div>
+                  {formData.late_checkout_allowed && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="15"
+                        placeholder="180"
+                        className="h-8 text-xs"
+                        value={formData.late_checkout_minutes || ""}
+                        onChange={(e) => setFormData({ ...formData, late_checkout_minutes: Number(e.target.value) })}
+                      />
+                      <span className="text-[11px] text-muted-foreground whitespace-nowrap">{d.shiftMin}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={isSaving}>
               {d.cancel}
@@ -595,6 +670,72 @@ export default function ShiftsPage() {
                 : "Are you sure you want to delete this shift? This cannot be undone."}
             </DialogDescription>
           </DialogHeader>
+          
+            {/* Flex Checkout Section */}
+            <div className="p-3.5 border rounded-lg bg-muted/20 space-y-3.5 col-span-2">
+              <div className="text-xs font-semibold text-brand-primary flex items-center justify-between">
+                <span>{lang === "ar" ? "مرونة الانصراف (المواقع والميدانيين)" : "Checkout Flexibility (Sites & Field)"}</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* Early Checkout */}
+                <div className="space-y-2 p-2.5 bg-background rounded border border-border/60">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="early_allowed" className="text-xs cursor-pointer">
+                      {lang === "ar" ? "السماح بالانصراف المبكر" : "Allow Early Checkout"}
+                    </Label>
+                    <Switch
+                      id="early_allowed"
+                      checked={formData.early_checkout_allowed}
+                      onCheckedChange={(v) => setFormData({ ...formData, early_checkout_allowed: v })}
+                    />
+                  </div>
+                  {formData.early_checkout_allowed && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="5"
+                        placeholder="60"
+                        className="h-8 text-xs"
+                        value={formData.early_checkout_minutes || ""}
+                        onChange={(e) => setFormData({ ...formData, early_checkout_minutes: Number(e.target.value) })}
+                      />
+                      <span className="text-[11px] text-muted-foreground whitespace-nowrap">{d.shiftMin}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Late Checkout */}
+                <div className="space-y-2 p-2.5 bg-background rounded border border-border/60">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="late_allowed" className="text-xs cursor-pointer">
+                      {lang === "ar" ? "السماح بالانصراف المتأخر" : "Allow Late Checkout"}
+                    </Label>
+                    <Switch
+                      id="late_allowed"
+                      checked={formData.late_checkout_allowed}
+                      onCheckedChange={(v) => setFormData({ ...formData, late_checkout_allowed: v })}
+                    />
+                  </div>
+                  {formData.late_checkout_allowed && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="15"
+                        placeholder="180"
+                        className="h-8 text-xs"
+                        value={formData.late_checkout_minutes || ""}
+                        onChange={(e) => setFormData({ ...formData, late_checkout_minutes: Number(e.target.value) })}
+                      />
+                      <span className="text-[11px] text-muted-foreground whitespace-nowrap">{d.shiftMin}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteShiftId(null)} disabled={isDeleting}>
               {d.cancel}
@@ -679,6 +820,72 @@ export default function ShiftsPage() {
               </div>
             </div>
           </div>
+
+          
+            {/* Flex Checkout Section */}
+            <div className="p-3.5 border rounded-lg bg-muted/20 space-y-3.5 col-span-2">
+              <div className="text-xs font-semibold text-brand-primary flex items-center justify-between">
+                <span>{lang === "ar" ? "مرونة الانصراف (المواقع والميدانيين)" : "Checkout Flexibility (Sites & Field)"}</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* Early Checkout */}
+                <div className="space-y-2 p-2.5 bg-background rounded border border-border/60">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="early_allowed" className="text-xs cursor-pointer">
+                      {lang === "ar" ? "السماح بالانصراف المبكر" : "Allow Early Checkout"}
+                    </Label>
+                    <Switch
+                      id="early_allowed"
+                      checked={formData.early_checkout_allowed}
+                      onCheckedChange={(v) => setFormData({ ...formData, early_checkout_allowed: v })}
+                    />
+                  </div>
+                  {formData.early_checkout_allowed && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="5"
+                        placeholder="60"
+                        className="h-8 text-xs"
+                        value={formData.early_checkout_minutes || ""}
+                        onChange={(e) => setFormData({ ...formData, early_checkout_minutes: Number(e.target.value) })}
+                      />
+                      <span className="text-[11px] text-muted-foreground whitespace-nowrap">{d.shiftMin}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Late Checkout */}
+                <div className="space-y-2 p-2.5 bg-background rounded border border-border/60">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="late_allowed" className="text-xs cursor-pointer">
+                      {lang === "ar" ? "السماح بالانصراف المتأخر" : "Allow Late Checkout"}
+                    </Label>
+                    <Switch
+                      id="late_allowed"
+                      checked={formData.late_checkout_allowed}
+                      onCheckedChange={(v) => setFormData({ ...formData, late_checkout_allowed: v })}
+                    />
+                  </div>
+                  {formData.late_checkout_allowed && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="15"
+                        placeholder="180"
+                        className="h-8 text-xs"
+                        value={formData.late_checkout_minutes || ""}
+                        onChange={(e) => setFormData({ ...formData, late_checkout_minutes: Number(e.target.value) })}
+                      />
+                      <span className="text-[11px] text-muted-foreground whitespace-nowrap">{d.shiftMin}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setAssignShift(null)} disabled={isAssigning}>

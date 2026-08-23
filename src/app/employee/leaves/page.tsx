@@ -324,7 +324,12 @@ export default function MyLeavesPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>{d.leaveReason}</Label>
+              <Label className="flex items-center gap-1">
+                  <span>{d.leaveReason}</span>
+                  {selectedType && (selectedType.require_reason || selectedType.is_excused_absence || selectedType.category === "emergency") && (
+                    <span className="text-red-500 font-bold">* ({lang === "ar" ? "إجباري" : "Required"})</span>
+                  )}
+                </Label>
               <Textarea value={form.reason}
                 onChange={e => setForm({ ...form, reason: e.target.value })}
                 placeholder={lang === "ar" ? "اذكر السبب..." : "Enter reason..."}

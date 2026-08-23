@@ -9,7 +9,7 @@ import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
 interface Emp { id: number; full_name?: string; name?: string; employee_code?: string; gender?: string }
-interface LT { id: number; name: string; gender_restriction?: string }
+interface LT { id: number; name: string; require_reason?: boolean; is_excused_absence?: boolean; gender_restriction?: string }
 
 export function AddLeaveDialog({ open, onClose, onSuccess }: { open: boolean; onClose: () => void; onSuccess: () => void }) {
   const lang = useLangStore(s => s.lang);

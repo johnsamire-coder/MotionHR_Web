@@ -5,12 +5,15 @@ import { toast } from "sonner";
 import {
   Clock, UserCheck, UserX, Calendar, Briefcase, AlertCircle,
   Search, Filter, Loader2, ChevronLeft, ChevronRight,
-  Download, FileText, Building2, MapPin,
+  Download, FileText, Building2, MapPin, Edit3, Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
@@ -25,6 +28,7 @@ import { STORAGE_KEYS } from "@/lib/constants/config";
 
 interface AttendanceEmployee {
   employee_id: number;
+  attendance_id?: number;
   employee_name: string;
   department: string;
   branch: string;
@@ -142,6 +146,86 @@ export default function AttendancePage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [deptFilter, setDeptFilter] = useState("all");
+
+  // Modal Edit Attendance State
+  const [editingAtt, setEditingAtt] = useState<{
+    open: boolean;
+    employee_id: number;
+    attendance_id: number;
+    employee_name: string;
+    date: string;
+    check_in: string;
+    check_out: string;
+    status: string;
+    reason: string;
+  }>({
+    open: false,
+    employee_id: 0,
+    attendance_id: 0,
+    employee_name: "",
+    date: "",
+    check_in: "",
+    check_out: "",
+    status: "present",
+    reason: "",
+  });
+  const [submittingAdjust, setSubmittingAdjust] = useState(false);
+
+  const handleOpenAdjust = (emp: AttendanceEmployee) => {
+    setEditingAtt({
+      open: true,
+      employee_id: emp.employee_id,
+      attendance_id: emp.attendance_id || emp.employee_id,
+      employee_name: emp.employee_name,
+      date: selectedDate,
+      check_in: emp.check_in ? emp.check_in.substring(11, 16) : (emp.check_in || ""),
+      check_out: emp.check_out ? emp.check_out.substring(11, 16) : (emp.check_out || ""),
+      status: emp.status === "no_data" ? "present" : emp.status,
+      reason: "",
+    });
+  };
+
+  const handleSaveAdjust = async () => {
+    if (!editingAtt.reason.trim()) {
+      toast.error(lang === "ar" ? "يجب كتابة سبب التعديل بالتفصيل" : "Please provide a reason for the adjustment");
+      return;
+    }
+
+    setSubmittingAdjust(true);
+    try {
+      const token = localStorage.getItem(STORAGE_KEYS.token);
+      const authHeader = token?.startsWith("Token ") || token?.startsWith("Bearer ") ? token : `Token ${token}`;
+
+      const res = await fetch(`https://jssolutions-eg.com/attendance/api/mobile/manager/attendance/${editingAtt.attendance_id}/adjust/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: authHeader,
+        },
+        body: JSON.stringify({
+          check_in_time: editingAtt.check_in || null,
+          check_out_time: editingAtt.check_out || null,
+          status: editingAtt.status,
+          reason: editingAtt.reason,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success(lang === "ar" ? "تم تعديل سجل الحضور بنجاح" : "Attendance record adjusted successfully");
+        setEditingAtt(prev => ({ ...prev, open: false }));
+        // إعادة تحميل البيانات
+        fetchAttendanceData();
+      } else {
+        toast.error(data.message || (lang === "ar" ? "فشل التعديل" : "Failed to adjust"));
+      }
+    } catch (err) {
+      toast.error(lang === "ar" ? "حدث خطأ أثناء حفظ التعديل" : "Error saving adjustment");
+    } finally {
+      setSubmittingAdjust(false);
+    }
+  };
+
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authHeader = token?.startsWith("Token") ? token : `Token ${token}`;
@@ -456,6 +540,7 @@ export default function AttendancePage() {
                 <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.workHours}</TableHead>
                 <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.lateMinutesCol}</TableHead>
                 <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colStatus}</TableHead>
+                <TableHead className="text-center w-[90px]">{lang === "ar" ? "تعديل" : "Actions"}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -514,6 +599,17 @@ export default function AttendancePage() {
                         {statusInfo.label}
                       </Badge>
                     </TableCell>
+                                      <TableCell className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-brand-primary"
+                        onClick={() => handleOpenAdjust(emp)}
+                        title={lang === "ar" ? "تعديل الحضور" : "Edit Attendance"}
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -521,7 +617,97 @@ export default function AttendancePage() {
           </Table>
         )}
       </Card>
+
+      {/* Edit Attendance Dialog */}
+      <Dialog open={editingAtt.open} onOpenChange={(open) => setEditingAtt(prev => ({ ...prev, open }))}>
+        <DialogContent className="max-w-md" dir={lang === "ar" ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-brand-primary" />
+              <span>{lang === "ar" ? `تعديل حضور: ${editingAtt.employee_name}` : `Adjust Attendance: ${editingAtt.employee_name}`}</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="text-xs text-muted-foreground bg-muted/40 p-2.5 rounded-md flex items-center justify-between">
+              <span>{lang === "ar" ? "التاريخ:" : "Date:"}</span>
+              <span className="font-semibold text-foreground font-mono">{editingAtt.date}</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">{lang === "ar" ? "وقت الحضور" : "Check-in Time"}</Label>
+                <Input
+                  type="time"
+                  value={editingAtt.check_in}
+                  onChange={(e) => setEditingAtt(prev => ({ ...prev, check_in: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">{lang === "ar" ? "وقت الانصراف" : "Check-out Time"}</Label>
+                <Input
+                  type="time"
+                  value={editingAtt.check_out}
+                  onChange={(e) => setEditingAtt(prev => ({ ...prev, check_out: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs">{lang === "ar" ? "حالة الحضور" : "Status"}</Label>
+              <Select
+                value={editingAtt.status}
+                onValueChange={(val) => setEditingAtt(prev => ({ ...prev, status: val }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="present">{lang === "ar" ? "حاضر (Present)" : "Present"}</SelectItem>
+                  <SelectItem value="late">{lang === "ar" ? "متأخر (Late)" : "Late"}</SelectItem>
+                  <SelectItem value="absent">{lang === "ar" ? "غائب (Absent)" : "Absent"}</SelectItem>
+                  <SelectItem value="early_leave">{lang === "ar" ? "انصراف مبكر (Early Leave)" : "Early Leave"}</SelectItem>
+                  <SelectItem value="on_leave">{lang === "ar" ? "في إجازة (On Leave)" : "On Leave"}</SelectItem>
+                  <SelectItem value="mission">{lang === "ar" ? "مأمورية (Mission)" : "Mission"}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-red-600 dark:text-red-400">
+                {lang === "ar" ? "سبب التعديل (إجباري) *" : "Adjustment Reason (Required) *"}
+              </Label>
+              <Textarea
+                rows={3}
+                placeholder={lang === "ar" ? "اكتب سبب تعديل الحضور بالتفصيل (مثل: عطل في البصمة، مأمورية خارجية...)" : "Detailed reason for adjustment..."}
+                value={editingAtt.reason}
+                onChange={(e) => setEditingAtt(prev => ({ ...prev, reason: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setEditingAtt(prev => ({ ...prev, open: false }))}
+              disabled={submittingAdjust}
+            >
+              {lang === "ar" ? "إلغاء" : "Cancel"}
+            </Button>
+            <Button
+              onClick={handleSaveAdjust}
+              disabled={submittingAdjust}
+              className="bg-brand-primary text-white hover:bg-brand-primary/90 gap-1.5"
+            >
+              {submittingAdjust ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              <span>{lang === "ar" ? "حفظ التعديل" : "Save Changes"}</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
 
