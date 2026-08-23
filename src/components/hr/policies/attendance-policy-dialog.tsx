@@ -104,17 +104,15 @@ const LATE_DEDUCTION_TYPES = [
 ];
 
 const ABSENCE_TYPES = [
-  { value: "unexcused",      label: "غياب بدون إذن" },
-  { value: "excused",        label: "غياب بعذر" },
-  { value: "medical",        label: "إجازة مرضية" },
-  { value: "any",            label: "أي نوع غياب" },
+  { value: "unexcused",   label: "غياب اعتيادي بدون إذن" },
+  { value: "consecutive", label: "غياب متتالي (أيام متتابعة)" },
+  { value: "repeated",    label: "غياب متكرر خلال الشهر" },
 ];
 
 const ABSENCE_DEDUCTION_TYPES = [
-  { value: "day_fraction",   label: "كسر يوم" },
-  { value: "fixed",          label: "مبلغ ثابت (جنيه)" },
-  { value: "percent",        label: "نسبة %" },
-  { value: "full_day",       label: "يوم كامل" },
+  { value: "day_fraction", label: "خصم عدد أيام عمل (1، 1.5، 2، 3)" },
+  { value: "fixed",        label: "خصم مبلغ مالي ثابت (بالجنيه)" },
+  { value: "warning",      label: "إنذار كتابي بدون خصم مالي" },
 ];
 
 const OVERTIME_TYPES = [
@@ -629,9 +627,9 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="text-xs mb-1 block text-muted-foreground">نوع الغياب</label>
+                          <label className="text-xs font-semibold mb-1 block text-foreground">شرط ونوع الغياب *</label>
                           <select value={rule.absence_type}
                             onChange={e => updateAbsenceRule(i, "absence_type", e.target.value)}
                             className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background">
@@ -639,7 +637,7 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
                           </select>
                         </div>
                         <div>
-                          <label className="text-xs mb-1 block text-muted-foreground">نوع الخصم</label>
+                          <label className="text-xs font-semibold mb-1 block text-foreground">نوع العقوبة / الخصم *</label>
                           <select value={rule.deduction_type}
                             onChange={e => updateAbsenceRule(i, "deduction_type", e.target.value)}
                             className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background">
@@ -647,24 +645,41 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
                           </select>
                         </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div>
-                          <label className="text-xs mb-1 block text-muted-foreground">أيام متتالية</label>
-                          <Input type="number" placeholder="اختياري"
-                            value={rule.consecutive_days ?? ""}
-                            onChange={e => updateAbsenceRule(i, "consecutive_days", e.target.value ? Number(e.target.value) : null)} />
-                        </div>
-                        <div>
-                          <label className="text-xs mb-1 block text-muted-foreground">مرات في الشهر</label>
-                          <Input type="number" placeholder="اختياري"
-                            value={rule.occurrences_in_month ?? ""}
-                            onChange={e => updateAbsenceRule(i, "occurrences_in_month", e.target.value ? Number(e.target.value) : null)} />
-                        </div>
-                        <div>
-                          <label className="text-xs mb-1 block text-muted-foreground">القيمة</label>
-                          <Input type="number" step="0.01" value={rule.deduction_value}
-                            onChange={e => updateAbsenceRule(i, "deduction_value", Number(e.target.value))} />
-                        </div>
+
+                      {/* Smart Conditional Inputs */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-background rounded-lg border border-border/60">
+                        {rule.absence_type === "consecutive" && (
+                          <div>
+                            <label className="text-xs font-semibold mb-1 block text-amber-700 dark:text-amber-400">
+                              عند تكرار الغياب المتتالي لعدد (أيام) *
+                            </label>
+                            <Input type="number" min="2" placeholder="مثال: 3 أيام متتالية"
+                              value={rule.consecutive_days ?? ""}
+                              onChange={e => updateAbsenceRule(i, "consecutive_days", e.target.value ? Number(e.target.value) : null)} />
+                          </div>
+                        )}
+
+                        {rule.absence_type === "repeated" && (
+                          <div>
+                            <label className="text-xs font-semibold mb-1 block text-amber-700 dark:text-amber-400">
+                              عند وصول الغياب لعدد (مرات) في الشهر *
+                            </label>
+                            <Input type="number" min="2" placeholder="مثال: المرة الـ 4 في الشهر"
+                              value={rule.occurrences_in_month ?? ""}
+                              onChange={e => updateAbsenceRule(i, "occurrences_in_month", e.target.value ? Number(e.target.value) : null)} />
+                          </div>
+                        )}
+
+                        {rule.deduction_type !== "warning" && (
+                          <div className={rule.absence_type === "unexcused" ? "col-span-2" : ""}>
+                            <label className="text-xs font-semibold mb-1 block text-foreground">
+                              {rule.deduction_type === "fixed" ? "المبلغ المالي المخصوم (بالجنيه) *" : "عدد أيام الخصم لكل يوم غياب (مثال: 1 = يوم / 2 = يومين / 1.5 = يوم ونص) *"}
+                            </label>
+                            <Input type="number" step="0.25" min="0.25" placeholder="1.0"
+                              value={rule.deduction_value}
+                              onChange={e => updateAbsenceRule(i, "deduction_value", Number(e.target.value))} />
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
