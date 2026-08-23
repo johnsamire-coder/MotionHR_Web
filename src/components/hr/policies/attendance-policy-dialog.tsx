@@ -104,9 +104,9 @@ const LATE_DEDUCTION_TYPES = [
 ];
 
 const ABSENCE_TYPES = [
-  { value: "unexcused",   label: "غياب اعتيادي بدون إذن" },
-  { value: "consecutive", label: "غياب متتالي (أيام متتابعة)" },
-  { value: "repeated",    label: "غياب متكرر خلال الشهر" },
+  { value: "unexcused",   label: "غياب بدون إذن (قاعدة ثابته لجميع الأيام)" },
+  { value: "repeated",    label: "تدرج التكرار في الشهر (المرة 1، المرة 2، المرة 3...)" },
+  { value: "consecutive", label: "تدرج الغياب المتتالي (عند تكرار أيام متتالية)" },
 ];
 
 const ABSENCE_DEDUCTION_TYPES = [

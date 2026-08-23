@@ -35,8 +35,7 @@ interface Tier {
 
 const PENALTY_TYPES = [
   { value: "late_arrival",     label_ar: "تأخير الحضور",       unit_ar: "دقيقة" },
-  { value: "absence",          label_ar: "الغياب",              unit_ar: "يوم" },
-  { value: "early_leave",      label_ar: "الخروج المبكر",      unit_ar: "دقيقة" },
+    { value: "early_leave",      label_ar: "الخروج المبكر",      unit_ar: "دقيقة" },
   { value: "missing_checkout", label_ar: "عدم تسجيل الخروج",   unit_ar: "مرة" },
 ];
 
