@@ -543,20 +543,52 @@ export default function ShiftsPage() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="start_time">{lang === "en" ? "Start Time" : "وقت البداية"}</Label>
-                <Input id="start_time" type="time" value={formData.start_time}
-                  onChange={e => setFormData({ ...formData, start_time: e.target.value })}
-                  disabled={isSaving} />
+            {/* Dynamic UI based on Shift Type */}
+            {formData.shift_type === "flex" || formData.shift_type === "flexible" ? (
+              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg space-y-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 dark:text-blue-400">
+                  <span>ℹ️ {lang === "ar" ? "نظام الشيفت المرن (Flex Shift)" : "Flexible Shift Mode"}</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {lang === "ar"
+                    ? "في الشيفت المرن، الموظف مطالب بإنهاء الساعات اليومية المطلوبة في أي وقت خلال نافذة العمل المتاحة."
+                    : "Employees fulfill required daily hours within the allowed working window."}
+                </p>
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="start_time" className="text-xs">
+                      {lang === "ar" ? "أبكر وقت لبداية الحضور" : "Earliest Allowed Check-in"}
+                    </Label>
+                    <Input id="start_time" type="time" value={formData.start_time}
+                      onChange={e => setFormData({ ...formData, start_time: e.target.value })}
+                      disabled={isSaving} className="h-9 text-xs" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="end_time" className="text-xs">
+                      {lang === "ar" ? "أقصى وقت لنهاية الانصراف" : "Latest Allowed Check-out"}
+                    </Label>
+                    <Input id="end_time" type="time" value={formData.end_time}
+                      onChange={e => setFormData({ ...formData, end_time: e.target.value })}
+                      disabled={isSaving} className="h-9 text-xs" />
+                  </div>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="end_time">{lang === "en" ? "End Time" : "وقت النهاية"}</Label>
-                <Input id="end_time" type="time" value={formData.end_time}
-                  onChange={e => setFormData({ ...formData, end_time: e.target.value })}
-                  disabled={isSaving} />
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="start_time">{lang === "ar" ? "وقت البداية الرسمي *" : "Start Time *"}</Label>
+                  <Input id="start_time" type="time" value={formData.start_time}
+                    onChange={e => setFormData({ ...formData, start_time: e.target.value })}
+                    disabled={isSaving} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="end_time">{lang === "ar" ? "وقت النهاية الرسمي *" : "End Time *"}</Label>
+                  <Input id="end_time" type="time" value={formData.end_time}
+                    onChange={e => setFormData({ ...formData, end_time: e.target.value })}
+                    disabled={isSaving} />
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2 p-2.5 border rounded-lg bg-muted/10">
