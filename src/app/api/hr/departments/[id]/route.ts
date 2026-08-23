@@ -7,14 +7,14 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   try {
     const body = await request.json();
-    const res = await fetch(`${BACKEND}/attendance/api/mobile/manager/departments/${id}/edit/`, {
+    const res = await fetch(`${BACKEND}/attendance/api/mobile/manager/departments/${id}/`, {
       method: "PUT",
-      headers: { Authorization: authHeader, "Content-Type": "application/json" },
+      headers: { Authorization: authHeader, "Content-Type": "application/json", Host: "jssolutions-eg.com" },
       body: JSON.stringify(body),
     });
     return NextResponse.json(await res.json(), { status: res.status });
-  } catch {
-    return NextResponse.json({ error: "Network error" }, { status: 500 });
+  } catch (e) {
+    return NextResponse.json({ error: "Network error", detail: String(e) }, { status: 500 });
   }
 }
 
@@ -23,13 +23,12 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
   try {
-    const res = await fetch(`${BACKEND}/attendance/api/mobile/manager/departments/${id}/delete/`, {
+    const res = await fetch(`${BACKEND}/attendance/api/mobile/manager/departments/${id}/`, {
       method: "DELETE",
-      headers: { Authorization: authHeader },
+      headers: { Authorization: authHeader, Host: "jssolutions-eg.com" },
     });
-    if (res.status === 204) return NextResponse.json({ success: true });
     return NextResponse.json(await res.json(), { status: res.status });
-  } catch {
-    return NextResponse.json({ error: "Network error" }, { status: 500 });
+  } catch (e) {
+    return NextResponse.json({ error: "Network error", detail: String(e) }, { status: 500 });
   }
 }
