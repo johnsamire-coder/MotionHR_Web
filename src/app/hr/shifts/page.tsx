@@ -39,6 +39,7 @@ interface Shift {
   required_daily_hours?: number;
   grace_period?: number;
   break_duration?: number;
+  crosses_midnight?: boolean;
   early_checkout_allowed?: boolean;
   early_checkout_minutes?: number;
   late_checkout_allowed?: boolean;
@@ -133,6 +134,7 @@ export default function ShiftsPage() {
     start_time: "09:00",
     end_time: "17:00",
     required_daily_hours: 8,
+    crosses_midnight: false,
     grace_period: 15,
     break_duration: 60,
     early_checkout_allowed: false,
@@ -210,7 +212,8 @@ export default function ShiftsPage() {
     setFormData({
       name: "", shift_type: "fixed",
       start_time: "09:00", end_time: "17:00",
-      required_daily_hours: 8, grace_period: 15, break_duration: 60,
+      required_daily_hours: 8, crosses_midnight: false,
+    grace_period: 15, break_duration: 60,
     });
     setDialogOpen(true);
   };
@@ -630,6 +633,32 @@ export default function ShiftsPage() {
           </div>
 
           
+            
+            {/* Cross-Midnight Shift Indicator */}
+            <div className="flex items-center justify-between p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
+              <div className="space-y-0.5">
+                <Label htmlFor="crosses_midnight" className="text-xs font-semibold cursor-pointer text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5">
+                  <span>🌙 {lang === "ar" ? "شيفت يمتد لليوم التالي (يعبر منتصف الليل)" : "Shift Crosses Midnight (Spans 2 Days)"}</span>
+                </Label>
+
+                <p className="text-[11px] text-muted-foreground">
+                  {lang === "ar"
+                    ? "فعّل هذا الخيار للشيفتات الليلية (مثل من 10 م إلى 6 ص) لضمان احتساب الحضور والانصراف بدقة."
+                    : "Enable for overnight shifts (e.g. 10 PM to 6 AM) to handle dates accurately."}
+                </p>
+              </div>
+
+              <Switch
+                id="crosses_midnight"
+                checked={
+                  formData.crosses_midnight ||
+                  (Boolean(formData.start_time && formData.end_time && formData.end_time < formData.start_time))
+                }
+                onCheckedChange={(checked) => setFormData({ ...formData, crosses_midnight: checked })}
+              />
+            </div>
+
+
             {/* Flex Checkout Section */}
             <div className="p-3.5 border rounded-lg bg-muted/20 space-y-3.5 col-span-2">
               <div className="text-xs font-semibold text-brand-primary flex items-center justify-between">
@@ -723,6 +752,32 @@ export default function ShiftsPage() {
             </DialogDescription>
           </DialogHeader>
           
+            
+            {/* Cross-Midnight Shift Indicator */}
+            <div className="flex items-center justify-between p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
+              <div className="space-y-0.5">
+                <Label htmlFor="crosses_midnight" className="text-xs font-semibold cursor-pointer text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5">
+                  <span>🌙 {lang === "ar" ? "شيفت يمتد لليوم التالي (يعبر منتصف الليل)" : "Shift Crosses Midnight (Spans 2 Days)"}</span>
+                </Label>
+
+                <p className="text-[11px] text-muted-foreground">
+                  {lang === "ar"
+                    ? "فعّل هذا الخيار للشيفتات الليلية (مثل من 10 م إلى 6 ص) لضمان احتساب الحضور والانصراف بدقة."
+                    : "Enable for overnight shifts (e.g. 10 PM to 6 AM) to handle dates accurately."}
+                </p>
+              </div>
+
+              <Switch
+                id="crosses_midnight"
+                checked={
+                  formData.crosses_midnight ||
+                  (Boolean(formData.start_time && formData.end_time && formData.end_time < formData.start_time))
+                }
+                onCheckedChange={(checked) => setFormData({ ...formData, crosses_midnight: checked })}
+              />
+            </div>
+
+
             {/* Flex Checkout Section */}
             <div className="p-3.5 border rounded-lg bg-muted/20 space-y-3.5 col-span-2">
               <div className="text-xs font-semibold text-brand-primary flex items-center justify-between">
@@ -874,6 +929,32 @@ export default function ShiftsPage() {
           </div>
 
           
+            
+            {/* Cross-Midnight Shift Indicator */}
+            <div className="flex items-center justify-between p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
+              <div className="space-y-0.5">
+                <Label htmlFor="crosses_midnight" className="text-xs font-semibold cursor-pointer text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5">
+                  <span>🌙 {lang === "ar" ? "شيفت يمتد لليوم التالي (يعبر منتصف الليل)" : "Shift Crosses Midnight (Spans 2 Days)"}</span>
+                </Label>
+
+                <p className="text-[11px] text-muted-foreground">
+                  {lang === "ar"
+                    ? "فعّل هذا الخيار للشيفتات الليلية (مثل من 10 م إلى 6 ص) لضمان احتساب الحضور والانصراف بدقة."
+                    : "Enable for overnight shifts (e.g. 10 PM to 6 AM) to handle dates accurately."}
+                </p>
+              </div>
+
+              <Switch
+                id="crosses_midnight"
+                checked={
+                  formData.crosses_midnight ||
+                  (Boolean(formData.start_time && formData.end_time && formData.end_time < formData.start_time))
+                }
+                onCheckedChange={(checked) => setFormData({ ...formData, crosses_midnight: checked })}
+              />
+            </div>
+
+
             {/* Flex Checkout Section */}
             <div className="p-3.5 border rounded-lg bg-muted/20 space-y-3.5 col-span-2">
               <div className="text-xs font-semibold text-brand-primary flex items-center justify-between">
