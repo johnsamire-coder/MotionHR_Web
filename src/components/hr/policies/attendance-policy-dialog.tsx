@@ -74,6 +74,10 @@ const EMPTY: Policy = {
   effective_from: new Date().toISOString().split("T")[0],
   effective_to: "",
   status: "draft",
+  assignment_type: "company",
+  branch_ids: [] as number[],
+  branch_id: "",
+  department_id: "",
   notes: "",
   permission_enabled: false,
   permission_monthly_hours: 4,
@@ -156,6 +160,12 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authH = token?.startsWith("Token") ? token : `Token ${token}`;
+
+    useEffect(() => {
+    if (!open) return;
+    fetch("/api/branches", { headers: { Authorization: authH } }).then(r => r.json()).then(d => setBranches(Array.isArray(d) ? d : d.branches || [])).catch(() => {});
+    fetch("/api/hr/departments", { headers: { Authorization: authH } }).then(r => r.json()).then(d => setDepartments(Array.isArray(d) ? d : d.departments || [])).catch(() => {});
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -627,6 +637,42 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
+                      {/* Scope Per Rule */}
+                      <div className="p-2.5 bg-muted/40 rounded-lg border border-border/60 grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
+                        <div>
+                          <label className="text-[11px] font-bold text-brand-primary mb-1 block">تطبيق هذا البند على: *</label>
+                          <select
+                            value={rule.branch_id ? `branch_${rule.branch_id}` : (rule.department_id ? `dept_${rule.department_id}` : "all")}
+                            onChange={e => {
+                              const val = e.target.value;
+                              if (val.startsWith("branch_")) {
+                                updateAbsenceRule(i, "branch_id", Number(val.replace("branch_", "")));
+                                updateAbsenceRule(i, "department_id", null);
+                              } else if (val.startsWith("dept_")) {
+                                updateAbsenceRule(i, "department_id", Number(val.replace("dept_", "")));
+                                updateAbsenceRule(i, "branch_id", null);
+                              } else {
+                                updateAbsenceRule(i, "branch_id", null);
+                                updateAbsenceRule(i, "department_id", null);
+                              }
+                            }}
+                            className="w-full border border-border rounded-md px-2.5 py-1.5 text-xs bg-background font-semibold"
+                          >
+                            <option value="all">🏢 كل الشركة (جميع الفروع والأقسام)</option>
+                            <optgroup label="📍 حسب الفرع / الموقع">
+                              {branches.map((b: any) => (
+                                <option key={`b_${b.id}`} value={`branch_${b.id}`}>📍 فرع: {ar ? b.name_ar : (b.name_en || b.name_ar)}</option>
+                              ))}
+                            </optgroup>
+                            <optgroup label="📂 حسب القسم / الإدارة">
+                              {departments.map((d: any) => (
+                                <option key={`d_${d.id}`} value={`dept_${d.id}`}>📂 قسم: {ar ? d.name_ar : (d.name_en || d.name_ar)}</option>
+                              ))}
+                            </optgroup>
+                          </select>
+                        </div>
+                      </div>
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="text-xs font-semibold mb-1 block text-foreground">شرط ونوع الغياب *</label>
