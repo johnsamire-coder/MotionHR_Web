@@ -507,7 +507,7 @@ export default function ShiftsPage() {
 
       {/* Create Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl sm:max-w-2xl" dir={lang === "ar" ? "rtl" : "ltr"}>
           <DialogHeader>
             <DialogTitle>{editingShift ? (lang === "ar" ? "تعديل الشيفت" : "Edit Shift") : d.addShift}</DialogTitle>
             <DialogDescription>{d.shiftsDesc}</DialogDescription>
@@ -534,8 +534,11 @@ export default function ShiftsPage() {
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="fixed">{d.shiftFixed}</SelectItem>
-                  <SelectItem value="flex">{d.shiftFlex}</SelectItem>
+                  <SelectItem value="fixed">{lang === "ar" ? "ثابت (بمواعيد حضور وانصراف محددة)" : "Fixed Shift"}</SelectItem>
+                  <SelectItem value="flex">{lang === "ar" ? "مرن (حسب مجموع الساعات اليومية)" : "Flexible Shift"}</SelectItem>
+                  <SelectItem value="morning">{lang === "ar" ? "صباحي" : "Morning Shift"}</SelectItem>
+                  <SelectItem value="evening">{lang === "ar" ? "مسائي" : "Evening Shift"}</SelectItem>
+                  <SelectItem value="night">{lang === "ar" ? "ليلي" : "Night Shift"}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -555,24 +558,41 @@ export default function ShiftsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="hours">{d.shiftHours}</Label>
-                <Input id="hours" type="number" value={formData.required_daily_hours}
-                  onChange={e => setFormData({ ...formData, required_daily_hours: Number(e.target.value) })}
-                  disabled={isSaving} />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-2 p-2.5 border rounded-lg bg-muted/10">
+                <Label htmlFor="hours" className="text-xs font-semibold block whitespace-nowrap">
+                  {lang === "ar" ? "ساعات العمل اليومية" : "Required Daily Hours"}
+                </Label>
+                <div className="flex items-center gap-1.5">
+                  <Input id="hours" type="number" step="0.5" className="h-9 text-sm font-bold" value={formData.required_daily_hours}
+                    onChange={e => setFormData({ ...formData, required_daily_hours: Number(e.target.value) })}
+                    disabled={isSaving} />
+                  <span className="text-xs text-muted-foreground font-semibold">{lang === "ar" ? "ساعات" : "hrs"}</span>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="grace">{d.shiftGrace} ({d.shiftMin})</Label>
-                <Input id="grace" type="number" value={formData.grace_period}
-                  onChange={e => setFormData({ ...formData, grace_period: Number(e.target.value) })}
-                  disabled={isSaving} />
+
+              <div className="space-y-2 p-2.5 border rounded-lg bg-muted/10">
+                <Label htmlFor="grace" className="text-xs font-semibold block whitespace-nowrap">
+                  {lang === "ar" ? "سماحية التأخير (حضور)" : "Check-in Grace Period"}
+                </Label>
+                <div className="flex items-center gap-1.5">
+                  <Input id="grace" type="number" className="h-9 text-sm font-bold" value={formData.grace_period}
+                    onChange={e => setFormData({ ...formData, grace_period: Number(e.target.value) })}
+                    disabled={isSaving} />
+                  <span className="text-xs text-muted-foreground font-semibold">{lang === "ar" ? "دقيقة" : "mins"}</span>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="break">{d.shiftBreak} ({d.shiftMin})</Label>
-                <Input id="break" type="number" value={formData.break_duration}
-                  onChange={e => setFormData({ ...formData, break_duration: Number(e.target.value) })}
-                  disabled={isSaving} />
+
+              <div className="space-y-2 p-2.5 border rounded-lg bg-muted/10">
+                <Label htmlFor="break" className="text-xs font-semibold block whitespace-nowrap">
+                  {lang === "ar" ? "فترة الراحة (بريك)" : "Break Duration"}
+                </Label>
+                <div className="flex items-center gap-1.5">
+                  <Input id="break" type="number" className="h-9 text-sm font-bold" value={formData.break_duration}
+                    onChange={e => setFormData({ ...formData, break_duration: Number(e.target.value) })}
+                    disabled={isSaving} />
+                  <span className="text-xs text-muted-foreground font-semibold">{lang === "ar" ? "دقيقة" : "mins"}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -752,7 +772,7 @@ export default function ShiftsPage() {
 
       {/* Assign Employees Dialog */}
       <Dialog open={!!assignShift} onOpenChange={(open) => !open && setAssignShift(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl sm:max-w-2xl" dir={lang === "ar" ? "rtl" : "ltr"}>
           <DialogHeader>
             <DialogTitle>
               {lang === "ar" ? `تعيين موظفين للشيفت: ${assignShift?.name}` : `Assign to Shift: ${assignShift?.name}`}
