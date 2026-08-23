@@ -27,6 +27,8 @@ interface LateRule {
 }
 
 interface AbsenceRule {
+  branch_id?: number | null;
+  department_id?: number | null;
   id?: number;
   absence_type: string;
   consecutive_days: number | null;
@@ -139,6 +141,8 @@ const EMPTY_ABSENCE_RULE: AbsenceRule = {
   occurrences_in_month: null,
   deduction_type: "full_day",
   deduction_value: 1,
+  branch_id: null,
+  department_id: null,
 };
 
 const EMPTY_OVERTIME_RULE: OvertimeRule = {
@@ -660,12 +664,12 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
                           >
                             <option value="all">🏢 كل الشركة (جميع الفروع والأقسام)</option>
                             <optgroup label="📍 حسب الفرع / الموقع">
-                              {branches.map((b: any) => (
+                              {(branches || []).map((b: any) => (
                                 <option key={`b_${b.id}`} value={`branch_${b.id}`}>📍 فرع: {ar ? b.name_ar : (b.name_en || b.name_ar)}</option>
                               ))}
                             </optgroup>
                             <optgroup label="📂 حسب القسم / الإدارة">
-                              {departments.map((d: any) => (
+                              {(departments || []).map((d: any) => (
                                 <option key={`d_${d.id}`} value={`dept_${d.id}`}>📂 قسم: {ar ? d.name_ar : (d.name_en || d.name_ar)}</option>
                               ))}
                             </optgroup>
