@@ -160,7 +160,9 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
   const [form, setForm]           = useState<Policy>({ ...EMPTY });
   const [loading, setLoading]     = useState(false);
   const [saving, setSaving]       = useState(false);
-  const [activeSection, setActiveSection] = useState<Section>("basic");
+    const [activeSection, setActiveSection] = useState<Section>("basic");
+  const [branches, setBranches]       = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authH = token?.startsWith("Token") ? token : `Token ${token}`;
