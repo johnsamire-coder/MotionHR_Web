@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Clock, Users, Loader2, Edit3, Trash2, Moon, Sun, Sunrise, Sunset, Layers } from "lucide-react";
+import { Plus, Clock, Users, UserPlus, Loader2, Edit3, Trash2, Moon, Sun, Building2, MapPin, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +48,67 @@ export default function ShiftsPage() {
   const [deleteShiftId, setDeleteShiftId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Assign Employees State
+  const [assignShift, setAssignShift] = useState<Shift | null>(null);
+  const [employees, setEmployees]     = useState<any[]>([]);
+  const [assignForm, setAssignForm]   = useState({
+    employee_ids: [] as number[],
+    start_date: new Date().toISOString().split("T")[0],
+    end_date: "",
+  });
+  const [isAssigning, setIsAssigning] = useState(false);
+
+  useEffect(() => {
+    if (token) {
+      fetch("/api/employees/list", { headers: { Authorization: authHeader } })
+        .then(r => r.json())
+        .then(d => setEmployees(Array.isArray(d) ? d : d.employees || []))
+        .catch(() => {});
+    }
+  }, [token]);
+
+  const openAssignDialog = (shift: Shift) => {
+    setAssignShift(shift);
+    setAssignForm({
+      employee_ids: [],
+      start_date: new Date().toISOString().split("T")[0],
+      end_date: "",
+    });
+  };
+
+  const handleAssign = async () => {
+    if (!assignShift || assignForm.employee_ids.length === 0) {
+      toast.error(ar ? "اختر موظفاً واحداً على الأقل" : "Select at least one employee");
+      return;
+    }
+    setIsAssigning(true);
+    try {
+      const res = await fetch("/api/shifts/assign", {
+        method: "POST",
+        headers: { Authorization: authHeader, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shift_id: assignShift.id,
+          employee_ids: assignForm.employee_ids,
+          start_date: assignForm.start_date,
+          end_date: assignForm.end_date || null,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success !== false) {
+        toast.success(ar ? `تم تسكين ${assignForm.employee_ids.length} موظف على الشيفت بنجاح ✅` : "Shift assigned successfully ✅");
+        setAssignShift(null);
+        loadShifts();
+      } else {
+        toast.error(data.error || data.message || (ar ? "فشل التعيين" : "Failed to assign"));
+      }
+    } catch {
+      toast.error(ar ? "حدث خطأ أثناء التسكين" : "Error assigning shift");
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
 
   const [formData, setFormData] = useState({
     name: "",
@@ -219,9 +280,24 @@ export default function ShiftsPage() {
                     </div>
                     <div>
                       <h3 className="font-bold text-base">{shift.name}</h3>
-                      <p className="text-xs text-muted-foreground">
-                        {shift.shift_type === "flex" || shift.shift_type === "flexible" ? (ar ? "شيفت مرن" : "Flexible") : (ar ? "شيفت ثابت" : "Fixed")}
-                      </p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {shift.crosses_midnight || shift.shift_type === "night" ? (
+                          <Badge variant="outline" className="bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-0 text-[10px] gap-1 font-semibold">
+                            <Moon className="w-3 h-3" />
+                            <span>{ar ? "شيفت ليلي (ممتد 🌙)" : "Overnight Shift"}</span>
+                          </Badge>
+                        ) : shift.shift_type === "flex" || shift.shift_type === "flexible" ? (
+                          <Badge variant="outline" className="bg-blue-500/10 text-blue-700 dark:text-blue-400 border-0 text-[10px] gap-1 font-semibold">
+                            <Clock className="w-3 h-3" />
+                            <span>{ar ? "شيفت مرن ⚡" : "Flexible Shift"}</span>
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-0 text-[10px] gap-1 font-semibold">
+                            <Sun className="w-3 h-3" />
+                            <span>{ar ? "شيفت صباحي ☀️" : "Morning Shift"}</span>
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -516,6 +592,93 @@ export default function ShiftsPage() {
             <Button variant="destructive" onClick={handleDelete} disabled={isDeleting} className="bg-red-600 text-white">
               {isDeleting ? <Loader2 className="w-4 h-4 animate-spin me-1" /> : null}
               <span>{ar ? "نعم، حذف" : "Delete"}</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Employees Dialog */}
+      <Dialog open={!!assignShift} onOpenChange={(open) => !open && setAssignShift(null)}>
+        <DialogContent className="max-w-lg" dir={ar ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-brand-primary font-bold">
+              <UserPlus className="w-5 h-5" />
+              <span>{ar ? `تسكين موظفين على شيفت: ${assignShift?.name}` : `Assign Employees to: ${assignShift?.name}`}</span>
+            </DialogTitle>
+            <DialogDescription>
+              {ar ? "اختر الموظفين وتاريخ بدء تطبيق الشيفت عليهم" : "Select employees and shift assignment start date"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">{ar ? "اختر الموظفين *" : "Select Employees *"}</Label>
+              <div className="max-h-48 overflow-y-auto p-3 border rounded-xl space-y-2 bg-muted/20">
+                {employees.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">{ar ? "لا يوجد موظفون مسجلون بعد" : "No employees found"}</p>
+                ) : (
+                  employees.map((emp) => {
+                    const isSelected = assignForm.employee_ids.includes(emp.id);
+                    const empName = emp.first_name_ar ? `${emp.first_name_ar} ${emp.last_name_ar || ""}` : (emp.full_name || emp.name || `موظف ${emp.id}`);
+                    return (
+                      <label key={emp.id} className="flex items-center justify-between p-2 bg-background rounded-lg border border-border/60 hover:border-brand-primary/40 cursor-pointer transition">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setAssignForm(prev => ({
+                                ...prev,
+                                employee_ids: checked ? [...prev.employee_ids, emp.id] : prev.employee_ids.filter(id => id !== emp.id)
+                              }));
+                            }}
+                            className="w-4 h-4 rounded text-brand-primary"
+                          />
+                          <span className="text-xs font-semibold">{empName}</span>
+                        </div>
+                        {emp.job_title_name && (
+                          <Badge variant="outline" className="text-[10px]">{emp.job_title_name}</Badge>
+                        )}
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="start_date" className="text-xs font-semibold">{ar ? "تاريخ بدء التطبيق *" : "Start Date *"}</Label>
+                <Input
+                  id="start_date"
+                  type="date"
+                  value={assignForm.start_date}
+                  onChange={e => setAssignForm(prev => ({ ...prev, start_date: e.target.value }))}
+                  className="h-9 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="end_date" className="text-xs font-semibold">{ar ? "تاريخ الانتهاء (اختياري)" : "End Date (Optional)"}</Label>
+                <Input
+                  id="end_date"
+                  type="date"
+                  value={assignForm.end_date}
+                  onChange={e => setAssignForm(prev => ({ ...prev, end_date: e.target.value }))}
+                  className="h-9 text-xs"
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2 pt-2 border-t">
+            <Button variant="outline" onClick={() => setAssignShift(null)} disabled={isAssigning}>
+              {ar ? "إلغاء" : "Cancel"}
+            </Button>
+            <Button onClick={handleAssign} disabled={isAssigning || assignForm.employee_ids.length === 0} className="bg-brand-primary text-white hover:bg-brand-primary/90 gap-1.5">
+              {isAssigning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              <span>{ar ? `تسكين (${assignForm.employee_ids.length}) موظف` : `Assign (${assignForm.employee_ids.length})`}</span>
             </Button>
           </DialogFooter>
         </DialogContent>
