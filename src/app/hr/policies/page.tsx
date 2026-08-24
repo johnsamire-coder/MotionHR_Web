@@ -136,7 +136,7 @@ export default function PoliciesPage() {
                     <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center">
                       <Clock className="w-5 h-5" />
                     </div>
-                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => { setAttendanceId(null); setAttendanceOpen(true); }}>
+                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={(e) => { e.preventDefault(); setAttendanceId(null); setAttendanceOpen(true); }}>
                       <Plus className="w-3.5 h-3.5" />{ar ? "إضافة سياسة" : "New"}
                     </Button>
                   </div>
@@ -170,7 +170,7 @@ export default function PoliciesPage() {
                     <div className="w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-600 flex items-center justify-center">
                       <RefreshCw className="w-5 h-5" />
                     </div>
-                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => { setPayrollCycleId(null); setPayrollCycleOpen(true); }}>
+                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={(e) => { e.preventDefault(); setPayrollCycleId(null); setPayrollCycleOpen(true); }}>
                       <Plus className="w-3.5 h-3.5" />{ar ? "تحديد الدورة" : "New"}
                     </Button>
                   </div>
@@ -231,7 +231,7 @@ export default function PoliciesPage() {
                     <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
                       <FileText className="w-5 h-5" />
                     </div>
-                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => { setLeaveId(null); setLeaveOpen(true); }}>
+                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={(e) => { e.preventDefault(); setLeaveId(null); setLeaveOpen(true); }}>
                       <Plus className="w-3.5 h-3.5" />{ar ? "إضافة سياسة" : "New"}
                     </Button>
                   </div>
@@ -275,7 +275,7 @@ export default function PoliciesPage() {
                     <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center">
                       <Receipt className="w-5 h-5" />
                     </div>
-                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => { setAllowanceId(null); setAllowanceOpen(true); }}>
+                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={(e) => { e.preventDefault(); setAllowanceId(null); setAllowanceOpen(true); }}>
                       <Plus className="w-3.5 h-3.5" />{ar ? "إضافة بدل" : "New"}
                     </Button>
                   </div>
@@ -283,6 +283,22 @@ export default function PoliciesPage() {
                     <h3 className="font-bold text-base">{ar ? "سياسات البدلات الثابتة والمواقع" : "Fixed Allowances"}</h3>
                     <p className="text-xs text-muted-foreground mt-1">{ar ? "بدلات الانتقال والمواقع والمأموريات اليومية" : "Site transport and daily mission allowances"}</p>
                   </div>
+                  <div className="pt-2 border-t text-xs text-muted-foreground flex justify-between items-center">
+                    <span>{ar ? "السياسات المتاحة:" : "Active:"}</span>
+                    <Badge variant="secondary" className="font-bold">{allowancePolicies.length}</Badge>
+                  </div>
+                  {allowancePolicies.length > 0 && (
+                    <div className="space-y-1 pt-1">
+                      {allowancePolicies.slice(0, 2).map((p: any) => (
+                        <div key={p.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs">
+                          <span className="font-semibold truncate max-w-[150px]">{p.name}</span>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.preventDefault(); setAllowanceId(p.id); setAllowanceOpen(true); }}>
+                            <Edit2 className="w-3 h-3 text-amber-600" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -293,7 +309,7 @@ export default function PoliciesPage() {
                     <div className="w-10 h-10 rounded-lg bg-yellow-500/10 text-yellow-600 flex items-center justify-center">
                       <Award className="w-5 h-5" />
                     </div>
-                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => { setBonusId(null); setBonusOpen(true); }}>
+                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={(e) => { e.preventDefault(); setBonusId(null); setBonusOpen(true); }}>
                       <Plus className="w-3.5 h-3.5" />{ar ? "إضافة مكافأة" : "New"}
                     </Button>
                   </div>
@@ -301,6 +317,22 @@ export default function PoliciesPage() {
                     <h3 className="font-bold text-base">{ar ? "سياسات المكافآت والحوافز" : "Bonuses Policy"}</h3>
                     <p className="text-xs text-muted-foreground mt-1">{ar ? "المكافآت والمنح الدورية والانتاجية" : "Periodic and production bonuses"}</p>
                   </div>
+                  <div className="pt-2 border-t text-xs text-muted-foreground flex justify-between items-center">
+                    <span>{ar ? "السياسات المتاحة:" : "Active:"}</span>
+                    <Badge variant="secondary" className="font-bold">{bonusPolicies.length}</Badge>
+                  </div>
+                  {bonusPolicies.length > 0 && (
+                    <div className="space-y-1 pt-1">
+                      {bonusPolicies.slice(0, 2).map((p: any) => (
+                        <div key={p.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs">
+                          <span className="font-semibold truncate max-w-[150px]">{p.name}</span>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.preventDefault(); setBonusId(p.id); setBonusOpen(true); }}>
+                            <Edit2 className="w-3 h-3 text-amber-600" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -322,7 +354,7 @@ export default function PoliciesPage() {
                     <div className="w-10 h-10 rounded-lg bg-teal-500/10 text-teal-600 flex items-center justify-center">
                       <ShieldAlert className="w-5 h-5" />
                     </div>
-                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => { setInsuranceId(null); setInsuranceOpen(true); }}>
+                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={(e) => { e.preventDefault(); setInsuranceId(null); setInsuranceOpen(true); }}>
                       <Plus className="w-3.5 h-3.5" />{ar ? "تأمينات" : "New"}
                     </Button>
                   </div>
@@ -340,7 +372,7 @@ export default function PoliciesPage() {
                     <div className="w-10 h-10 rounded-lg bg-slate-500/10 text-slate-600 flex items-center justify-center">
                       <Landmark className="w-5 h-5" />
                     </div>
-                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => { setTaxId(null); setTaxOpen(true); }}>
+                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={(e) => { e.preventDefault(); setTaxId(null); setTaxOpen(true); }}>
                       <Plus className="w-3.5 h-3.5" />{ar ? "ضرائب" : "New"}
                     </Button>
                   </div>
@@ -358,7 +390,7 @@ export default function PoliciesPage() {
                     <div className="w-10 h-10 rounded-lg bg-red-500/10 text-red-600 flex items-center justify-center">
                       <FileSignature className="w-5 h-5" />
                     </div>
-                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => { setPenaltyId(null); setPenaltyOpen(true); }}>
+                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={(e) => { e.preventDefault(); setPenaltyId(null); setPenaltyOpen(true); }}>
                       <Plus className="w-3.5 h-3.5" />{ar ? "إدارية" : "New"}
                     </Button>
                   </div>
@@ -376,7 +408,7 @@ export default function PoliciesPage() {
                     <div className="w-10 h-10 rounded-lg bg-orange-500/10 text-orange-600 flex items-center justify-center">
                       <Banknote className="w-5 h-5" />
                     </div>
-                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => { setEosId(null); setEosOpen(true); }}>
+                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={(e) => { e.preventDefault(); setEosId(null); setEosOpen(true); }}>
                       <Plus className="w-3.5 h-3.5" />{ar ? "مكافأة" : "New"}
                     </Button>
                   </div>
