@@ -12,7 +12,12 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       headers: { Authorization: authHeader, "Content-Type": "application/json", Host: "jssolutions-eg.com" },
       body: JSON.stringify(body),
     });
-    return NextResponse.json(await res.json(), { status: res.status });
+    const text = await res.text();
+    try {
+      return NextResponse.json(JSON.parse(text), { status: res.status });
+    } catch {
+      return NextResponse.json({ error: "Backend error", detail: text.substring(0, 200) }, { status: res.status });
+    }
   } catch (e) {
     return NextResponse.json({ error: "Network error", detail: String(e) }, { status: 500 });
   }
@@ -31,7 +36,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     try {
       return NextResponse.json(JSON.parse(text), { status: res.status });
     } catch {
-      return NextResponse.json({ success: true, message: "تم الحذف بنجاح" }, { status: 200 });
+      return NextResponse.json({ error: "Backend error", detail: text.substring(0, 200) }, { status: res.status });
     }
   } catch (e) {
     return NextResponse.json({ error: "Network error", detail: String(e) }, { status: 500 });
