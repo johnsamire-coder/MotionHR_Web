@@ -123,7 +123,7 @@ export default function DepartmentsPage() {
     setSaving(true);
     try {
       const selectedBranch = branches.find(b => String(b.id) === String(form.branch_id));
-      const res = await fetch(`/api/hr/departments/${editItem.id}`, {
+      const res = await fetch(`/api/hr/departments`, {
         method: "PUT",
         headers: { Authorization: authHeader, "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -167,7 +167,7 @@ export default function DepartmentsPage() {
     if (!deleteId) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/hr/departments/${deleteId}`, {
+      const res = await fetch(`/api/hr/departments?id=${deleteId}`, {
         method: "DELETE",
         headers: { Authorization: authHeader },
       });
