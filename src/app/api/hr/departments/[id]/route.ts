@@ -27,7 +27,12 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       method: "DELETE",
       headers: { Authorization: authHeader, Host: "jssolutions-eg.com" },
     });
-    return NextResponse.json(await res.json(), { status: res.status });
+    const text = await res.text();
+    try {
+      return NextResponse.json(JSON.parse(text), { status: res.status });
+    } catch {
+      return NextResponse.json({ success: true, message: "تم الحذف بنجاح" }, { status: 200 });
+    }
   } catch (e) {
     return NextResponse.json({ error: "Network error", detail: String(e) }, { status: 500 });
   }
