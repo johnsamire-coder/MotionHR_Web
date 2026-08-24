@@ -41,6 +41,9 @@ export default function ShiftsPage() {
   const lang = useLangStore((s) => s.lang);
   const ar = lang === "ar";
 
+  const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
+  const authHeader = token?.startsWith("Token") || token?.startsWith("Bearer ") ? token : `Token ${token}`;
+
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -61,7 +64,7 @@ export default function ShiftsPage() {
 
   useEffect(() => {
     if (token) {
-      fetch("/api/employees/list", { headers: { Authorization: authHeader } })
+      fetch("/api/manager/employees", { headers: { Authorization: authHeader } })
         .then(r => r.json())
         .then(d => setEmployees(Array.isArray(d) ? d : d.employees || []))
         .catch(() => {});
@@ -84,7 +87,7 @@ export default function ShiftsPage() {
     }
     setIsAssigning(true);
     try {
-      const res = await fetch("/api/shifts/assign", {
+      const res = await fetch("/api/hr/shifts/assign", {
         method: "POST",
         headers: { Authorization: authHeader, "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -125,8 +128,6 @@ export default function ShiftsPage() {
     late_checkout_minutes: 0,
   });
 
-  const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
-  const authHeader = token?.startsWith("Token") || token?.startsWith("Bearer ") ? token : `Token ${token}`;
 
   const loadShifts = async () => {
     setLoading(true);
