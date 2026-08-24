@@ -82,15 +82,15 @@ export default function PoliciesPage() {
     const extractArray = (res: any) => {
       if (!res) return [];
       if (Array.isArray(res)) return res;
-      return res.policies || res.rules || res.insurance_policies || res.tax_policies || res.data || [];
+      return res.rules || res.policies || res.allowance_rules || res.bonus_rules || res.penalty_rules || res.insurance_policies || res.tax_policies || res.data || res.results || [];
     };
 
     Promise.all([
       fetch("/api/hr/policies/attendance-policy", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({})),
       fetch("/api/hr/policies/leave-policy", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({})),
-      fetch("/api/hr/policies/allowance-policies", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({})),
-      fetch("/api/hr/policies/bonus-policies", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({})),
-      fetch("/api/hr/policies/deduction-policies", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({})),
+      fetch("/api/hr/policies/rules-allowance", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({})),
+      fetch("/api/hr/policies/rules-bonus", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({})),
+      fetch("/api/hr/policies/rules-penalty", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({})),
       fetch("/api/hr/policies/insurance-policies", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({})),
       fetch("/api/hr/policies/tax", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({})),
       fetch("/api/hr/policies/eos", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({})),
@@ -163,7 +163,7 @@ export default function PoliciesPage() {
                     <div className="space-y-1 pt-1" onClick={(e) => e.stopPropagation()}>
                       {attendancePolicies.slice(0, 3).map((p: any) => (
                         <div key={p.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs hover:bg-muted/60 transition">
-                          <span className="font-semibold truncate max-w-[170px]">{p.name}</span>
+                          <span className="font-semibold truncate max-w-[170px]">{p.name || p.rule_name || p.allowance_name || p.title || (ar ? "بدل مسجل" : "Policy")}</span>
                           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setAttendanceId(p.id); setAttendanceOpen(true); }}>
                             <Edit2 className="w-3 h-3 text-amber-600" />
                           </Button>
@@ -267,7 +267,7 @@ export default function PoliciesPage() {
                     <div className="space-y-1 pt-1" onClick={(e) => e.stopPropagation()}>
                       {leavePolicies.slice(0, 3).map((p: any) => (
                         <div key={p.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs hover:bg-muted/60 transition">
-                          <span className="font-semibold truncate max-w-[170px]">{p.name}</span>
+                          <span className="font-semibold truncate max-w-[170px]">{p.name || p.rule_name || p.allowance_name || p.title || (ar ? "بدل مسجل" : "Policy")}</span>
                           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setLeaveId(p.id); setLeaveOpen(true); }}>
                             <Edit2 className="w-3 h-3 text-amber-600" />
                           </Button>
@@ -314,7 +314,7 @@ export default function PoliciesPage() {
                     <div className="space-y-1 pt-1" onClick={(e) => e.stopPropagation()}>
                       {allowancePolicies.slice(0, 3).map((p: any) => (
                         <div key={p.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs hover:bg-muted/60 transition">
-                          <span className="font-semibold truncate max-w-[170px]">{p.name}</span>
+                          <span className="font-semibold truncate max-w-[170px]">{p.name || p.rule_name || p.allowance_name || p.title || (ar ? "بدل مسجل" : "Policy")}</span>
                           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setAllowanceId(p.id); setAllowanceOpen(true); }}>
                             <Edit2 className="w-3 h-3 text-amber-600" />
                           </Button>
@@ -351,7 +351,7 @@ export default function PoliciesPage() {
                     <div className="space-y-1 pt-1" onClick={(e) => e.stopPropagation()}>
                       {bonusPolicies.slice(0, 3).map((p: any) => (
                         <div key={p.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs hover:bg-muted/60 transition">
-                          <span className="font-semibold truncate max-w-[170px]">{p.name}</span>
+                          <span className="font-semibold truncate max-w-[170px]">{p.name || p.rule_name || p.allowance_name || p.title || (ar ? "بدل مسجل" : "Policy")}</span>
                           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setBonusId(p.id); setBonusOpen(true); }}>
                             <Edit2 className="w-3 h-3 text-amber-600" />
                           </Button>
@@ -399,7 +399,7 @@ export default function PoliciesPage() {
                     <div className="space-y-1 pt-1" onClick={(e) => e.stopPropagation()}>
                       {insurancePolicies.slice(0, 3).map((p: any) => (
                         <div key={p.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs hover:bg-muted/60 transition">
-                          <span className="font-semibold truncate max-w-[170px]">{p.name}</span>
+                          <span className="font-semibold truncate max-w-[170px]">{p.name || p.rule_name || p.allowance_name || p.title || (ar ? "بدل مسجل" : "Policy")}</span>
                           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setInsuranceId(p.id); setInsuranceOpen(true); }}>
                             <Edit2 className="w-3 h-3 text-amber-600" />
                           </Button>
@@ -436,7 +436,7 @@ export default function PoliciesPage() {
                     <div className="space-y-1 pt-1" onClick={(e) => e.stopPropagation()}>
                       {taxPolicies.slice(0, 3).map((p: any) => (
                         <div key={p.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs hover:bg-muted/60 transition">
-                          <span className="font-semibold truncate max-w-[170px]">{p.name}</span>
+                          <span className="font-semibold truncate max-w-[170px]">{p.name || p.rule_name || p.allowance_name || p.title || (ar ? "بدل مسجل" : "Policy")}</span>
                           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setTaxId(p.id); setTaxOpen(true); }}>
                             <Edit2 className="w-3 h-3 text-amber-600" />
                           </Button>
@@ -473,7 +473,7 @@ export default function PoliciesPage() {
                     <div className="space-y-1 pt-1" onClick={(e) => e.stopPropagation()}>
                       {penaltyPolicies.slice(0, 3).map((p: any) => (
                         <div key={p.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs hover:bg-muted/60 transition">
-                          <span className="font-semibold truncate max-w-[170px]">{p.name}</span>
+                          <span className="font-semibold truncate max-w-[170px]">{p.name || p.rule_name || p.allowance_name || p.title || (ar ? "بدل مسجل" : "Policy")}</span>
                           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setPenaltyId(p.id); setPenaltyOpen(true); }}>
                             <Edit2 className="w-3 h-3 text-amber-600" />
                           </Button>
@@ -510,7 +510,7 @@ export default function PoliciesPage() {
                     <div className="space-y-1 pt-1" onClick={(e) => e.stopPropagation()}>
                       {eosPolicies.slice(0, 3).map((p: any) => (
                         <div key={p.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs hover:bg-muted/60 transition">
-                          <span className="font-semibold truncate max-w-[170px]">{p.name}</span>
+                          <span className="font-semibold truncate max-w-[170px]">{p.name || p.rule_name || p.allowance_name || p.title || (ar ? "بدل مسجل" : "Policy")}</span>
                           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setEosId(p.id); setEosOpen(true); }}>
                             <Edit2 className="w-3 h-3 text-amber-600" />
                           </Button>
