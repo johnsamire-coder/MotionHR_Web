@@ -51,7 +51,7 @@ export default function DepartmentsPage() {
   const ar = lang === "ar";
 
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [branches, setBranches] = useState<BranchItem[]>([]);
+  const [branches, setBranches]       = useState<BranchItem[]>([]);
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState("");
   const [branchFilter, setBranchFilter] = useState("all");
@@ -70,9 +70,10 @@ export default function DepartmentsPage() {
   const load = useCallback(() => {
     if (!token) return;
     setLoading(true);
+    const ts = Date.now();
     Promise.all([
-      fetch("/api/hr/departments", { headers: { Authorization: authHeader } }).then(r => r.json()),
-      fetch("/api/branches", { headers: { Authorization: authHeader } }).then(r => r.json()),
+      fetch(`/api/hr/departments?t=${ts}`, { headers: { Authorization: authHeader }, cache: "no-store" }).then(r => r.json()),
+      fetch(`/api/branches?t=${ts}`, { headers: { Authorization: authHeader }, cache: "no-store" }).then(r => r.json()),
     ])
       .then(([depData, brData]) => {
         setDepartments(depData?.departments || (Array.isArray(depData) ? depData : []));
@@ -80,7 +81,7 @@ export default function DepartmentsPage() {
       })
       .catch(() => toast.error(d.failedLoad || (ar ? "فشل تحميل البيانات" : "Failed to load data")))
       .finally(() => setLoading(false));
-  }, [authHeader]);
+  }, [token, authHeader]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -121,17 +122,34 @@ export default function DepartmentsPage() {
     if (!editItem || !form.name_ar.trim()) return;
     setSaving(true);
     try {
+      const selectedBranch = branches.find(b => String(b.id) === String(form.branch_id));
       const res = await fetch(`/api/hr/departments/${editItem.id}`, {
         method: "PUT",
         headers: { Authorization: authHeader, "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...form,
+          id: editItem.id,
+          name_ar: form.name_ar,
+          name_en: form.name_en,
+          code: form.code,
+          description: form.description,
           branch_id: form.branch_id ? Number(form.branch_id) : null,
         }),
       });
       const data = await res.json();
       if (res.ok && data.success !== false) {
         toast.success(ar ? "تم تعديل القسم بنجاح ✅" : "Department updated ✅");
+
+        // تحديث الـ State فورياً
+        setDepartments(prev => prev.map(d => d.id === editItem.id ? {
+          ...d,
+          name_ar: form.name_ar,
+          name_en: form.name_en,
+          code: form.code,
+          description: form.description,
+          branch_id: form.branch_id ? Number(form.branch_id) : null,
+          branch_name: selectedBranch ? (ar ? selectedBranch.name_ar : (selectedBranch.name_en || selectedBranch.name_ar)) : null,
+        } : d));
+
         setEditItem(null);
         load();
       } else {
@@ -156,6 +174,9 @@ export default function DepartmentsPage() {
       const data = await res.json();
       if (res.ok && data.success !== false) {
         toast.success(ar ? "تم حذف القسم بنجاح 🗑️" : "Department deleted 🗑️");
+
+        // مسح القسم من القائمة فوراً
+        setDepartments(prev => prev.filter(d => d.id !== deleteId));
         setDeleteId(null);
         load();
       } else {
@@ -191,7 +212,6 @@ export default function DepartmentsPage() {
     return ar ? "المكتب الرئيسي" : "Main Office";
   };
 
-  // Filter by Search & Branch
   const filtered = departments.filter(dep => {
     const matchSearch = !search ||
       (dep.name_ar || "").includes(search) ||
@@ -205,7 +225,6 @@ export default function DepartmentsPage() {
 
   const totalEmployees = departments.reduce((s, d) => s + (d.employees_count || d.employee_count || 0), 0);
 
-  // Form Fields
   const renderFormFields = () => (
     <div className="space-y-4 py-2">
       <div>
@@ -310,7 +329,6 @@ export default function DepartmentsPage() {
               />
             </div>
 
-            {/* Filter by Branch */}
             <Select value={branchFilter} onValueChange={setBranchFilter}>
               <SelectTrigger className="w-[200px]">
                 <Filter className="w-4 h-4 ml-2" />
