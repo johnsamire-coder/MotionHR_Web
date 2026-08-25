@@ -28,6 +28,9 @@ interface Shift {
   end_time?: string;
   required_daily_hours?: number;
   grace_period?: number;
+  early_checkin_minutes?: number;
+  late_checkout_minutes?: number;
+  late_checkout_allowed?: boolean;
   break_duration?: number;
   crosses_midnight?: boolean;
 }
@@ -81,6 +84,9 @@ export default function ShiftsPage() {
     end_time: "17:00",
     required_daily_hours: 8,
     grace_period: 15,
+  early_checkin_minutes: 30,
+  late_checkout_minutes: 60,
+  late_checkout_allowed: true,
     break_duration: 60,
     crosses_midnight: false,
   });
@@ -237,7 +243,10 @@ export default function ShiftsPage() {
     setEditingShift(null);
     setFormData({
       name: "", shift_type: "fixed", start_time: "09:00", end_time: "17:00",
-      required_daily_hours: 8, grace_period: 15, break_duration: 60, crosses_midnight: false,
+      required_daily_hours: 8, grace_period: 15,
+  early_checkin_minutes: 30,
+  late_checkout_minutes: 60,
+  late_checkout_allowed: true, break_duration: 60, crosses_midnight: false,
     });
     setDialogOpen(true);
   };
@@ -251,6 +260,9 @@ export default function ShiftsPage() {
       end_time: shift.end_time || "17:00",
       required_daily_hours: shift.required_daily_hours || 8,
       grace_period: shift.grace_period || 15,
+      early_checkin_minutes: shift.early_checkin_minutes ?? 30,
+      late_checkout_minutes: shift.late_checkout_minutes ?? 0,
+      late_checkout_allowed: shift.late_checkout_allowed ?? false,
       break_duration: shift.break_duration || 60,
       crosses_midnight: shift.crosses_midnight || false,
     });
@@ -342,6 +354,36 @@ export default function ShiftsPage() {
             {ar ? "قم بإضافة الشيفتات وتعيينها وتطبيقها على الموظفين والأقسام والفروع" : "Define shifts and assign them to employees, departments, or branches"}
           </p>
         </div>
+            {/* سماحيات الحضور المبكر والانصراف المتأخر */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-3 mt-2">
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  سماحية الحضور المبكر (دقائق قبل الشيفت)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.early_checkin_minutes || 30}
+                  onChange={(e) => setFormData({ ...formData, early_checkin_minutes: parseInt(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
+                  placeholder="مثال: 30"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  سماحية الانصراف المتأخر (دقائق بعد الشيفت)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.late_checkout_minutes || 0}
+                  onChange={(e) => setFormData({ ...formData, late_checkout_minutes: parseInt(e.target.value) || 0, late_checkout_allowed: parseInt(e.target.value) > 0 })}
+                  className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
+                  placeholder="مثال: 60"
+                />
+              </div>
+            </div>
+
         <Button onClick={openCreateDialog} className="gap-2 bg-brand-primary text-white hover:bg-brand-primary/90 shadow-sm">
           <Plus className="w-4 h-4" />
           {ar ? "إضافة شيفت جديد" : "Add Shift"}
@@ -406,6 +448,15 @@ export default function ShiftsPage() {
                       <span>{ar ? "فترة السماح بالدخول:" : "Grace Period:"}</span>
                       <span className="font-semibold text-foreground">{shift.grace_period || 0} {ar ? "دقيقة" : "min"}</span>
                     </div>
+              <div className="flex flex-wrap gap-2 mt-2 text-xs text-slate-600">
+                <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200">
+                  ⚡ حضور مبكر: {shift.early_checkin_minutes || 30} دقيقة
+                </span>
+                <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded border border-amber-200">
+                  ⌛ انصراف متأخر: {shift.late_checkout_minutes || 0} دقيقة
+                </span>
+              </div>
+            
                   </div>
 
                   {/* Assignments Coverage Section */}
@@ -584,6 +635,16 @@ export default function ShiftsPage() {
               <div>
                 <Label>{ar ? "سماح التأخير (دقائق):" : "Grace Period (min):"}</Label>
                 <Input type="number" value={formData.grace_period} onChange={e => setFormData({ ...formData, grace_period: Number(e.target.value) })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div>
+                <Label>{ar ? "سماحية الحضور المبكر (دقائق):" : "Early Check-in Grace (min):"}</Label>
+                <Input type="number" value={formData.early_checkin_minutes ?? 30} onChange={e => setFormData({ ...formData, early_checkin_minutes: Number(e.target.value) })} />
+              </div>
+              <div>
+                <Label>{ar ? "سماحية الانصراف المتأخر (دقائق):" : "Late Check-out Grace (min):"}</Label>
+                <Input type="number" value={formData.late_checkout_minutes ?? 0} onChange={e => setFormData({ ...formData, late_checkout_minutes: Number(e.target.value), late_checkout_allowed: Number(e.target.value) > 0 })} />
               </div>
             </div>
           </div>
