@@ -89,7 +89,7 @@ export default function ShiftsPage() {
     if (typeof window === "undefined") return "";
     const token = localStorage.getItem(STORAGE_KEYS.token);
     if (!token) return "";
-    return token.startsWith("Token ") || token.startsWith("Bearer ") ? token : \`Token \${token}\`;
+    return token.startsWith("Token ") || token.startsWith("Bearer ") ? token : "Token " + token;
   };
 
   const loadAllData = useCallback(async () => {
@@ -211,7 +211,7 @@ export default function ShiftsPage() {
     }
     setIsSaving(true);
     const authHeader = getAuthHeader();
-    const url = editingShift ? \`/api/hr/shifts/\${editingShift.id}\` : "/api/hr/shifts";
+    const url = editingShift ? "/api/hr/shifts/" + editingShift.id : "/api/hr/shifts";
     const method = editingShift ? "PUT" : "POST";
 
     try {
@@ -240,7 +240,7 @@ export default function ShiftsPage() {
     setIsDeleting(true);
     const authHeader = getAuthHeader();
     try {
-      const res = await fetch(\`/api/hr/shifts/\${deleteShiftId}\`, {
+      const res = await fetch("/api/hr/shifts/" + deleteShiftId, {
         method: "DELETE",
         headers: { Authorization: authHeader },
       });
@@ -399,7 +399,7 @@ export default function ShiftsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl font-bold">
               <UserPlus className="w-5 h-5 text-brand-primary" />
-              <span>{ar ? \`تعيين الشيفت: \${assignShift?.name}\` : \`Assign Shift: \${assignShift?.name}\`}</span>
+              <span>{ar ? "تعيين الشيفت: " + (assignShift?.name || "") : "Assign Shift: " + (assignShift?.name || "")}</span>
             </DialogTitle>
             <DialogDescription>
               {ar ? "حدد النطاق والمستهدفين لتطبيق هذا الشيفت عليهم" : "Select target scope to apply this shift"}
@@ -485,7 +485,7 @@ export default function ShiftsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md" dir={ar ? "rtl" : "ltr"}>
           <DialogHeader>
-            <DialogTitle>{editingShift ? (ar ? \`تعديل الشيفت: \${editingShift.name}\` : "Edit Shift") : (ar ? "إضافة شيفت جديد" : "Add New Shift")}</DialogTitle>
+            <DialogTitle>{editingShift ? (ar ? "تعديل الشيفت: " + (editingShift.name || "") : "Edit Shift") : (ar ? "إضافة شيفت جديد" : "Add New Shift")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
