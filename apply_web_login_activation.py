@@ -1,4 +1,8 @@
-"use client";
+import os
+
+login_path = r'src/app/login/page.tsx'
+
+login_component_code = '''"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -299,3 +303,9 @@ export default function LoginPage() {
     </div>
   );
 }
+'''
+
+with open(login_path, 'w', encoding='utf-8') as f:
+    f.write(login_component_code)
+
+print("✅ تم زرع شاشة الدخول ومودال 'تسجيل لأول مرة' بنجاح بالكامل!")
