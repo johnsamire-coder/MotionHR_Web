@@ -85,38 +85,91 @@ export default function ShiftsPage() {
     crosses_midnight: false,
   });
 
-  const getAuthHeader = () => {
+    const getAuthHeader = () => {
     if (typeof window === "undefined") return "";
-    const token = localStorage.getItem(STORAGE_KEYS.token);
+    const token =
+      localStorage.getItem(STORAGE_KEYS.token) ||
+      localStorage.getItem("token") ||
+      localStorage.getItem("jwt_access") ||
+      localStorage.getItem("motion_token") ||
+      "";
     if (!token) return "";
-    return token.startsWith("Token ") || token.startsWith("Bearer ") ? token : "Token " + token;
+    if (token.startsWith("Token ") || token.startsWith("Bearer ")) return token;
+    return "Token " + token;
   };
 
-  const loadAllData = useCallback(async () => {
+    const loadAllData = useCallback(async () => {
     setLoading(true);
     const authHeader = getAuthHeader();
+    const headers: Record<string, string> = {
+      Authorization: authHeader,
+      "Content-Type": "application/json",
+    };
+
+    const safeFetch = async (urls: string[]) => {
+      for (const url of urls) {
+        try {
+          const res = await fetch(url, { headers });
+          if (res.ok) {
+            const data = await res.json();
+            return data;
+          }
+        } catch (e) {
+          console.warn("Fetch failed for:", url, e);
+        }
+      }
+      return null;
+    };
+
     try {
-      const [shiftsRes, assignRes, branchRes, deptRes, empRes] = await Promise.all([
-        fetch("/api/hr/shifts", { headers: { Authorization: authHeader } }),
-        fetch("/api/hr/shifts/assignments", { headers: { Authorization: authHeader } }),
-        fetch("/api/branches", { headers: { Authorization: authHeader } }),
-        fetch("/api/hr/departments", { headers: { Authorization: authHeader } }),
-        fetch("/api/manager/employees", { headers: { Authorization: authHeader } }),
-      ]);
+      const [shiftsData, assignData, branchData, deptData, empData] =
+        await Promise.all([
+          safeFetch(["/api/hr/shifts", "/api/manager/shifts"]),
+          safeFetch([
+            "/api/hr/shifts/assignments",
+            "/api/manager/shifts/assignments",
+          ]),
+          safeFetch([
+            "/api/branches",
+            "/api/manager/branches",
+            "/api/hr/branches",
+          ]),
+          safeFetch(["/api/hr/departments", "/api/manager/departments"]),
+          safeFetch(["/api/manager/employees", "/api/hr/employees"]),
+        ]);
 
-      const shiftsData = await shiftsRes.json();
-      const assignData = await assignRes.json();
-      const branchData = await branchRes.json();
-      const deptData = await deptRes.json();
-      const empData = await empRes.json();
-
-      setShifts(Array.isArray(shiftsData) ? shiftsData : shiftsData.shifts || []);
-      setAssignments(Array.isArray(assignData) ? assignData : assignData.assignments || assignData.data || []);
-      setBranches(Array.isArray(branchData) ? branchData : branchData.branches || []);
-      setDepartments(Array.isArray(deptData) ? deptData : deptData.departments || []);
-      setEmployees(Array.isArray(empData) ? empData : empData.employees || []);
-    } catch {
-      toast.error(ar ? "خطأ في تحميل بيانات الشيفتات" : "Error loading shifts data");
+      if (shiftsData) {
+        const list = Array.isArray(shiftsData)
+          ? shiftsData
+          : shiftsData.shifts || shiftsData.data || [];
+        setShifts(list);
+      }
+      if (assignData) {
+        const list = Array.isArray(assignData)
+          ? assignData
+          : assignData.assignments || assignData.data || [];
+        setAssignments(list);
+      }
+      if (branchData) {
+        const list = Array.isArray(branchData)
+          ? branchData
+          : branchData.branches || branchData.data || [];
+        setBranches(list);
+      }
+      if (deptData) {
+        const list = Array.isArray(deptData)
+          ? deptData
+          : deptData.departments || deptData.data || [];
+        setDepartments(list);
+      }
+      if (empData) {
+        const list = Array.isArray(empData)
+          ? empData
+          : empData.employees || empData.data || [];
+        setEmployees(list);
+      }
+    } catch (err) {
+      console.error("Error loading shifts data:", err);
     } finally {
       setLoading(false);
     }
@@ -259,12 +312,20 @@ export default function ShiftsPage() {
   };
 
   const getShiftBadge = (type: string) => {
-    switch (type) {
-      case "morning": return <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 gap-1"><Sun className="w-3 h-3" />{ar ? "صباحي" : "Morning"}</Badge>;
-      case "evening": return <Badge className="bg-purple-500/10 text-purple-600 hover:bg-purple-500/20 gap-1"><Sunset className="w-3 h-3" />{ar ? "مسائي" : "Evening"}</Badge>;
-      case "night": return <Badge className="bg-indigo-500/10 text-indigo-600 hover:bg-indigo-500/20 gap-1"><Moon className="w-3 h-3" />{ar ? "ليلي" : "Night"}</Badge>;
-      case "flexible": return <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 gap-1"><Clock className="w-3 h-3" />{ar ? "مرن" : "Flexible"}</Badge>;
-      default: return <Badge className="bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 gap-1"><Sunrise className="w-3 h-3" />{ar ? "ثابت" : "Fixed"}</Badge>;
+    const t = (type || "").toLowerCase();
+    switch (t) {
+      case "morning":
+        return <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 gap-1"><Sun className="w-3 h-3" />{ar ? "صباحي" : "Morning"}</Badge>;
+      case "evening":
+        return <Badge className="bg-purple-500/10 text-purple-600 hover:bg-purple-500/20 gap-1"><Moon className="w-3 h-3" />{ar ? "مسائي" : "Evening"}</Badge>;
+      case "night":
+        return <Badge className="bg-indigo-500/10 text-indigo-600 hover:bg-indigo-500/20 gap-1"><MoonStar className="w-3 h-3" />{ar ? "ليلي" : "Night"}</Badge>;
+      case "flexible":
+      case "flex":
+        return <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 gap-1"><Zap className="w-3 h-3" />{ar ? "مرن" : "Flexible"}</Badge>;
+      case "fixed":
+      default:
+        return <Badge className="bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 gap-1"><Sunrise className="w-3 h-3" />{ar ? "ثابت" : "Fixed"}</Badge>;
     }
   };
 
