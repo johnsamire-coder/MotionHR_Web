@@ -1,19 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+// Font fetch disabled for offline resilience
 import { Providers } from "@/lib/providers";
 import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "MotionHR — نظام الموارد البشرية",
@@ -58,7 +50,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/brand/icon/icon-192.png" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`font-sans antialiased`}
       >
         <GoogleAnalytics />
         <Providers>{children}</Providers>
