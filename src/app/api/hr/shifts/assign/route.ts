@@ -1,18 +1,18 @@
-import { NextResponse } from "next/server";
-const BACKEND = "https://jssolutions-eg.com";
+﻿import { NextResponse } from "next/server";
+const DJANGO_URL = process.env.NEXT_PUBLIC_API_URL || "https://jssolutions-eg.com";
 
-export async function POST(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function POST(req: Request) {
+  const auth = req.headers.get("authorization") || "";
+  const body = await req.text();
   try {
-    const body = await request.json();
-    const res = await fetch(`${BACKEND}/attendance/api/mobile/manager/shifts/assign/`, {
+    const res = await fetch(`${DJANGO_URL}/attendance/api/mobile/manager/shifts/assign/`, {
       method: "POST",
-      headers: { Authorization: authHeader, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      headers: { "Authorization": auth, "Content-Type": "application/json" },
+      body,
     });
-    return NextResponse.json(await res.json(), { status: res.status });
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch {
-    return NextResponse.json({ error: "Network error" }, { status: 500 });
+    return NextResponse.json({ error: "Backend fetch failed" }, { status: 500 });
   }
 }
