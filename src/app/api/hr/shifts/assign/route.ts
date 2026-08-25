@@ -11,9 +11,11 @@ export async function POST(req: Request) {
       headers: { 'Authorization': auth, 'Content-Type': 'application/json' },
       body,
     });
-    const data = await res.json();
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch { data = { detail: text }; }
     return NextResponse.json(data, { status: res.status });
   } catch {
-    return NextResponse.json({ error: 'Backend fetch failed' }, { status: 500 });
+    return NextResponse.json({ error: 'Assign failed' }, { status: 500 });
   }
 }
