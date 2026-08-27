@@ -1,11 +1,14 @@
-/** @type {import("next").NextConfig} */
+/** @type {import('next').NextConfig} */
 const nextConfig = {
+  serverExternalPackages: ["pdf2pic"],
+  turbopack: {}, // empty turbopack config to silence the warning
+  webpack: (config) => {
+    config.resolve.fallback = { fs: false };
+    return config;
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-};
+}
 
-export default nextConfig;
+export default nextConfig
