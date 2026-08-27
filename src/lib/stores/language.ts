@@ -104,7 +104,7 @@ export const dict = {
     myPermissions: "أذوناتي",
     myFieldVisits: "زياراتي الميدانية",
     notifications: "الإشعارات",
-    companyRegulations: "لائحة الشركة",
+    companyRegulations: "اللائحة التنظيمية",
     reports: "التقارير",
     // Header
     logout: "تسجيل الخروج",
@@ -940,7 +940,7 @@ export const dict = {
     recallEmployee: "استدعاء موظف",
     noRecalls: "لا يوجد استدعاءات",
     // Company Policies
-    companyPoliciesTitle: "لائحة الشركة",
+    companyPoliciesTitle: "سياسات وملفات الشركة",
     companyPoliciesDesc: "لائحة النظام الداخلي والقواعد العامة",
     uploadPolicyFile: "رفع ملف",
     // Flex Shift
@@ -1028,7 +1028,7 @@ export const dict = {
     myPermissions: "My Permissions",
     myFieldVisits: "Field Visits",
     notifications: "Notifications",
-    companyRegulations: "Company Regulations",
+    companyRegulations: "Company Regulations & Charter",
     reports: "Reports",
     // Header
     logout: "Logout",
@@ -1864,7 +1864,7 @@ export const dict = {
     recallEmployee: "Recall Employee",
     noRecalls: "No recalls",
     // Company Policies
-    companyPoliciesTitle: "Company Regulations",
+    companyPoliciesTitle: "Company Policies & Files",
     companyPoliciesDesc: "Internal regulations and general rules",
     uploadPolicyFile: "Upload File",
     // Flex Shift

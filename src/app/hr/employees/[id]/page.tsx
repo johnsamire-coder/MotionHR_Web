@@ -45,6 +45,9 @@ interface EmployeeData {
   department_name_en?: string;
   job_title_id?: number;
   job_title?: string;
+  shift_name?: string;
+  shift_timing?: string;
+  shift_id?: number;
   job_title_name_en?: string;
   direct_manager_id?: number | null;
   direct_manager_name?: string;
@@ -608,10 +611,17 @@ export default function EmployeeDetailPage() {
               <div>
                 <h1 className="text-2xl font-bold text-white mb-1">{displayName}</h1>
                 <p className="text-white/80 text-sm">{employee.job_title || "—"}</p>
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
                   <Badge className="bg-white/20 text-white border-0">{employee.employee_code}</Badge>
                   {employee.status && (
                     <Badge className="bg-emerald-500/30 text-white border-0">{employee.status}</Badge>
+                  )}
+                  {employee.shift_name && (
+                    <Badge className="bg-amber-400/30 text-amber-100 border border-amber-300/40 gap-1">
+                      <Clock className="w-3 h-3" />
+                      <span>{employee.shift_name}</span>
+                      {employee.shift_timing && <span className="opacity-80" dir="ltr">({employee.shift_timing})</span>}
+                    </Badge>
                   )}
                 </div>
               </div>
@@ -785,6 +795,10 @@ export default function EmployeeDetailPage() {
                   <Field label={ar ? "المدير المباشر" : "Direct Manager"} value={employee.direct_manager_name} />
                   <Field label={ar ? "نوع الموظف" : "Worker Type"} value={workerTypeLabel(employee.worker_type, ar)} />
                   <Field label={ar ? "الحالة" : "Status"} value={employee.status} />
+                  <Field
+                    label={ar ? "الشيفت ومواعيد العمل" : "Work Shift & Hours"}
+                    value={employee.shift_name ? `${employee.shift_name} ${employee.shift_timing ? '(' + employee.shift_timing + ')' : ''}` : (ar ? "غير معين" : "Unassigned")}
+                  />
                 </div>
               )}
             </div>
