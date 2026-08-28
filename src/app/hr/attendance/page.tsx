@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { standardExport } from "@/lib/utils/export-report";
 import {
   Clock, UserCheck, UserX, Calendar, Briefcase, AlertCircle,
   Search, Filter, Loader2, ChevronLeft, ChevronRight,
@@ -98,38 +97,6 @@ function StatCard({
 }
 
 export default function AttendancePage() {
-  const handleExportAttendance = async () => {
-    const rows = (filteredData || data || []).map((r: any) => ({
-      employee_name: r.employee_name || r.name || "",
-      department: r.department_name || r.department || "",
-      status: r.status || "",
-      check_in: r.check_in || r.check_in_time || "",
-      check_out: r.check_out || r.check_out_time || "",
-      late_minutes: r.late_minutes ?? r.total_late_minutes ?? "",
-      work_hours: r.work_hours ?? r.total_work_hours ?? "",
-    }));
-    if (!rows.length) { toast.error("لا توجد بيانات للتصدير"); return; }
-    await standardExport({
-      title: "تقرير الحضور اليومي",
-      fileName: `attendance_${new Date().toISOString().slice(0,10)}`,
-      type: "excel",
-      lang: "ar",
-      columns: [
-        { key: "employee_name", header: "الموظف", width: 22 },
-        { key: "department", header: "القسم", width: 18 },
-        { key: "status", header: "الحالة", width: 12 },
-        { key: "check_in", header: "حضور", width: 12 },
-        { key: "check_out", header: "انصراف", width: 12 },
-        { key: "late_minutes", header: "تأخير (د)", width: 12 },
-        { key: "work_hours", header: "ساعات العمل", width: 14 },
-      ],
-      rows,
-    });
-  };
-
-  const handleMonthlyReport = () => {
-    window.location.href = `/hr/reports/monthly-attendance?date=${selectedDate}`;
-  };
   const d = useDict();
   const lang = useLangStore((s) => s.lang);
 
@@ -166,6 +133,47 @@ export default function AttendancePage() {
     reason: "",
   });
   const [submittingAdjust, setSubmittingAdjust] = useState(false);
+  const handleExportAttendance = async () => {
+    try {
+      const res = await fetch(`/api/hr/attendance-export/excel?date=${selectedDate}`, {
+        headers: { Authorization: authHeader },
+      });
+      if (!res.ok) { toast.error("فشل تصدير Excel"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `attendance_${selectedDate}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("فشل تصدير Excel");
+    }
+  };
+  const handleExportAttendancePDF = async () => {
+    try {
+      const res = await fetch(`/api/hr/attendance-export/pdf?date=${selectedDate}`, {
+        headers: { Authorization: authHeader },
+      });
+      if (!res.ok) { toast.error("فشل تصدير PDF"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `attendance_${selectedDate}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("فشل تصدير PDF");
+    }
+  };
+  const handleMonthlyReport = () => {
+    window.location.href = `/hr/reports/monthly-attendance?date=${selectedDate}`;
+  };
 
   const handleOpenAdjust = (emp: AttendanceEmployee) => {
     setEditingAtt({
@@ -329,6 +337,10 @@ export default function AttendancePage() {
           <Button variant="outline" onClick={handleExportAttendance} className="gap-2">
             <Download className="w-4 h-4" />
             {d.exportAttendance}
+          </Button>
+          <Button variant="outline" onClick={handleExportAttendancePDF} className="gap-2">
+            <FileText className="w-4 h-4" />
+            تصدير PDF
           </Button>
           <Button variant="outline" onClick={handleMonthlyReport} className="gap-2">
             <FileText className="w-4 h-4" />
