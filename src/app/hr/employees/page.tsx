@@ -1,10 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { standardExport } from "@/lib/utils/export-report";
 import {
-  Users, Search, Filter, Plus, Upload, Download,
+  Users, Search, Filter, Plus, Upload, Download, Printer,
   Loader2, ChevronLeft, ChevronRight, UserCheck,
   UserX, Building2, Briefcase, Phone,
 } from "lucide-react";
@@ -112,49 +113,70 @@ export default function EmployeesPage() {
 
   // â”€â”€ Load Employees â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleExportExcel = async () => {
-    if (!data?.results?.length) {
-      toast.error(lang === "ar" ? "لا يوجد موظفين للتصدير" : "No employees to export");
+    const list = (data?.results || []).map((e: any) => ({
+      employee_code: e.employee_code || e.code || "",
+      name: e.full_name_ar || e.name || e.employee_name || "",
+      department: e.department_name || e.department || "",
+      job_title: e.job_title_name || e.job_title || "",
+      phone: e.phone || "",
+      status: e.status || "",
+      hire_date: e.hire_date || "",
+      basic_salary: e.basic_salary ?? "",
+    }));
+    if (!list.length) { toast.error("لا توجد بيانات للتصدير"); return; }
+    await standardExport({
+      title: "كشف الموظفين",
+      fileName: `employees_${new Date().toISOString().slice(0,10)}`,
+      type: "excel",
+      lang: "ar",
+      columns: [
+        { key: "employee_code", header: "الكود", width: 12 },
+        { key: "name", header: "الاسم", width: 24 },
+        { key: "department", header: "القسم", width: 18 },
+        { key: "job_title", header: "المسمى", width: 18 },
+        { key: "phone", header: "الموبايل", width: 14 },
+        { key: "status", header: "الحالة", width: 12 },
+        { key: "hire_date", header: "تاريخ التعيين", width: 14 },
+        { key: "basic_salary", header: "الراتب", width: 12 },
+      ],
+      rows: list,
+    });
+  };
+
+  const handleExportPDF = async () => {
+    const list = (data?.results || []).map((e: any) => ({
+      employee_code: e.employee_code || e.code || "",
+      name: e.full_name_ar || e.name || e.employee_name || "",
+      department: e.department_name || e.department || "",
+      job_title: e.job_title_name || e.job_title || "",
+      phone: e.phone || "",
+      status: e.status || "",
+      hire_date: e.hire_date || "",
+      basic_salary: e.basic_salary ?? "",
+    }));
+
+    if (!list.length) {
+      toast.error("لا توجد بيانات للتصدير");
       return;
     }
-    try {
-      const ExcelJS = (await import("exceljs")).default;
-      const wb = new ExcelJS.Workbook();
-      const ws = wb.addWorksheet(lang === "ar" ? "الموظفين" : "Employees");
 
-      ws.columns = [
-        { header: lang === "ar" ? "الكود" : "Code", key: "code", width: 12 },
-        { header: lang === "ar" ? "الاسم" : "Name", key: "name", width: 30 },
-        { header: lang === "ar" ? "القسم" : "Department", key: "dept", width: 20 },
-        { header: lang === "ar" ? "المسمى الوظيفي" : "Job Title", key: "job", width: 20 },
-        { header: lang === "ar" ? "الموبايل" : "Phone", key: "phone", width: 15 },
-        { header: lang === "ar" ? "الحالة" : "Status", key: "status", width: 12 },
-        { header: lang === "ar" ? "تاريخ التعيين" : "Hire Date", key: "hire", width: 15 },
-      ];
-
-      data.results.forEach(emp => {
-        ws.addRow({
-          code: emp.employee_code || "",
-          name: emp.full_name || "",
-          dept: emp.department || "",
-          job: emp.job_title || "",
-          phone: emp.phone || "",
-          status: emp.status || "",
-          hire: emp.hire_date || "",
-        });
-      });
-
-      const buf = await wb.xlsx.writeBuffer();
-      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `employees_${new Date().toISOString().slice(0, 10)}.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success(lang === "ar" ? "تم التصدير بنجاح" : "Exported successfully");
-    } catch (e) {
-      toast.error(lang === "ar" ? "فشل التصدير" : "Export failed");
-    }
+    await standardExport({
+      title: "كشف الموظفين",
+      fileName: `employees_${new Date().toISOString().slice(0,10)}`,
+      type: "pdf",
+      lang: "ar",
+      columns: [
+        { key: "employee_code", header: "الكود", width: 12 },
+        { key: "name", header: "الاسم", width: 24 },
+        { key: "department", header: "القسم", width: 18 },
+        { key: "job_title", header: "المسمى", width: 18 },
+        { key: "phone", header: "الموبايل", width: 14 },
+        { key: "status", header: "الحالة", width: 12 },
+        { key: "hire_date", header: "تاريخ التعيين", width: 14 },
+        { key: "basic_salary", header: "الراتب", width: 12 },
+      ],
+      rows: list,
+    });
   };
 
   const loadEmployees = useCallback(() => {
@@ -221,6 +243,14 @@ export default function EmployeesPage() {
           >
             <Download className="w-4 h-4" />
             {lang === "ar" ? "تصدير Excel" : "Export Excel"}
+          </Button>
+          <Button
+            variant="outline" size="sm"
+            onClick={handleExportPDF}
+            className="gap-2"
+          >
+            <Printer className="w-4 h-4" />
+            {lang === "ar" ? "تصدير PDF" : "Export PDF"}
           </Button>
           <Button
             variant="outline" size="sm"
@@ -502,6 +532,7 @@ export default function EmployeesPage() {
     </div>
   );
 }
+
 
 
 

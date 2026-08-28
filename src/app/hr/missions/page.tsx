@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
+import { standardExport } from "@/lib/utils/export-report";
 import {
   Briefcase, Users, Activity, CheckCircle2, Clock, XCircle,
   Search, Loader2, Plus, MapPin, DollarSign, TrendingUp,
@@ -404,36 +405,31 @@ department: e.department_name || e.department_name_ar || "",
   };
 
   // تصدير CSV
-  const handleExport = () => {
-    if (filtered.length === 0) {
-      toast.error("لا توجد بيانات للتصدير");
-      return;
-    }
-    const headers = ["#", "العنوان", "الموظف", "الموقع", "تاريخ البدء", "الأولوية", "الحالة", "الفيدباك"];
-    const rows = filtered.map(m => [
-      m.id,
-      m.title || "",
-      m.assignments?.map(a => a.employee_name).join(" | ") || m.employee_name || "",
-      m.location_name || m.location || "",
-      formatDate(m.planned_start_time || m.scheduled_date),
-      m.priority_display || m.priority || "",
-      getStatusInfo(m.status).label,
-      m.has_feedback ? "✓" : "",
-    ]);
-
-    const csv = [headers, ...rows]
-      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-
-    const bom = "\uFEFF";
-    const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `missions_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("تم تصدير البيانات");
+  const handleExport = async () => {
+    const list = (filtered || missions || []).map((m: any) => ({
+      title: m.title || m.name || "",
+      status: m.status || "",
+      employees: Array.isArray(m.employees) ? m.employees.length : (m.assignees_count ?? m.employees_count ?? ""),
+      start_date: m.start_date || m.created_at || "",
+      end_date: m.end_date || "",
+      location: m.location || m.address || "",
+    }));
+    if (!list.length) { toast.error("لا توجد بيانات للتصدير"); return; }
+    await standardExport({
+      title: "تقرير المهمات",
+      fileName: `missions_${new Date().toISOString().slice(0,10)}`,
+      type: "excel",
+      lang: "ar",
+      columns: [
+        { key: "title", header: "المهمة", width: 28 },
+        { key: "status", header: "الحالة", width: 14 },
+        { key: "employees", header: "الموظفين", width: 12 },
+        { key: "start_date", header: "البداية", width: 16 },
+        { key: "end_date", header: "النهاية", width: 16 },
+        { key: "location", header: "الموقع", width: 22 },
+      ],
+      rows: list,
+    });
   };
 
   // إضافة موظف للمهمة
@@ -1307,4 +1303,5 @@ department: e.department_name || e.department_name_ar || "",
     </div>
   );
 }
+
 

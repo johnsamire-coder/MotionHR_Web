@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
+import { standardExport } from "@/lib/utils/export-report";
 import {
   DollarSign, Users, TrendingUp, TrendingDown, Wallet,
   Search, Download, FileText, Loader2, ChevronRight,
@@ -125,6 +126,42 @@ export default function PayrollPage() {
   useEffect(() => {
     loadPayrollData();
   }, [loadPayrollData]);
+
+  const handleStandardPayrollExport = async () => {
+    const rows = (filteredEmployees || employees || []).map((e: any) => ({
+      employee_code: e.employee_code || "",
+      employee_name: e.employee_name || "",
+      department_name: e.department_name || "",
+      basic_salary: e.basic_salary ?? 0,
+      allowances_total: e.allowances_total ?? 0,
+      overtime_bonus: e.overtime_bonus ?? 0,
+      total_deductions: e.total_deductions ?? e.deductions_total ?? 0,
+      net_salary: e.net_salary ?? 0,
+    }));
+    if (!rows.length) { toast.error("لا توجد بيانات للرواتب"); return; }
+    await standardExport({
+      title: "مسير الرواتب",
+      period: `${selectedMonth || ""}/${selectedYear || ""}`,
+      fileName: `payroll_${selectedYear || "y"}_${selectedMonth || "m"}`,
+      type: "excel",
+      lang: "ar",
+      columns: [
+        { key: "employee_code", header: "الكود", width: 12 },
+        { key: "employee_name", header: "الموظف", width: 24 },
+        { key: "department_name", header: "القسم", width: 16 },
+        { key: "basic_salary", header: "الأساسي", width: 12 },
+        { key: "allowances_total", header: "البدلات", width: 12 },
+        { key: "overtime_bonus", header: "إضافي", width: 12 },
+        { key: "total_deductions", header: "الخصومات", width: 12 },
+        { key: "net_salary", header: "الصافي", width: 12 },
+      ],
+      rows,
+      summaryStats: [
+        { label: "إجمالي الأساسي", value: summary?.total_salaries ?? 0 },
+        { label: "إجمالي الصافي", value: summary?.total_net ?? 0 },
+      ],
+    });
+  };
 
   const formatCurrency = (val: number | undefined) => {
     return new Intl.NumberFormat(ar ? "ar-EG" : "en-US", {
@@ -417,3 +454,4 @@ export default function PayrollPage() {
     </div>
   );
 }
+
