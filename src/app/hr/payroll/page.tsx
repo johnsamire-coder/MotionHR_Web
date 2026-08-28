@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { standardExport } from "@/lib/utils/export-report";
 import {
   DollarSign, Users, TrendingUp, TrendingDown, Wallet,
   Search, Download, FileText, Loader2, ChevronRight,
@@ -127,40 +126,50 @@ export default function PayrollPage() {
     loadPayrollData();
   }, [loadPayrollData]);
 
-  const handleStandardPayrollExport = async () => {
-    const rows = (filteredEmployees || employees || []).map((e: any) => ({
-      employee_code: e.employee_code || "",
-      employee_name: e.employee_name || "",
-      department_name: e.department_name || "",
-      basic_salary: e.basic_salary ?? 0,
-      allowances_total: e.allowances_total ?? 0,
-      overtime_bonus: e.overtime_bonus ?? 0,
-      total_deductions: e.total_deductions ?? e.deductions_total ?? 0,
-      net_salary: e.net_salary ?? 0,
-    }));
-    if (!rows.length) { toast.error("لا توجد بيانات للرواتب"); return; }
-    await standardExport({
-      title: "مسير الرواتب",
-      period: `${selectedMonth || ""}/${selectedYear || ""}`,
-      fileName: `payroll_${selectedYear || "y"}_${selectedMonth || "m"}`,
-      type: "excel",
-      lang: "ar",
-      columns: [
-        { key: "employee_code", header: "الكود", width: 12 },
-        { key: "employee_name", header: "الموظف", width: 24 },
-        { key: "department_name", header: "القسم", width: 16 },
-        { key: "basic_salary", header: "الأساسي", width: 12 },
-        { key: "allowances_total", header: "البدلات", width: 12 },
-        { key: "overtime_bonus", header: "إضافي", width: 12 },
-        { key: "total_deductions", header: "الخصومات", width: 12 },
-        { key: "net_salary", header: "الصافي", width: 12 },
-      ],
-      rows,
-      summaryStats: [
-        { label: "إجمالي الأساسي", value: summary?.total_salaries ?? 0 },
-        { label: "إجمالي الصافي", value: summary?.total_net ?? 0 },
-      ],
-    });
+  const getToken = () =>
+    localStorage.getItem(STORAGE_KEYS.token) ||
+    localStorage.getItem("motionhr_token") ||
+    localStorage.getItem("token") ||
+    localStorage.getItem("auth_token");
+  const handleExportExcel = async () => {
+    try {
+      const token = getToken();
+      const res = await fetch(`/api/hr/payroll-export/excel?year=${selectedYear}&month=${selectedMonth}`, {
+        headers: { Authorization: `Token ${token}` },
+      });
+      if (!res.ok) { toast.error(ar ? "فشل تصدير Excel" : "Excel export failed"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `payroll_${selectedYear}_${selectedMonth}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(ar ? "فشل تصدير Excel" : "Excel export failed");
+    }
+  };
+  const handleExportPDF = async () => {
+    try {
+      const token = getToken();
+      const res = await fetch(`/api/hr/payroll-export/pdf?year=${selectedYear}&month=${selectedMonth}`, {
+        headers: { Authorization: `Token ${token}` },
+      });
+      if (!res.ok) { toast.error(ar ? "فشل تصدير PDF" : "PDF export failed"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `payroll_${selectedYear}_${selectedMonth}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(ar ? "فشل تصدير PDF" : "PDF export failed");
+    }
   };
 
   const formatCurrency = (val: number | undefined) => {
@@ -185,9 +194,14 @@ export default function PayrollPage() {
           <h1 className="text-3xl font-bold tracking-tight">{ar ? "إدارة ومسيرات الرواتب" : "Payroll Engine"}</h1>
           <p className="text-sm text-muted-foreground">{ar ? "حساب الأجور، البدلات، الخصومات وصافي المرتبات تلقائياً" : "Manage payroll, allowances, deductions and net salary"}</p>
         </div>
-        <Button className="gap-2">
-          <Download className="w-4 h-4" /> {ar ? "تصدير البنك (Excel)" : "Bank Export (Excel)"}
-        </Button>
+        <div className="flex gap-2">
+          <Button className="gap-2" onClick={handleExportExcel}>
+            <Download className="w-4 h-4" /> {ar ? "تصدير Excel" : "Export Excel"}
+          </Button>
+          <Button className="gap-2" variant="outline" onClick={handleExportPDF}>
+            <FileText className="w-4 h-4" /> {ar ? "تصدير PDF" : "Export PDF"}
+          </Button>
+        </div>
       </div>
 
       {/* كروت الإحصائيات المالية للفترة المحددة */}

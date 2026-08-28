@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { standardExport } from "@/lib/utils/export-report";
 import {
   Play, CheckCircle2, Loader2, Plus, Eye, Calendar,
   Users, DollarSign, AlertCircle, Download, FileSpreadsheet,
@@ -167,7 +166,23 @@ export default function PayrollRunsPage() {
 
       if (!res.ok) throw new Error("Failed to load detail");
       const data = await res.json();
-      setSelectedRun(data);
+      if (data.run) {
+        setSelectedRun({
+          run_id: data.run.id,
+          year: data.run.year,
+          month: data.run.month,
+          status: data.run.status,
+          status_label: data.run.status_label,
+          total_employees: data.total_employees,
+          grand_net: data.grand_net,
+          approved_by: data.run.approved_by,
+          approved_at: data.run.approved_at,
+          notes: data.run.notes,
+          lines: data.lines,
+        });
+      } else {
+        setSelectedRun(data);
+      }
     } catch (err: any) {
       toast.error(ar ? "فشل جلب تفاصيل المسير" : "Error loading details");
       setDetailOpen(false);
@@ -201,54 +216,46 @@ export default function PayrollRunsPage() {
 
   // 1. التصدير النظيف للإكسيل (HTML-Based XLS)
   const handleExportExcel = async () => {
-    if (!selectedRun || !selectedRun.lines || selectedRun.lines.length === 0) {
-      toast.error(ar ? "لا توجد بيانات موظفين للتصدير في هذا المسير." : "No employee lines to export.");
-      return;
+    if (!selectedRun) return;
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/hr/payroll-runs/${selectedRun.run_id}/export/excel`, {
+        headers: { ...(token ? { Authorization: `Token ${token}` } : {}) },
+      });
+      if (!res.ok) { toast.error(ar ? "فشل تصدير Excel" : "Excel export failed"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `payroll_run_${selectedRun.year}_${selectedRun.month}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(ar ? "فشل تصدير Excel" : "Excel export failed");
     }
-    await standardExport({
-      title: ar ? `مسير رواتب ${MONTHS_AR[selectedRun.month]} ${selectedRun.year}` : `Payroll Run ${selectedRun.month}/${selectedRun.year}`,
-      period: `${selectedRun.month}/${selectedRun.year}`,
-      fileName: `payroll_run_${selectedRun.year}_${selectedRun.month}`,
-      type: "excel",
-      lang: ar ? "ar" : "en",
-      columns: [
-        { key: "employee_name", header: ar ? "الموظف" : "Employee", width: 24 },
-        { key: "basic_salary", header: ar ? "الأساسي" : "Basic", width: 12 },
-        { key: "allowances_total", header: ar ? "البدلات" : "Allowances", width: 12 },
-        { key: "overtime_total", header: ar ? "إضافي" : "OT", width: 10 },
-        { key: "total_deductions", header: ar ? "الخصومات" : "Deductions", width: 12 },
-        { key: "net_salary", header: ar ? "الصافي" : "Net", width: 12 },
-        { key: "attended_days", header: ar ? "حضور" : "Att", width: 8 },
-        { key: "absent_days", header: ar ? "غياب" : "Abs", width: 8 },
-      ],
-      rows: selectedRun.lines as unknown as Record<string, unknown>[],
-      summaryStats: [{ label: ar ? "إجمالي الصافي" : "Grand Net", value: selectedRun.grand_net || 0 }],
-    });
   };
-
-  // 2. التصدير المباشر لـ PDF بدون Pop-up Blocker (باستخدام Iframe مخفي)
   const handlePrintPDF = async () => {
-    if (!selectedRun || !selectedRun.lines || selectedRun.lines.length === 0) {
-      toast.error(ar ? "لا توجد بيانات للطباعة" : "No data");
-      return;
+    if (!selectedRun) return;
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/hr/payroll-runs/${selectedRun.run_id}/export/pdf`, {
+        headers: { ...(token ? { Authorization: `Token ${token}` } : {}) },
+      });
+      if (!res.ok) { toast.error(ar ? "فشل تصدير PDF" : "PDF export failed"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `payroll_run_${selectedRun.year}_${selectedRun.month}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(ar ? "فشل تصدير PDF" : "PDF export failed");
     }
-    await standardExport({
-      title: ar ? `مسير رواتب ${MONTHS_AR[selectedRun.month]} ${selectedRun.year}` : `Payroll Run ${selectedRun.month}/${selectedRun.year}`,
-      period: `${selectedRun.month}/${selectedRun.year}`,
-      fileName: `payroll_run_${selectedRun.year}_${selectedRun.month}`,
-      type: "pdf",
-      lang: ar ? "ar" : "en",
-      columns: [
-        { key: "employee_name", header: ar ? "الموظف" : "Employee", width: 24 },
-        { key: "basic_salary", header: ar ? "الأساسي" : "Basic", width: 12 },
-        { key: "allowances_total", header: ar ? "البدلات" : "Allowances", width: 12 },
-        { key: "overtime_total", header: ar ? "إضافي" : "OT", width: 10 },
-        { key: "total_deductions", header: ar ? "الخصومات" : "Deductions", width: 12 },
-        { key: "net_salary", header: ar ? "الصافي" : "Net", width: 12 },
-      ],
-      rows: selectedRun.lines as unknown as Record<string, unknown>[],
-      summaryStats: [{ label: ar ? "إجمالي الصافي" : "Grand Net", value: selectedRun.grand_net || 0 }],
-    });
   };
 
   return (

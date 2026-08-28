@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { standardExport } from "@/lib/utils/export-report";
 import {
   FileText, Calendar, Activity, CheckCircle2, Clock, XCircle,
   Search, Filter, Loader2, Users, Download, Building2,
@@ -100,31 +99,6 @@ function StatCard({
   );
 }
 
-const handleStandardRequestsExport = async (rowsInput?: any[]) => {
-    const list = (rowsInput || filtered || requests || []).map((r: any) => ({
-      employee_name: r.employee_name || r.employee || "",
-      request_type: r.request_type_name || r.type_name || r.request_type || "",
-      status: r.status || "",
-      created_at: r.created_at || r.date || "",
-      reason: r.reason || r.notes || "",
-    }));
-    if (!list.length) { toast.error("لا توجد طلبات للتصدير"); return; }
-    await standardExport({
-      title: "تقرير الطلبات",
-      fileName: `requests_${new Date().toISOString().slice(0,10)}`,
-      type: "excel",
-      lang: "ar",
-      columns: [
-        { key: "employee_name", header: "الموظف", width: 22 },
-        { key: "request_type", header: "نوع الطلب", width: 22 },
-        { key: "status", header: "الحالة", width: 12 },
-        { key: "created_at", header: "التاريخ", width: 16 },
-        { key: "reason", header: "السبب", width: 28 },
-      ],
-      rows: list,
-    });
-  };
-
 export default function RequestsPage() {
   const d = useDict();
   const lang = useLangStore((s) => s.lang);
@@ -185,53 +159,45 @@ export default function RequestsPage() {
     return matchSearch && matchStatus && matchTab;
   });
 
-  const handleExportExcel = () => {
-    if (!filtered.length) {
-      toast.error(lang === "ar" ? "لا توجد بيانات" : "No data");
-      return;
+  const handleExportExcel = async () => {
+    try {
+      const res = await fetch(`/api/hr/requests-export/excel`, {
+        headers: { Authorization: authHeader },
+      });
+      if (!res.ok) { toast.error(lang === "ar" ? "فشل تصدير Excel" : "Excel export failed"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "requests.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(lang === "ar" ? "فشل تصدير Excel" : "Excel export failed");
     }
-
-    const csvCell = (value: unknown) => {
-      const text = String(value ?? "").replace(/"/g, '""');
-      return `"${text}"`;
-    };
-
-    const header = lang === "ar"
-      ? ["الموظف", "النوع", "التاريخ", "الحالة"]
-      : ["Employee", "Type", "Date", "Status"];
-
-    const rows = filtered.map((r) => {
-      const typeLabel =
-        lang === "en" && r.request_type_en
-          ? r.request_type_en
-          : (r.request_type || "");
-
-      const dateValue = (r.submitted_at || r.created_at)
-        ? new Date(r.submitted_at || r.created_at || "").toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US")
-        : "";
-
-      return [
-        csvCell(r.employee_name || ""),
-        csvCell(typeLabel),
-        csvCell(dateValue),
-        csvCell(r.status || ""),
-      ].join(",");
-    });
-
-    const csvText = "\uFEFF" + header.map(csvCell).join(",") + "\n" + rows.join("\n");
-    const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
-    const url = window.URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "requests_" + year + "_" + String(month).padStart(2, "0") + ".csv";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-
-    toast.success(lang === "ar" ? "تم التصدير" : "Exported");
   };
+  const handleExportPDF = async () => {
+    try {
+      const res = await fetch(`/api/hr/requests-export/pdf`, {
+        headers: { Authorization: authHeader },
+      });
+      if (!res.ok) { toast.error(lang === "ar" ? "فشل تصدير PDF" : "PDF export failed"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "requests.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(lang === "ar" ? "فشل تصدير PDF" : "PDF export failed");
+    }
+  };
+
 
   const handleAction = async (requestId: number, action: "approve" | "reject", notes = "") => {
     if (action === "reject" && !rejectTarget) {
@@ -320,9 +286,13 @@ export default function RequestsPage() {
             </Select>
           </div>
 
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={handleExportExcel}>
             <Download className="w-4 h-4" />
             {d.exportExcel}
+          </Button>
+          <Button variant="outline" className="gap-2" onClick={handleExportPDF}>
+            <FileText className="w-4 h-4" />
+            {lang === "ar" ? "تصدير PDF" : "Export PDF"}
           </Button>
         </div>
       </div>
@@ -342,7 +312,7 @@ export default function RequestsPage() {
             value={report?.total_requests || 0}
             color="bg-blue-500/10 text-blue-600"
             active={statusFilter === "all"}
-            onClick={handleExportExcel}
+            onClick={() => setStatusFilter("all")}
           />
           <StatCard
             icon={CheckCircle2}

@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
 
   const sp = request.nextUrl.searchParams;
   const q = sp.toString();
-  const url = `${BACKEND}/attendance/api/mobile/manager/leave-requests/${q ? `?${q}` : ""}`;
+  const url = `${BACKEND}/attendance/api/mobile/manager/leaves/list/${q ? `?${q}` : ""}`;
 
   try {
     const res = await fetch(url, {

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Calendar, Search, Loader2, CheckCircle2, XCircle,
-  Clock, Plus, Download, Activity, AlertTriangle,
+  Clock, Plus, Download, Activity, AlertTriangle, FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,6 @@ import {
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 import { AddLeaveDialog } from "@/components/hr/add-leave-dialog";
-import { standardExport } from "@/lib/utils/export-report";
 
 interface LeaveRow {
   id: number;
@@ -124,34 +123,59 @@ export default function LeavesPage() {
     return s;
   };
 
-    const exportExcel = async () => {
+  const exportExcel = async () => {
     if (!filtered.length) {
       toast.error(ar ? "لا توجد بيانات" : "No data");
       return;
     }
-    await standardExport({
-      title: ar ? "تقرير الإجازات" : "Leaves Report",
-      period: statusFilter === "pending" ? (ar ? "كل الطلبات المعلقة" : "All pending") : `${month}/${year}`,
-      fileName: `leaves_${year}_${statusFilter}`,
-      type: "excel",
-      lang: ar ? "ar" : "en",
-      columns: [
-        { key: "employee_name", header: ar ? "الموظف" : "Employee", width: 24 },
-        { key: "department", header: ar ? "القسم" : "Department", width: 18 },
-        { key: "leave_type", header: ar ? "النوع" : "Type", width: 16 },
-        { key: "from_date", header: ar ? "من" : "From", width: 14 },
-        { key: "to_date", header: ar ? "إلى" : "To", width: 14 },
-        { key: "days", header: ar ? "أيام" : "Days", width: 10 },
-        { key: "status", header: ar ? "الحالة" : "Status", width: 12, formatter: (v) => statusLabel(String(v || "")) },
-      ],
-      rows: filtered as unknown as Record<string, unknown>[],
-      summaryStats: [
-        { label: ar ? "الإجمالي" : "Total", value: stats.total },
-        { label: ar ? "معلق" : "Pending", value: stats.pending },
-        { label: ar ? "مقبول" : "Approved", value: stats.approved },
-        { label: ar ? "مرفوض" : "Rejected", value: stats.rejected },
-      ],
-    });
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      params.set("year", String(year));
+      params.set("month", String(month));
+      const res = await fetch(`/api/hr/leaves-export/excel?${params.toString()}`, {
+        headers: { Authorization: `Token ${token()}` },
+      });
+      if (!res.ok) { toast.error(ar ? "فشل تصدير Excel" : "Excel export failed"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `leaves_${year}_${statusFilter}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(ar ? "فشل تصدير Excel" : "Excel export failed");
+    }
+  };
+  const exportPDF = async () => {
+    if (!filtered.length) {
+      toast.error(ar ? "لا توجد بيانات" : "No data");
+      return;
+    }
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      params.set("year", String(year));
+      params.set("month", String(month));
+      const res = await fetch(`/api/hr/leaves-export/pdf?${params.toString()}`, {
+        headers: { Authorization: `Token ${token()}` },
+      });
+      if (!res.ok) { toast.error(ar ? "فشل تصدير PDF" : "PDF export failed"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `leaves_${year}_${statusFilter}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(ar ? "فشل تصدير PDF" : "PDF export failed");
+    }
   };
 
   const CardBtn = ({
@@ -176,7 +200,8 @@ export default function LeavesPage() {
           <p className="text-sm text-muted-foreground">{d.leavesDesc || (ar ? "إدارة طلبات الإجازات والموافقات" : "Manage leave requests")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={exportExcel} className="gap-2"><Download className="w-4 h-4" />{ar ? "تصدير" : "Export"}</Button>
+          <Button variant="outline" onClick={exportExcel} className="gap-2"><Download className="w-4 h-4" />{ar ? "تصدير Excel" : "Export Excel"}</Button>
+          <Button variant="outline" onClick={exportPDF} className="gap-2"><FileText className="w-4 h-4" />{ar ? "تصدير PDF" : "Export PDF"}</Button>
           <Button onClick={() => setShowAdd(true)} className="gap-2"><Plus className="w-4 h-4" />{ar ? "إضافة إجازة" : "Add Leave"}</Button>
         </div>
       </div>
