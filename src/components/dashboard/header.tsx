@@ -248,7 +248,6 @@ export function Header() {
     { key: "termination", href: "/hr/termination", label_ar: "إنهاء الخدمة", label_en: "Termination" },
     { key: "workLocations", href: "/hr/work-locations", label_ar: "مواقع العمل", label_en: "Work Locations" },
     { key: "geofence", href: "/hr/geofence", label_ar: "النطاق الجغرافي", label_en: "Geofence" },
-    { key: "companyPolicies", href: "/hr/company-policies", label_ar: "سياسات الشركة", label_en: "Company Policies" },
     { key: "regulations", href: "/hr/regulations", label_ar: "اللوائح", label_en: "Regulations" },
     { key: "leaveRecall", href: "/hr/leave-recall", label_ar: "استرجاع الإجازات", label_en: "Leave Recall" },
     { key: "flexShift", href: "/hr/flex-shift", label_ar: "الشيفت المرن", label_en: "Flex Shift" },

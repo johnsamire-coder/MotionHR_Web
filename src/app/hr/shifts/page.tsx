@@ -565,7 +565,7 @@ export default function ShiftsPage() {
                             );
                           }
                           if (a.assignment_type === "employee") {
-                            const eName = a.employee_name || employees.find((e) => e.id === a.target_id || e.id === a.employee_id)?.first_name_ar;
+                            const eName = a.target_name || a.employee_name || employees.find((e) => e.id === a.target_id || e.id === a.employee_id)?.full_name;
                             return (
                               <Badge key={a.id} className="bg-slate-100 text-slate-800 border-slate-300 text-[11px] gap-1.5 pr-1.5">
                                 <Users className="w-3 h-3" />
@@ -634,7 +634,12 @@ export default function ShiftsPage() {
                 <Label className="mb-2 block">{ar ? "اختر الفرع *" : "Select Branch *"}</Label>
                 <Select value={selectedTargetId} onValueChange={setSelectedTargetId}>
                   <SelectTrigger>
-                    <SelectValue placeholder={ar ? "اختر الفرع..." : "Select branch..."} />
+                    <SelectValue placeholder={ar ? "اختر الفرع..." : "Select branch..."}>
+                      {(value: string | null) => {
+                        const b = branches.find((x) => String(x.id) === value);
+                        return b ? (b.name_ar || b.name) : (ar ? "اختر الفرع..." : "Select branch...");
+                      }}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {branches.map((b) => (
@@ -652,7 +657,12 @@ export default function ShiftsPage() {
                 <Label className="mb-2 block">{ar ? "اختر القسم *" : "Select Department *"}</Label>
                 <Select value={selectedTargetId} onValueChange={setSelectedTargetId}>
                   <SelectTrigger>
-                    <SelectValue placeholder={ar ? "اختر القسم..." : "Select department..."} />
+                    <SelectValue placeholder={ar ? "اختر القسم..." : "Select department..."}>
+                      {(value: string | null) => {
+                        const d = departments.find((x) => String(x.id) === value);
+                        return d ? (d.name_ar || d.name) : (ar ? "اختر القسم..." : "Select department...");
+                      }}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {departments.map((d) => (
@@ -670,12 +680,18 @@ export default function ShiftsPage() {
                 <Label className="mb-2 block">{ar ? "اختر الموظف *" : "Select Employee *"}</Label>
                 <Select value={selectedTargetId} onValueChange={setSelectedTargetId}>
                   <SelectTrigger>
-                    <SelectValue placeholder={ar ? "اختر الموظف..." : "Select employee..."} />
+                    <SelectValue placeholder={ar ? "اختر الموظف..." : "Select employee..."}>
+                      {(value: string | null) => {
+                        const e = employees.find((x) => String(x.id) === value);
+                        if (!e) return ar ? "اختر الموظف..." : "Select employee...";
+                        return e.full_name || (e.first_name_ar ? `${e.first_name_ar} ${e.last_name_ar || ""}` : e.full_name_ar) || e.user?.username || `ID: ${e.id}`;
+                      }}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {employees.map((e) => (
                       <SelectItem key={e.id} value={String(e.id)}>
-                        {e.first_name_ar ? `${e.first_name_ar} ${e.last_name_ar || ""}` : e.full_name_ar || e.user?.username || `ID: ${e.id}`}
+                        {e.full_name || (e.first_name_ar ? `${e.first_name_ar} ${e.last_name_ar || ""}` : e.full_name_ar) || e.user?.username || `ID: ${e.id}`}
                       </SelectItem>
                     ))}
                   </SelectContent>

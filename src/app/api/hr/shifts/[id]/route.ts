@@ -8,7 +8,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
   const body = await req.text();
   try {
     const res = await fetch(`${DJANGO_URL}/attendance/api/mobile/manager/shifts/${id}/update/`, {
-      method: 'POST',
+      method: 'PUT',
       headers: { 'Authorization': auth, 'Content-Type': 'application/json' },
       body,
     });
@@ -26,7 +26,7 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
   const auth = req.headers.get('authorization') || '';
   try {
     const res = await fetch(`${DJANGO_URL}/attendance/api/mobile/manager/shifts/${id}/delete/`, {
-      method: 'POST',
+      method: 'DELETE',
       headers: { 'Authorization': auth, 'Content-Type': 'application/json' },
     });
     const text = await res.text();
