@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Clock, Loader2, Search, Users } from "lucide-react";
 import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
 export default function ShiftsReportPage() {
+  const router = useRouter();
   const lang = useLangStore((s) => s.lang);
   const ar = lang === "ar";
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
@@ -46,6 +48,9 @@ export default function ShiftsReportPage() {
         <h1 className="text-3xl font-bold tracking-tight">{ar ? "تقرير الشيفتات" : "Shifts Report"}</h1>
         <p className="text-muted-foreground mt-1">{ar ? "توزيع الموظفين على الشيفتات والموظفين بدون شيفت" : "Employee distribution across shifts and employees without shift"}</p>
       </div>
+      <button onClick={() => router.push("/hr/reports")} className="gap-2 inline-flex items-center border rounded-lg px-4 py-2 text-sm font-medium hover:bg-slate-50">
+        {ar ? "رجوع للتقارير" : "Back to Reports"}
+      </button>
 
       <div className="grid grid-cols-3 gap-3">
         {[

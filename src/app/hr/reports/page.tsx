@@ -221,7 +221,7 @@ export default function ReportsHubPage() {
       icon: Zap,
       color: "text-violet-600",
       bgColor: "bg-violet-500/10",
-      href: "/hr/missions",
+      href: "/hr/missions?from=reports",
       status: "ready",
     },
   ];
@@ -244,7 +244,7 @@ export default function ReportsHubPage() {
       icon: TrendingUp,
       color: "text-orange-600",
       bgColor: "bg-orange-500/10",
-      href: "/hr/reports/shifts",
+      href: "/hr/reports/work-hours",
       status: "ready",
     },
     {
@@ -254,7 +254,7 @@ export default function ReportsHubPage() {
       icon: Users,
       color: "text-pink-600",
       bgColor: "bg-pink-500/10",
-      href: "/hr/reports/work-hours",
+      href: "/hr/reports/shifts",
       status: "ready",
     },
     {

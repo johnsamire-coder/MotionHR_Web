@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Calendar, Loader2, Search, Download, FileText } from "lucide-react";
 import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
 export default function LeavesEnhancedReportPage() {
+  const router = useRouter();
   const lang = useLangStore((s) => s.lang);
   const ar = lang === "ar";
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
@@ -69,6 +71,9 @@ export default function LeavesEnhancedReportPage() {
       </div>
 
       <div className="flex items-center gap-2">
+        <button onClick={() => router.push("/hr/reports")} className="gap-2 inline-flex items-center border rounded-lg px-4 py-2 text-sm font-medium hover:bg-slate-50">
+          {ar ? "رجوع للتقارير" : "Back to Reports"}
+        </button>
         <button onClick={() => handleExport("excel")} className="gap-2 inline-flex items-center border rounded-lg px-4 py-2 text-sm font-medium hover:bg-slate-50">
           <Download className="w-4 h-4" />
           {ar ? "تصدير Excel" : "Export Excel"}

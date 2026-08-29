@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   Briefcase, Users, Activity, CheckCircle2, Clock, XCircle,
@@ -185,6 +186,9 @@ const PRIORITY_OPTIONS = [
 ];
 
 export default function MissionsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromReports = searchParams.get("from") === "reports";
   const d = useDict();
   const lang = useLangStore((s) => s.lang);
 
@@ -634,6 +638,11 @@ department: e.department_name || e.department_name_ar || "",
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
+          {fromReports && (
+            <Button variant="outline" size="sm" onClick={() => router.push("/hr/reports")} className="mb-2">
+              {lang === "ar" ? "رجوع للتقارير" : "Back to Reports"}
+            </Button>
+          )}
           <h1 className="text-3xl font-bold tracking-tight">{d.missionsTitle}</h1>
           <p className="text-muted-foreground mt-1">{d.missionsDesc}</p>
         </div>
