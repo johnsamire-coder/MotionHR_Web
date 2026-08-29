@@ -22,7 +22,6 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
-import { exportToExcel, exportToPDF, type ExportColumn } from "@/lib/utils/export-report";
 
 interface MonthlyEmployee {
   employee_id: number;
@@ -155,53 +154,23 @@ export default function MonthlyAttendancePage() {
   };
 
 
-  const handleExport = (format: "pdf" | "excel") => {
-    const columns: ExportColumn[] = [
-      { key: "employee_name", header: d.colEmployee, width: 30 },
-      { key: "employee_code", header: d.empCode, width: 15 },
-      {
-        key: "department",
-        header: d.colDept,
-        width: 25,
-        formatter: (val) => getDeptName(String(val || "")),
-      },
-      { key: "total_checkins", header: d.colCheckins, width: 15 },
-      { key: "total_checkouts", header: d.colCheckouts, width: 15 },
-      { key: "working_days", header: d.colWorkingDays, width: 15 },
-      { key: "total_month_days", header: d.colMonthDays, width: 15 },
-      {
-        key: "working_days",
-        header: d.colAttendanceRate,
-        width: 18,
-        formatter: (val, row) => {
-          const total = Number(row.total_month_days) || 0;
-          const worked = Number(val) || 0;
-          return total > 0 ? `${Math.round((worked / total) * 100)}%` : "0%";
-        },
-      },
-    ];
-
-    const config = {
-      title: d.monthlyAttReportTitle,
-      subtitle: d.monthlyAttReportDesc,
-      companyName: lang === "ar" ? "شركة الإنشاء والمقاولات" : "Construction & Contracting Co.",
-      period: `${monthNames[month - 1]} ${year}`,
-      columns,
-      data: sorted as unknown as Record<string, unknown>[],
-      fileName: `monthly_attendance_${year}_${month}`,
-      lang,
-      summaryStats: [
-        { label: d.totalEmployees, value: data?.total_employees || 0 },
-        { label: d.totalCheckins, value: totalCheckins },
-        { label: d.totalCheckouts, value: totalCheckouts },
-        { label: d.colWorkingDays, value: totalWorkingDays },
-      ],
-    };
-
-    if (format === "pdf") {
-      exportToPDF(config);
-    } else {
-      exportToExcel(config);
+  const handleExport = async (format: "pdf" | "excel") => {
+    try {
+      const res = await fetch(`/api/hr/reports-export/monthly-attendance/${format}?year=${year}&month=${month}`, {
+        headers: { Authorization: authHeader },
+      });
+      if (!res.ok) { toast.error(lang === "ar" ? "فشل التصدير" : "Export failed"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `monthly_attendance_${year}_${month}.${format === "pdf" ? "pdf" : "xlsx"}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(lang === "ar" ? "فشل التصدير" : "Export failed");
     }
   };
 

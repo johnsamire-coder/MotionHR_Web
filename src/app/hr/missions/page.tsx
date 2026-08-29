@@ -3,7 +3,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
-import { standardExport } from "@/lib/utils/export-report";
 import {
   Briefcase, Users, Activity, CheckCircle2, Clock, XCircle,
   Search, Loader2, Plus, MapPin, DollarSign, TrendingUp,
@@ -406,30 +405,42 @@ department: e.department_name || e.department_name_ar || "",
 
   // تصدير CSV
   const handleExport = async () => {
-    const list = (filtered || missions || []).map((m: any) => ({
-      title: m.title || m.name || "",
-      status: m.status || "",
-      employees: Array.isArray(m.employees) ? m.employees.length : (m.assignees_count ?? m.employees_count ?? ""),
-      start_date: m.start_date || m.created_at || "",
-      end_date: m.end_date || "",
-      location: m.location || m.address || "",
-    }));
-    if (!list.length) { toast.error("لا توجد بيانات للتصدير"); return; }
-    await standardExport({
-      title: "تقرير المهمات",
-      fileName: `missions_${new Date().toISOString().slice(0,10)}`,
-      type: "excel",
-      lang: "ar",
-      columns: [
-        { key: "title", header: "المهمة", width: 28 },
-        { key: "status", header: "الحالة", width: 14 },
-        { key: "employees", header: "الموظفين", width: 12 },
-        { key: "start_date", header: "البداية", width: 16 },
-        { key: "end_date", header: "النهاية", width: 16 },
-        { key: "location", header: "الموقع", width: 22 },
-      ],
-      rows: list,
-    });
+    try {
+      const res = await fetch("/api/hr/missions-export/excel", {
+        headers: { Authorization: authHeader },
+      });
+      if (!res.ok) { toast.error("فشل تصدير Excel"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "missions.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("فشل تصدير Excel");
+    }
+  };
+  const handleExportPDF = async () => {
+    try {
+      const res = await fetch("/api/hr/missions-export/pdf", {
+        headers: { Authorization: authHeader },
+      });
+      if (!res.ok) { toast.error("فشل تصدير PDF"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "missions.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("فشل تصدير PDF");
+    }
   };
 
   // إضافة موظف للمهمة
@@ -634,7 +645,16 @@ department: e.department_name || e.department_name_ar || "",
             disabled={loading}
           >
             <Download className="w-4 h-4" />
-            تصدير CSV
+            تصدير Excel
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleExportPDF}
+            className="gap-2"
+            disabled={loading}
+          >
+            <FileText className="w-4 h-4" />
+            تصدير PDF
           </Button>
           <Button
             onClick={() => setCreateDialog(true)}

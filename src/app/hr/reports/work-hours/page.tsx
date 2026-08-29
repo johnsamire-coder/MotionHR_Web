@@ -23,7 +23,6 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
-import { exportToExcel, exportToPDF, type ExportColumn } from "@/lib/utils/export-report";
 
 interface DailyBreakdown {
   date: string;
@@ -170,52 +169,23 @@ export default function WorkHoursReportPage() {
   };
 
 
-  const handleExport = (format: "pdf" | "excel") => {
-    const columns: ExportColumn[] = [
-      { key: "employee_name", header: d.colEmployee, width: 30 },
-      { key: "employee_code", header: d.empCode, width: 15 },
-      {
-        key: "department",
-        header: d.colDept,
-        width: 25,
-        formatter: (val) => getDeptName(String(val || "")),
-      },
-      {
-        key: "total_hours",
-        header: d.colTotalHours,
-        width: 18,
-        formatter: (val) => Number(val || 0).toFixed(1),
-      },
-      { key: "total_days_worked", header: d.colDaysWorked, width: 15 },
-      {
-        key: "average_hours_per_day",
-        header: d.colAvgHours,
-        width: 18,
-        formatter: (val) => Number(val || 0).toFixed(1),
-      },
-    ];
-
-    const config = {
-      title: d.workHoursReportTitle,
-      subtitle: d.workHoursReportDesc,
-      companyName: lang === "ar" ? "شركة الإنشاء والمقاولات" : "Construction & Contracting Co.",
-      period: `${monthNames[month - 1]} ${year}`,
-      columns,
-      data: sorted as unknown as Record<string, unknown>[],
-      fileName: `work_hours_${year}_${month}`,
-      lang,
-      summaryStats: [
-        { label: d.totalEmployees, value: data?.total_employees || 0 },
-        { label: d.totalHoursMonth, value: totalHours.toFixed(1) },
-        { label: d.totalDaysWorked, value: totalDaysWorked },
-        { label: d.avgHoursPerDay, value: avgHours },
-      ],
-    };
-
-    if (format === "pdf") {
-      exportToPDF(config);
-    } else {
-      exportToExcel(config);
+  const handleExport = async (format: "pdf" | "excel") => {
+    try {
+      const res = await fetch(`/api/hr/reports-export/work-hours/${format}?year=${year}&month=${month}`, {
+        headers: { Authorization: authHeader },
+      });
+      if (!res.ok) { toast.error(lang === "ar" ? "فشل التصدير" : "Export failed"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `work_hours_${year}_${month}.${format === "pdf" ? "pdf" : "xlsx"}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(lang === "ar" ? "فشل التصدير" : "Export failed");
     }
   };
 

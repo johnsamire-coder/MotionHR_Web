@@ -23,7 +23,6 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
-import { exportToExcel, exportToPDF, type ExportColumn } from "@/lib/utils/export-report";
 
 interface AbsenceEmployee {
   employee_id: number;
@@ -162,52 +161,23 @@ export default function AbsenceReportPage() {
   };
 
 
-  const handleExport = (format: "pdf" | "excel") => {
-    const columns: ExportColumn[] = [
-      { key: "employee_name", header: d.colEmployee, width: 30 },
-      { key: "employee_code", header: d.empCode, width: 15 },
-      {
-        key: "department",
-        header: d.colDept,
-        width: 25,
-        formatter: (val) => getDeptName(String(val || "")),
-      },
-      { key: "total_working_days", header: d.workingDays, width: 15 },
-      { key: "attended_days", header: d.colAttendedDays, width: 15 },
-      { key: "absent_days", header: d.colAbsentDays, width: 15 },
-      {
-        key: "absent_days",
-        header: d.absenceRate,
-        width: 18,
-        formatter: (val, row) => {
-          const total = Number(row.total_working_days) || 0;
-          const absent = Number(val) || 0;
-          const rate = total > 0 ? Math.round((absent / total) * 100) : 0;
-          return `${rate}%`;
-        },
-      },
-    ];
-
-    const config = {
-      title: d.absenceReportTitle,
-      subtitle: d.absenceReportDesc,
-      companyName: lang === "ar" ? "شركة الإنشاء والمقاولات" : "Construction & Contracting Co.",
-      period: data ? `${data.from} → ${data.to}` : "",
-      columns,
-      data: filtered as unknown as Record<string, unknown>[],
-      fileName: `absence_${year}_${month}`,
-      lang,
-      summaryStats: [
-        { label: d.totalWorkingDaysInMonth, value: data?.total_working_days_in_month || 0 },
-        { label: d.totalEmployeesWithAbsence, value: data?.total_employees_with_absence || 0 },
-        { label: d.totalAbsenceDays, value: totalAbsenceDays },
-      ],
-    };
-
-    if (format === "pdf") {
-      exportToPDF(config);
-    } else {
-      exportToExcel(config);
+  const handleExport = async (format: "pdf" | "excel") => {
+    try {
+      const res = await fetch(`/api/hr/reports-export/absence/${format}?year=${year}&month=${month}`, {
+        headers: { Authorization: authHeader },
+      });
+      if (!res.ok) { toast.error(lang === "ar" ? "فشل التصدير" : "Export failed"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `absence_${year}_${month}.${format === "pdf" ? "pdf" : "xlsx"}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(lang === "ar" ? "فشل التصدير" : "Export failed");
     }
   };
 
