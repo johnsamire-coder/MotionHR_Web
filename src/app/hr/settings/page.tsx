@@ -117,11 +117,17 @@ export default function SettingsPage() {
     }
   };
 
+  const applyTheme = (theme: string) => {
+    if (typeof document === "undefined") return;
+    const isDark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.classList.toggle("dark", isDark);
+  };
   const handleSavePrefs = () => {
     // نحفظ في localStorage
     if (typeof window !== "undefined") {
       localStorage.setItem("motionhr_prefs", JSON.stringify(prefs));
     }
+    applyTheme(prefs.theme);
     toast.success(d.prefsSaved);
   };
 
