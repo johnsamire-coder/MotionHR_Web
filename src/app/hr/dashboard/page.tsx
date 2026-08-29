@@ -70,23 +70,36 @@ export default function HRDashboard() {
           <p className="text-slate-600">نظرة شاملة على أداء الموارد البشرية</p>
         </div>
 
-        <Card className="bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200 cursor-pointer hover:shadow-lg transition-all" onClick={() => navigateTo('/hr/requests')}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-amber-100 rounded-full"><Bell className="w-6 h-6 text-amber-600" /></div>
-                <div>
-                  <h3 className="text-lg font-semibold text-amber-800">الطلبات المعلقة</h3>
-                  <p className="text-amber-600">تحتاج لمراجعتك</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card className="bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200 cursor-pointer hover:shadow-lg transition-all" onClick={() => navigateTo('/hr/requests')}>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-amber-100 rounded-full"><Bell className="w-6 h-6 text-amber-600" /></div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-amber-800">الطلبات المعلقة</h3>
+                    <p className="text-amber-600 text-sm">تحتاج لمراجعتك</p>
+                  </div>
                 </div>
+                <div className="text-3xl font-bold text-amber-600">{decisions.pending_requests || 0}</div>
               </div>
-              <div className="text-left">
-                <div className="text-3xl font-bold text-amber-600">{(decisions.pending_requests || 0) + (decisions.pending_leaves || 0)}</div>
-                <p className="text-sm text-amber-600">{decisions.pending_requests || 0} طلبات • {decisions.pending_leaves || 0} إجازات</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-r from-sky-50 to-blue-50 border-sky-200 cursor-pointer hover:shadow-lg transition-all" onClick={() => navigateTo('/hr/leaves')}>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-sky-100 rounded-full"><Calendar className="w-6 h-6 text-sky-600" /></div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-sky-800">الإجازات المعلقة</h3>
+                    <p className="text-sky-600 text-sm">تحتاج لمراجعتك</p>
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-sky-600">{decisions.pending_leaves || 0}</div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
         <div>
           <h2 className="text-xl font-semibold text-slate-800 mb-4 flex items-center gap-2"><TrendingUp className="w-5 h-5" /> نبض الشركة النهاردة</h2>

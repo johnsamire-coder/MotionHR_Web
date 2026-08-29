@@ -73,6 +73,12 @@ export default function ShiftsPage() {
   const [assignShift, setAssignShift] = useState<Shift | null>(null);
   const [assignmentType, setAssignmentType] = useState<"company" | "branch" | "department" | "employee">("branch");
   const [selectedTargetId, setSelectedTargetId] = useState<string>("");
+  const [selectedTargetIds, setSelectedTargetIds] = useState<string[]>([]);
+  const toggleTargetId = (id: string) => {
+    setSelectedTargetIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
   const [startDate, setStartDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [endDate, setEndDate] = useState<string>("");
   const [isAssigning, setIsAssigning] = useState(false);
@@ -237,57 +243,67 @@ export default function ShiftsPage() {
     setAssignShift(shift);
     setAssignmentType("branch");
     setSelectedTargetId("");
+    setSelectedTargetIds([]);
     setStartDate(new Date().toISOString().split("T")[0]);
     setEndDate("");
   };
 
   const handleAssignSubmit = async () => {
     if (!assignShift) return;
-    if (assignmentType !== "company" && !selectedTargetId) {
-      toast.error(ar ? "يرجى تحديد جهة التعيين" : "Please select target");
+    if (assignmentType !== "company" && selectedTargetIds.length === 0) {
+      toast.error(ar ? "يرجى تحديد جهة تعيين واحدة على الأقل" : "Please select at least one target");
       return;
     }
-
     setIsAssigning(true);
     const authHeader = getAuthHeader();
-
-    const payload: any = {
-      shift_id: assignShift.id,
-      start_date: startDate,
-      end_date: endDate || null,
-    };
-
-    if (assignmentType === "branch") {
-      payload.branch_id = selectedTargetId;
-    } else if (assignmentType === "department") {
-      payload.department_id = selectedTargetId;
-    } else if (assignmentType === "employee") {
-      payload.employee_id = selectedTargetId;
-    }
-
-    try {
-      const res = await fetch("/api/hr/shifts/assign", {
-        method: "POST",
-        headers: {
-          Authorization: authHeader,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        toast.success(ar ? "تم تعيين الشيفت بنجاح" : "Shift assigned successfully");
-        setAssignShift(null);
-        loadAllData();
-      } else {
-        toast.error(data.error || (ar ? "فشل تعيين الشيفت" : "Failed to assign shift"));
+    const targets = assignmentType === "company" ? [""] : selectedTargetIds;
+    let successCount = 0;
+    let failCount = 0;
+    for (const targetId of targets) {
+      const payload: any = {
+        shift_id: assignShift.id,
+        start_date: startDate,
+        end_date: endDate || null,
+      };
+      if (assignmentType === "branch") {
+        payload.branch_id = targetId;
+      } else if (assignmentType === "department") {
+        payload.department_id = targetId;
+      } else if (assignmentType === "employee") {
+        payload.employee_id = targetId;
       }
-    } catch {
-      toast.error(ar ? "خطأ في الاتصال" : "Network error");
-    } finally {
-      setIsAssigning(false);
+      try {
+        const res = await fetch("/api/hr/shifts/assign", {
+          method: "POST",
+          headers: {
+            Authorization: authHeader,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch {
+        failCount++;
+      }
     }
+    if (successCount > 0) {
+      const suffix = failCount > 0 ? (ar ? ` (فشل ${failCount})` : ` (${failCount} failed)`) : "";
+      toast.success(
+        ar
+          ? `تم تعيين الشيفت لـ ${successCount} ${successCount > 1 ? "عناصر" : "عنصر"} بنجاح${suffix}`
+          : `Shift assigned to ${successCount} item(s)${suffix}`
+      );
+      setAssignShift(null);
+      loadAllData();
+    } else {
+      toast.error(ar ? "فشل تعيين الشيفت" : "Failed to assign shift");
+    }
+    setIsAssigning(false);
   };
 
   const resetForm = () => {
@@ -617,7 +633,7 @@ export default function ShiftsPage() {
           <div className="space-y-4 py-2">
             <div>
               <Label className="mb-2 block">{ar ? "نوع التخصيص" : "Assignment Scope"}</Label>
-              <Select value={assignmentType} onValueChange={(v: any) => { setAssignmentType(v); setSelectedTargetId(""); }}>
+              <Select value={assignmentType} onValueChange={(v: any) => { setAssignmentType(v); setSelectedTargetId(""); setSelectedTargetIds([]); }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -628,74 +644,70 @@ export default function ShiftsPage() {
                 </SelectContent>
               </Select>
             </div>
-
             {assignmentType === "branch" && (
               <div>
-                <Label className="mb-2 block">{ar ? "اختر الفرع *" : "Select Branch *"}</Label>
-                <Select value={selectedTargetId} onValueChange={setSelectedTargetId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={ar ? "اختر الفرع..." : "Select branch..."}>
-                      {(value: string | null) => {
-                        const b = branches.find((x) => String(x.id) === value);
-                        return b ? (b.name_ar || b.name) : (ar ? "اختر الفرع..." : "Select branch...");
-                      }}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {branches.map((b) => (
-                      <SelectItem key={b.id} value={String(b.id)}>
-                        {b.name_ar || b.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="mb-2 block">{ar ? "اختر فرع أو أكثر *" : "Select one or more branches *"}</Label>
+                <div className="flex flex-wrap gap-2 border rounded-lg p-3">
+                  {branches.map((b) => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => toggleTargetId(String(b.id))}
+                      className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                        selectedTargetIds.includes(String(b.id))
+                          ? "bg-brand-primary text-white border-brand-primary"
+                          : "bg-background hover:bg-muted"
+                      }`}
+                    >
+                      {b.name_ar || b.name}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
-
             {assignmentType === "department" && (
               <div>
-                <Label className="mb-2 block">{ar ? "اختر القسم *" : "Select Department *"}</Label>
-                <Select value={selectedTargetId} onValueChange={setSelectedTargetId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={ar ? "اختر القسم..." : "Select department..."}>
-                      {(value: string | null) => {
-                        const d = departments.find((x) => String(x.id) === value);
-                        return d ? (d.name_ar || d.name) : (ar ? "اختر القسم..." : "Select department...");
-                      }}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((d) => (
-                      <SelectItem key={d.id} value={String(d.id)}>
-                        {d.name_ar || d.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="mb-2 block">{ar ? "اختر قسم أو أكثر *" : "Select one or more departments *"}</Label>
+                <div className="flex flex-wrap gap-2 border rounded-lg p-3">
+                  {departments.map((d) => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => toggleTargetId(String(d.id))}
+                      className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                        selectedTargetIds.includes(String(d.id))
+                          ? "bg-brand-primary text-white border-brand-primary"
+                          : "bg-background hover:bg-muted"
+                      }`}
+                    >
+                      {d.name_ar || d.name}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
-
             {assignmentType === "employee" && (
               <div>
-                <Label className="mb-2 block">{ar ? "اختر الموظف *" : "Select Employee *"}</Label>
-                <Select value={selectedTargetId} onValueChange={setSelectedTargetId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={ar ? "اختر الموظف..." : "Select employee..."}>
-                      {(value: string | null) => {
-                        const e = employees.find((x) => String(x.id) === value);
-                        if (!e) return ar ? "اختر الموظف..." : "Select employee...";
-                        return e.full_name || (e.first_name_ar ? `${e.first_name_ar} ${e.last_name_ar || ""}` : e.full_name_ar) || e.user?.username || `ID: ${e.id}`;
-                      }}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {employees.map((e) => (
-                      <SelectItem key={e.id} value={String(e.id)}>
-                        {e.full_name || (e.first_name_ar ? `${e.first_name_ar} ${e.last_name_ar || ""}` : e.full_name_ar) || e.user?.username || `ID: ${e.id}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="mb-2 block">{ar ? "اختر موظف أو أكثر *" : "Select one or more employees *"}</Label>
+                <div className="flex flex-wrap gap-2 border rounded-lg p-3 max-h-64 overflow-y-auto">
+                  {employees.map((e) => {
+                    const label = e.full_name || (e.first_name_ar ? `${e.first_name_ar} ${e.last_name_ar || ""}` : e.full_name_ar) || e.user?.username || `ID: ${e.id}`;
+                    return (
+                      <button
+                        key={e.id}
+                        type="button"
+                        onClick={() => toggleTargetId(String(e.id))}
+                        className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                          selectedTargetIds.includes(String(e.id))
+                            ? "bg-brand-primary text-white border-brand-primary"
+                            : "bg-background hover:bg-muted"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
