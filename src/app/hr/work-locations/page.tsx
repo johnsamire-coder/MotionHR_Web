@@ -286,6 +286,45 @@ export default function WorkLocationsPage() {
     }
   };
 
+  const handleApproveLocation = async (loc: WorkLocation) => {
+    try {
+      const res = await fetch(`/api/hr/work-locations/${loc.id}/approve`, {
+        method: "POST",
+        headers: { Authorization: authHeader, "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (res.ok && data.success !== false) {
+        toast.success(ar ? "تم اعتماد موقع العمل بنجاح" : "Location approved");
+        loadData();
+      } else {
+        toast.error(data.message || (ar ? "فشل الاعتماد" : "Approval failed"));
+      }
+    } catch {
+      toast.error(ar ? "خطأ في الاتصال بالسيرفر" : "Connection error");
+    }
+  };
+
+  const handleRejectLocation = async (loc: WorkLocation) => {
+    const reason = prompt(ar ? "أدخل سبب الرفض:" : "Enter rejection reason:");
+    try {
+      const res = await fetch(`/api/hr/work-locations/${loc.id}/approve`, {
+        method: "POST",
+        headers: { Authorization: authHeader, "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: reason.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success !== false) {
+        toast.success(ar ? "تم رفض الموقع" : "Location rejected");
+        loadData();
+      } else {
+        toast.error(data.message || (ar ? "فشل الرفض" : "Rejection failed"));
+      }
+    } catch {
+      toast.error(ar ? "خطأ في الاتصال بالسيرفر" : "Connection error");
+    }
+  };
+
   const handleDeleteLocation = async (loc: WorkLocation) => {
     if (!confirm(ar ? `حذف "${loc.name}"؟` : `Delete "${loc.name}"?`)) return;
     try {
@@ -429,24 +468,49 @@ export default function WorkLocationsPage() {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex gap-2 mt-3 pt-3 border-t">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 gap-1"
-                        onClick={() => openAssignEmployees(loc)}
-                      >
-                        <Users className="w-3 h-3" />
-                        {ar ? "تعيين موظفين" : "Assign"}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 hover:bg-red-50 gap-1"
-                        onClick={() => handleDeleteLocation(loc)}
-                      >
-                        🗑️
-                      </Button>
+                    <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t items-center justify-between">
+                      {loc.status && loc.status.startsWith('pending') ? (
+                        <div className="flex gap-2 w-full mb-2">
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white gap-1 text-xs"
+                            onClick={() => handleApproveLocation(loc)}
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            {ar ? "قبول واعتماد" : "Accept & Approve"}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 border-rose-300 text-rose-700 hover:bg-rose-50 gap-1 text-xs"
+                            onClick={() => handleRejectLocation(loc)}
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            {ar ? "رفض" : "Reject"}
+                          </Button>
+                        </div>
+                      ) : null}
+
+                      <div className="flex gap-2 w-full">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 gap-1 text-xs"
+                          onClick={() => openAssignEmployees(loc)}
+                        >
+                          <Users className="w-3.5 h-3.5" />
+                          {ar ? "تعيين موظفين" : "Assign Employees"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-rose-600 border-rose-200 hover:bg-rose-50 px-2.5"
+                          title={ar ? "حذف الموقع" : "Delete Location"}
+                          onClick={() => handleDeleteLocation(loc)}
+                        >
+                          🗑️
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
