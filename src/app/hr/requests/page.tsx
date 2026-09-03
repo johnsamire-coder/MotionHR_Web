@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { standardExport } from "@/lib/utils/export-report";
 import {
   FileText, Calendar, Activity, CheckCircle2, Clock, XCircle,
   Search, Filter, Loader2, Users, Download, Building2,
@@ -98,6 +99,31 @@ function StatCard({
     </Card>
   );
 }
+
+const handleStandardRequestsExport = async (rowsInput?: any[]) => {
+    const list = (rowsInput || filtered || requests || []).map((r: any) => ({
+      employee_name: r.employee_name || r.employee || "",
+      request_type: r.request_type_name || r.type_name || r.request_type || "",
+      status: r.status || "",
+      created_at: r.created_at || r.date || "",
+      reason: r.reason || r.notes || "",
+    }));
+    if (!list.length) { toast.error("لا توجد طلبات للتصدير"); return; }
+    await standardExport({
+      title: "تقرير الطلبات",
+      fileName: `requests_${new Date().toISOString().slice(0,10)}`,
+      type: "excel",
+      lang: "ar",
+      columns: [
+        { key: "employee_name", header: "الموظف", width: 22 },
+        { key: "request_type", header: "نوع الطلب", width: 22 },
+        { key: "status", header: "الحالة", width: 12 },
+        { key: "created_at", header: "التاريخ", width: 16 },
+        { key: "reason", header: "السبب", width: 28 },
+      ],
+      rows: list,
+    });
+  };
 
 export default function RequestsPage() {
   const d = useDict();
@@ -587,6 +613,7 @@ export default function RequestsPage() {
     </div>
   );
 }
+
 
 
 

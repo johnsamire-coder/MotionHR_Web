@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
+import { standardExport } from "@/lib/utils/export-report";
 import {
   Play, CheckCircle2, Loader2, Plus, Eye, Calendar,
   Users, DollarSign, AlertCircle, Download, FileSpreadsheet,
@@ -199,183 +200,55 @@ export default function PayrollRunsPage() {
   };
 
   // 1. التصدير النظيف للإكسيل (HTML-Based XLS)
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (!selectedRun || !selectedRun.lines || selectedRun.lines.length === 0) {
-      toast.error(ar ? "لا توجد بيانات للتصدير." : "No data to export.");
+      toast.error(ar ? "لا توجد بيانات موظفين للتصدير في هذا المسير." : "No employee lines to export.");
       return;
     }
-
-    const title = `مسير رواتب ${MONTHS_AR[selectedRun.month]} ${selectedRun.year}`;
-    
-    let tableHtml = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-      <head>
-        <meta charset="utf-8" />
-        <style>
-          table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }
-          th, td { border: 1px solid #dddddd; padding: 8px; text-align: center; }
-          th { background-color: #4A148C; color: white; font-weight: bold; }
-          .net { color: #1B5E20; font-weight: bold; background-color: #E8F5E9; }
-          .deduct { color: #B71C1C; }
-        </style>
-      </head>
-      <body dir="${ar ? 'rtl' : 'ltr'}">
-        <h2>${title}</h2>
-        <table>
-          <tr>
-            <th>م</th>
-            <th>اسم الموظف</th>
-            <th>الأساسي</th>
-            <th>البدلات والمكافآت</th>
-            <th>الأوفرتايم</th>
-            <th>الاستقطاعات</th>
-            <th>صافي الراتب</th>
-            <th>أيام الحضور</th>
-            <th>أيام الغياب</th>
-          </tr>
-    `;
-
-    selectedRun.lines.forEach((l, i) => {
-      tableHtml += `
-        <tr>
-          <td>${i + 1}</td>
-          <td>${l.employee_name}</td>
-          <td>${l.basic_salary}</td>
-          <td>${Number(l.allowances_total) + Number(l.bonuses_total)}</td>
-          <td>${l.overtime_total || 0}</td>
-          <td class="deduct">${l.total_deductions}</td>
-          <td class="net">${l.net_salary}</td>
-          <td>${l.attended_days}</td>
-          <td>${l.absent_days}</td>
-        </tr>
-      `;
+    await standardExport({
+      title: ar ? `مسير رواتب ${MONTHS_AR[selectedRun.month]} ${selectedRun.year}` : `Payroll Run ${selectedRun.month}/${selectedRun.year}`,
+      period: `${selectedRun.month}/${selectedRun.year}`,
+      fileName: `payroll_run_${selectedRun.year}_${selectedRun.month}`,
+      type: "excel",
+      lang: ar ? "ar" : "en",
+      columns: [
+        { key: "employee_name", header: ar ? "الموظف" : "Employee", width: 24 },
+        { key: "basic_salary", header: ar ? "الأساسي" : "Basic", width: 12 },
+        { key: "allowances_total", header: ar ? "البدلات" : "Allowances", width: 12 },
+        { key: "overtime_total", header: ar ? "إضافي" : "OT", width: 10 },
+        { key: "total_deductions", header: ar ? "الخصومات" : "Deductions", width: 12 },
+        { key: "net_salary", header: ar ? "الصافي" : "Net", width: 12 },
+        { key: "attended_days", header: ar ? "حضور" : "Att", width: 8 },
+        { key: "absent_days", header: ar ? "غياب" : "Abs", width: 8 },
+      ],
+      rows: selectedRun.lines as unknown as Record<string, unknown>[],
+      summaryStats: [{ label: ar ? "إجمالي الصافي" : "Grand Net", value: selectedRun.grand_net || 0 }],
     });
-
-    tableHtml += `
-          <tr>
-            <td colspan="6" style="text-align: left; font-weight: bold; font-size: 16px;">إجمالي الصافي:</td>
-            <td class="net" style="font-size: 16px;">${selectedRun.grand_net}</td>
-            <td colspan="2"></td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    `;
-
-    const blob = new Blob([tableHtml], { type: "application/vnd.ms-excel" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${title}.xls`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   // 2. التصدير المباشر لـ PDF بدون Pop-up Blocker (باستخدام Iframe مخفي)
-  const handlePrintPDF = () => {
-    if (!selectedRun || !selectedRun.lines) return;
-
-    const title = `كشف مسير رواتب - ${MONTHS_AR[selectedRun.month]} ${selectedRun.year}`;
-    
-    // إنشاء إطار طباعة مخفي داخل نفس الصفحة لمنع الحظر
-    const iframe = document.createElement("iframe");
-    iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
-    iframe.style.border = "0";
-    document.body.appendChild(iframe);
-
-    let html = `
-      <!DOCTYPE html>
-      <html dir="${ar ? 'rtl' : 'ltr'}">
-      <head>
-        <title>${title}</title>
-        <meta charset="utf-8" />
-        <style>
-          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; color: #333; }
-          .header { text-align: center; margin-bottom: 25px; border-bottom: 3px solid #1A0A3E; padding-bottom: 12px; }
-          .header h1 { color: #1A0A3E; margin: 0 0 8px 0; font-size: 24px; }
-          .meta { display: flex; justify-content: space-between; font-size: 14px; color: #555; margin-bottom: 20px; font-weight: bold; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; }
-          th, td { border: 1px solid #ccc; padding: 8px 6px; text-align: center; }
-          th { background-color: #1A0A3E; color: white; font-weight: bold; }
-          tr:nth-child(even) { background-color: #f9f9f9; }
-          .net-col { font-weight: bold; color: #15803d; background-color: #f0fdf4; }
-          .deduct-col { color: #b91c1c; }
-          .footer { margin-top: 25px; text-align: right; padding: 15px; background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; font-size: 18px; font-weight: bold; color: #15803d; }
-          @media print {
-            body { padding: 0; }
-            @page { margin: 1cm; size: A4 landscape; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>MotionHR — ${title}</h1>
-        </div>
-        <div class="meta">
-          <span>حالة المسير: ${selectedRun.status === 'approved' ? 'معتمد رسمياً' : 'مسودة'}</span>
-          <span>عدد الموظفين: ${selectedRun.total_employees} موظف</span>
-          <span>التاريخ: ${new Date().toLocaleDateString('ar-EG')}</span>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>م</th>
-              <th>اسم الموظف</th>
-              <th>الأساسي</th>
-              <th>البدلات والمكافآت</th>
-              <th>الإضافي</th>
-              <th>الاستقطاعات</th>
-              <th>صافي الراتب</th>
-              <th>الحضور / الغياب</th>
-            </tr>
-          </thead>
-          <tbody>
-    `;
-
-    selectedRun.lines.forEach((l, i) => {
-      html += `
-            <tr>
-              <td>${i + 1}</td>
-              <td><strong>${l.employee_name}</strong></td>
-              <td>${l.basic_salary} EGP</td>
-              <td>+${Number(l.allowances_total) + Number(l.bonuses_total)} EGP</td>
-              <td>+${l.overtime_total || 0} EGP</td>
-              <td class="deduct-col">-${l.total_deductions} EGP</td>
-              <td class="net-col">${l.net_salary} EGP</td>
-              <td>حضور: ${l.attended_days} | غياب: ${l.absent_days}</td>
-            </tr>
-      `;
-    });
-
-    html += `
-          </tbody>
-        </table>
-        <div class="footer">
-          إجمالي صافي المسير المستحق: ${selectedRun.grand_net} EGP
-        </div>
-      </body>
-      </html>
-    `;
-
-    const doc = iframe.contentWindow?.document;
-    if (doc) {
-      doc.open();
-      doc.write(html);
-      doc.close();
-
-      setTimeout(() => {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-        setTimeout(() => {
-          document.body.removeChild(iframe);
-        }, 1000);
-      }, 300);
+  const handlePrintPDF = async () => {
+    if (!selectedRun || !selectedRun.lines || selectedRun.lines.length === 0) {
+      toast.error(ar ? "لا توجد بيانات للطباعة" : "No data");
+      return;
     }
+    await standardExport({
+      title: ar ? `مسير رواتب ${MONTHS_AR[selectedRun.month]} ${selectedRun.year}` : `Payroll Run ${selectedRun.month}/${selectedRun.year}`,
+      period: `${selectedRun.month}/${selectedRun.year}`,
+      fileName: `payroll_run_${selectedRun.year}_${selectedRun.month}`,
+      type: "pdf",
+      lang: ar ? "ar" : "en",
+      columns: [
+        { key: "employee_name", header: ar ? "الموظف" : "Employee", width: 24 },
+        { key: "basic_salary", header: ar ? "الأساسي" : "Basic", width: 12 },
+        { key: "allowances_total", header: ar ? "البدلات" : "Allowances", width: 12 },
+        { key: "overtime_total", header: ar ? "إضافي" : "OT", width: 10 },
+        { key: "total_deductions", header: ar ? "الخصومات" : "Deductions", width: 12 },
+        { key: "net_salary", header: ar ? "الصافي" : "Net", width: 12 },
+      ],
+      rows: selectedRun.lines as unknown as Record<string, unknown>[],
+      summaryStats: [{ label: ar ? "إجمالي الصافي" : "Grand Net", value: selectedRun.grand_net || 0 }],
+    });
   };
 
   return (
@@ -589,3 +462,4 @@ export default function PayrollRunsPage() {
     </div>
   );
 }
+

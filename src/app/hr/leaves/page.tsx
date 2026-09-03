@@ -18,6 +18,7 @@ import {
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 import { AddLeaveDialog } from "@/components/hr/add-leave-dialog";
+import { standardExport } from "@/lib/utils/export-report";
 
 interface LeaveRow {
   id: number;
@@ -123,22 +124,34 @@ export default function LeavesPage() {
     return s;
   };
 
-  const exportExcel = () => {
+    const exportExcel = async () => {
     if (!filtered.length) {
       toast.error(ar ? "لا توجد بيانات" : "No data");
       return;
     }
-    const title = ar ? `الإجازات_${year}` : `leaves_${year}`;
-    let html = `<html><head><meta charset="utf-8" /></head><body dir="rtl"><h2>${title}</h2><table border="1"><tr><th>م</th><th>الموظف</th><th>القسم</th><th>النوع</th><th>من</th><th>إلى</th><th>أيام</th><th>الحالة</th></tr>`;
-    filtered.forEach((l, i) => {
-      html += `<tr><td>${i + 1}</td><td>${l.employee_name}</td><td>${l.department || ""}</td><td>${l.leave_type || ""}</td><td>${l.from_date || ""}</td><td>${l.to_date || ""}</td><td>${l.days ?? ""}</td><td>${statusLabel(l.status)}</td></tr>`;
+    await standardExport({
+      title: ar ? "تقرير الإجازات" : "Leaves Report",
+      period: statusFilter === "pending" ? (ar ? "كل الطلبات المعلقة" : "All pending") : `${month}/${year}`,
+      fileName: `leaves_${year}_${statusFilter}`,
+      type: "excel",
+      lang: ar ? "ar" : "en",
+      columns: [
+        { key: "employee_name", header: ar ? "الموظف" : "Employee", width: 24 },
+        { key: "department", header: ar ? "القسم" : "Department", width: 18 },
+        { key: "leave_type", header: ar ? "النوع" : "Type", width: 16 },
+        { key: "from_date", header: ar ? "من" : "From", width: 14 },
+        { key: "to_date", header: ar ? "إلى" : "To", width: 14 },
+        { key: "days", header: ar ? "أيام" : "Days", width: 10 },
+        { key: "status", header: ar ? "الحالة" : "Status", width: 12, formatter: (v) => statusLabel(String(v || "")) },
+      ],
+      rows: filtered as unknown as Record<string, unknown>[],
+      summaryStats: [
+        { label: ar ? "الإجمالي" : "Total", value: stats.total },
+        { label: ar ? "معلق" : "Pending", value: stats.pending },
+        { label: ar ? "مقبول" : "Approved", value: stats.approved },
+        { label: ar ? "مرفوض" : "Rejected", value: stats.rejected },
+      ],
     });
-    html += "</table></body></html>";
-    const blob = new Blob([html], { type: "application/vnd.ms-excel" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${title}.xls`;
-    a.click();
   };
 
   const CardBtn = ({
@@ -259,3 +272,4 @@ export default function LeavesPage() {
     </div>
   );
 }
+

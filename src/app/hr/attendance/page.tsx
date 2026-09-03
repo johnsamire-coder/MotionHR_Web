@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { standardExport } from "@/lib/utils/export-report";
 import {
   Clock, UserCheck, UserX, Calendar, Briefcase, AlertCircle,
   Search, Filter, Loader2, ChevronLeft, ChevronRight,
@@ -97,38 +98,33 @@ function StatCard({
 }
 
 export default function AttendancePage() {
-  const handleExportAttendance = () => {
-    const escapeCsv = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-
-    const header = lang === "ar"
-      ? ["الموظف", "القسم", "Ø§Ù„ÙØ±Ø¹", "الحالة", "الحضور", "الانصراف", "ساعات العمل", "دقائق التأخير", "Ø¥Ø¶Ø§ÙÙŠ"]
-      : ["Employee", "Department", "Branch", "Status", "Check In", "Check Out", "Work Hours", "Late Minutes", "Overtime"];
-
-    const rows = filtered.map(e => [
-      e.employee_name,
-      e.department,
-      e.branch,
-      e.status,
-      e.check_in || "",
-      e.check_out || "",
-      e.work_hours,
-      e.late_minutes,
-      e.overtime_hours,
-    ]);
-
-    const csv = "\uFEFF" + [header, ...rows]
-      .map(row => row.map(escapeCsv).join(","))
-      .join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `attendance_${selectedDate}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+  const handleExportAttendance = async () => {
+    const rows = (filteredData || data || []).map((r: any) => ({
+      employee_name: r.employee_name || r.name || "",
+      department: r.department_name || r.department || "",
+      status: r.status || "",
+      check_in: r.check_in || r.check_in_time || "",
+      check_out: r.check_out || r.check_out_time || "",
+      late_minutes: r.late_minutes ?? r.total_late_minutes ?? "",
+      work_hours: r.work_hours ?? r.total_work_hours ?? "",
+    }));
+    if (!rows.length) { toast.error("لا توجد بيانات للتصدير"); return; }
+    await standardExport({
+      title: "تقرير الحضور اليومي",
+      fileName: `attendance_${new Date().toISOString().slice(0,10)}`,
+      type: "excel",
+      lang: "ar",
+      columns: [
+        { key: "employee_name", header: "الموظف", width: 22 },
+        { key: "department", header: "القسم", width: 18 },
+        { key: "status", header: "الحالة", width: 12 },
+        { key: "check_in", header: "حضور", width: 12 },
+        { key: "check_out", header: "انصراف", width: 12 },
+        { key: "late_minutes", header: "تأخير (د)", width: 12 },
+        { key: "work_hours", header: "ساعات العمل", width: 14 },
+      ],
+      rows,
+    });
   };
 
   const handleMonthlyReport = () => {
@@ -709,5 +705,6 @@ export default function AttendancePage() {
     </div>
   );
 }
+
 
 
