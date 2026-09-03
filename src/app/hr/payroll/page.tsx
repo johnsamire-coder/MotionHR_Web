@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   DollarSign, Users, TrendingUp, TrendingDown, Wallet,
   Search, Download, FileText, Loader2, ChevronRight,
-  Building2, Calendar, Filter, BarChart3, ArrowUpDown,
+  Building2, Calendar, Filter, BarChart3, ArrowUpDown, Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
@@ -74,6 +75,11 @@ export default function PayrollPage() {
   
   const [selectedEmp, setSelectedEmp] = useState<PayrollEmployee | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+
+  const [entryType, setEntryType] = useState<"bonus" | "penalty" | "allowance">("penalty");
+  const [amountValue, setAmountValue] = useState<string>("");
+  const [reason, setReason] = useState<string>("");
+  const [submittingEntry, setSubmittingEntry] = useState(false);
 
   const getMonthName = (mStr: string) => {
     const m = parseInt(mStr, 10);
@@ -169,6 +175,74 @@ export default function PayrollPage() {
       URL.revokeObjectURL(url);
     } catch {
       toast.error(ar ? "فشل تصدير PDF" : "PDF export failed");
+    }
+  };
+
+  const handleAddEntry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEmp || !amountValue || !reason) return;
+
+    try {
+      setSubmittingEntry(true);
+      const token = localStorage.getItem(STORAGE_KEYS.token) ||
+                    localStorage.getItem("motionhr_token") ||
+                    localStorage.getItem("token") ||
+                    localStorage.getItem("auth_token");
+
+      const response = await fetch(`/api/hr/manual-entries/${entryType}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Token ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          employee_id: selectedEmp.employee_id,
+          category: "other",
+          amount_type: "fixed",
+          amount_value: parseFloat(amountValue),
+          reason: reason,
+          target_year: parseInt(selectedYear, 10),
+          target_month: parseInt(selectedMonth, 10),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to add entry");
+      }
+
+      toast.success(ar ? "تمت إضافة الحركة المالية بنجاح وتحديث الراتب!" : "Entry added successfully and payroll updated!");
+      setAmountValue("");
+      setReason("");
+      
+      // تحديث البيانات
+      const updatedEmpsRes = await fetch(`/api/payroll/summary?year=${selectedYear}&month=${selectedMonth}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Token ${token}` } : {}),
+        },
+      });
+      if (updatedEmpsRes.ok) {
+        const updatedData = await updatedEmpsRes.json();
+        setEmployees(updatedData.employees ?? []);
+        setSummary({
+          total_salaries: updatedData.grand_total_salary ?? updatedData.summary?.total_salaries ?? 0,
+          total_allowances: (updatedData.grand_total_allowances ?? 0) + (updatedData.grand_total_overtime ?? 0) + (updatedData.grand_total_bonuses ?? 0),
+          total_deductions: updatedData.grand_total_deductions ?? updatedData.summary?.total_deductions ?? 0,
+          total_net: updatedData.grand_total_net ?? updatedData.summary?.total_net ?? 0,
+          currency: updatedData.employees?.[0]?.currency || "EGP"
+        });
+        const matched = (updatedData.employees ?? []).find((e: any) => e.employee_id === selectedEmp.employee_id);
+        if (matched) {
+          setSelectedEmp(matched);
+        }
+      }
+
+    } catch (err: any) {
+      console.error("Add entry error:", err);
+      toast.error(ar ? "فشل إضافة الحركة المالية" : "Failed to add entry");
+    } finally {
+      setSubmittingEntry(false);
     }
   };
 
@@ -400,7 +474,7 @@ export default function PayrollPage() {
 
       {/* موديل تفاصيل الراتب التفصيلي مع السياق التاريخي */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-md" dir={ar ? "rtl" : "ltr"}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" dir={ar ? "rtl" : "ltr"}>
           <DialogHeader>
             <DialogTitle className="text-xl font-bold flex flex-col gap-1">
               <span>{ar ? "تفاصيل مفردات المرتب" : "Payslip Breakdown"}</span>
@@ -460,6 +534,65 @@ export default function PayrollPage() {
               <div className="flex justify-between border-t border-dashed pt-3 text-lg font-bold text-blue-600 bg-blue-50/50 dark:bg-blue-950/20 p-3 rounded-lg">
                 <span>{ar ? "صافي الراتب المستحق" : "Net Salary Payable"}</span>
                 <span>{formatCurrency(selectedEmp.net_salary)}</span>
+              </div>
+
+              {/* فورم إضافة حركة مالية يدوية (خصم / مكافأة / بدل) */}
+              <div className="border-t pt-4 mt-2">
+                <h5 className="font-bold text-sm mb-3 text-muted-foreground flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-primary" />
+                  {ar ? "إضافة استحقاق / استقطاع يدوي" : "Add Manual Earnings / Deductions"}
+                </h5>
+                <form onSubmit={handleAddEntry} className="space-y-3 bg-muted/40 p-3 rounded-lg border border-dashed">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">{ar ? "نوع الحركة" : "Entry Type"}</label>
+                      <Select value={entryType} onValueChange={(val) => setEntryType(val as any)}>
+                        <SelectTrigger className="h-9 bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="penalty">{ar ? "خصم / استقطاع (-)" : "Deduction / Penalty (-)"}</SelectItem>
+                          <SelectItem value="bonus">{ar ? "مكافأة (+)" : "Bonus (+)"}</SelectItem>
+                          <SelectItem value="allowance">{ar ? "بدل يدوّي (+)" : "Allowance (+)"}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">{ar ? "القيمة (بالجنيه)" : "Amount"}</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        required
+                        placeholder="0.00"
+                        className="h-9 bg-background"
+                        value={amountValue}
+                        onChange={(e) => setAmountValue(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">{ar ? "السبب / البيان" : "Reason"}</label>
+                    <Textarea
+                      required
+                      placeholder={ar ? "اكتب تفاصيل أو سبب الحركة المالية..." : "Reason..."}
+                      className="resize-none h-16 min-h-[64px] bg-background"
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                    />
+                  </div>
+
+                  <Button type="submit" size="sm" className="w-full gap-1 h-9 mt-1" disabled={submittingEntry}>
+                    {submittingEntry ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Plus className="w-4 h-4" />
+                    )}
+                    {ar ? "حفظ الحركة وتحديث الراتب فوراً" : "Add Entry & Recalculate"}
+                  </Button>
+                </form>
               </div>
             </div>
           )}
