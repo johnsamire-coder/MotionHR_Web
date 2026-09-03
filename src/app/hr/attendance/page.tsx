@@ -330,6 +330,10 @@ export default function AttendancePage() {
             <Download className="w-4 h-4" />
             {d.exportAttendance}
           </Button>
+          <Button variant="outline" onClick={handleExportAttendancePDF} className="gap-2">
+            <FileText className="w-4 h-4" />
+            تصدير PDF
+          </Button>
           <Button variant="outline" onClick={handleMonthlyReport} className="gap-2">
             <FileText className="w-4 h-4" />
             {d.monthlyReport}

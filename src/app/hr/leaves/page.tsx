@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Calendar, Search, Loader2, CheckCircle2, XCircle,
-  Clock, Plus, Download, Activity, AlertTriangle,
+  Clock, Plus, Download, Activity, AlertTriangle, FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -176,7 +176,8 @@ export default function LeavesPage() {
           <p className="text-sm text-muted-foreground">{d.leavesDesc || (ar ? "إدارة طلبات الإجازات والموافقات" : "Manage leave requests")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={exportExcel} className="gap-2"><Download className="w-4 h-4" />{ar ? "تصدير" : "Export"}</Button>
+          <Button variant="outline" onClick={exportExcel} className="gap-2"><Download className="w-4 h-4" />{ar ? "تصدير Excel" : "Export Excel"}</Button>
+          <Button variant="outline" onClick={exportPDF} className="gap-2"><FileText className="w-4 h-4" />{ar ? "تصدير PDF" : "Export PDF"}</Button>
           <Button onClick={() => setShowAdd(true)} className="gap-2"><Plus className="w-4 h-4" />{ar ? "إضافة إجازة" : "Add Leave"}</Button>
         </div>
       </div>

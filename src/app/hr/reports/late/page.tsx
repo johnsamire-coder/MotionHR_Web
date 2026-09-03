@@ -23,7 +23,6 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
-import { exportToExcel, exportToPDF, type ExportColumn } from "@/lib/utils/export-report";
 
 interface LateEmployee {
   employee_id: number;
@@ -159,50 +158,23 @@ export default function LateReportPage() {
   };
 
 
-  const handleExport = (format: "pdf" | "excel") => {
-    const columns: ExportColumn[] = [
-      { key: "employee_name", header: d.colEmployee, width: 30 },
-      { key: "employee_code", header: d.empCode, width: 15 },
-      {
-        key: "department",
-        header: d.colDept,
-        width: 25,
-        formatter: (val) => getDeptName(String(val || "")),
-      },
-      { key: "total_late_days", header: d.colLateDays, width: 15 },
-      { key: "total_late_minutes", header: d.colLateMinutes, width: 18 },
-      {
-        key: "total_late_minutes",
-        header: d.colAvgLate,
-        width: 18,
-        formatter: (val, row) => {
-          const days = Number(row.total_late_days) || 0;
-          const mins = Number(val) || 0;
-          return days > 0 ? String(Math.round(mins / days)) : "0";
-        },
-      },
-    ];
-
-    const config = {
-      title: d.lateReportTitle,
-      subtitle: d.lateReportDesc,
-      companyName: lang === "ar" ? "شركة الإنشاء والمقاولات" : "Construction & Contracting Co.",
-      period: `${monthNames[month - 1]} ${year}`,
-      columns,
-      data: filtered as unknown as Record<string, unknown>[],
-      fileName: `late_${year}_${month}`,
-      lang,
-      summaryStats: [
-        { label: d.totalEmployeesWithLate, value: data?.total_employees_with_late || 0 },
-        { label: d.totalLateDays, value: totalLateDays },
-        { label: d.avgLateMinutes, value: avgLate },
-      ],
-    };
-
-    if (format === "pdf") {
-      exportToPDF(config);
-    } else {
-      exportToExcel(config);
+  const handleExport = async (format: "pdf" | "excel") => {
+    try {
+      const res = await fetch(`/api/hr/reports-export/late/${format}?year=${year}&month=${month}`, {
+        headers: { Authorization: authHeader },
+      });
+      if (!res.ok) { toast.error(lang === "ar" ? "فشل التصدير" : "Export failed"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `late_${year}_${month}.${format === "pdf" ? "pdf" : "xlsx"}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(lang === "ar" ? "فشل التصدير" : "Export failed");
     }
   };
 

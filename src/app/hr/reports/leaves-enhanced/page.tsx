@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Calendar, Loader2, Search } from "lucide-react";
+import { Calendar, Loader2, Search, Download, FileText } from "lucide-react";
 import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
 export default function LeavesEnhancedReportPage() {
+  const router = useRouter();
   const lang = useLangStore((s) => s.lang);
   const ar = lang === "ar";
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
@@ -34,6 +36,26 @@ export default function LeavesEnhancedReportPage() {
 
   useEffect(() => { load(); }, [year, month]);
 
+  const handleExport = async (format: "pdf" | "excel") => {
+    try {
+      const res = await fetch(`/api/hr/reports-export/leaves-enhanced/${format}?year=${year}&month=${month}`, {
+        headers: { Authorization: authH },
+      });
+      if (res.ok === false) { toast.error(ar ? "فشل التصدير" : "Export failed"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `leaves_enhanced_${year}_${month}.${format === "pdf" ? "pdf" : "xlsx"}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(ar ? "فشل التصدير" : "Export failed");
+    }
+  };
+
   const rows = useMemo(() => {
     const list = data?.employees || [];
     if (!search.trim()) return list;
@@ -46,6 +68,20 @@ export default function LeavesEnhancedReportPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">{ar ? "تقرير الإجازات المتقدم" : "Enhanced Leaves Report"}</h1>
         <p className="text-muted-foreground mt-1">{ar ? "الرصيد + الاستخدام + تفاصيل الإجازات" : "Balances, usage and leave details"}</p>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button onClick={() => router.push("/hr/reports")} className="gap-2 inline-flex items-center border rounded-lg px-4 py-2 text-sm font-medium hover:bg-slate-50">
+          {ar ? "رجوع للتقارير" : "Back to Reports"}
+        </button>
+        <button onClick={() => handleExport("excel")} className="gap-2 inline-flex items-center border rounded-lg px-4 py-2 text-sm font-medium hover:bg-slate-50">
+          <Download className="w-4 h-4" />
+          {ar ? "تصدير Excel" : "Export Excel"}
+        </button>
+        <button onClick={() => handleExport("pdf")} className="gap-2 inline-flex items-center border rounded-lg px-4 py-2 text-sm font-medium hover:bg-slate-50">
+          <FileText className="w-4 h-4" />
+          {ar ? "تصدير PDF" : "Export PDF"}
+        </button>
       </div>
 
       <div className="border rounded-xl p-4 bg-white flex flex-wrap gap-3 items-center">

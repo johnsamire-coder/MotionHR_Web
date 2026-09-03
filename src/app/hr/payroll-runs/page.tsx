@@ -167,7 +167,23 @@ export default function PayrollRunsPage() {
 
       if (!res.ok) throw new Error("Failed to load detail");
       const data = await res.json();
-      setSelectedRun(data);
+      if (data.run) {
+        setSelectedRun({
+          run_id: data.run.id,
+          year: data.run.year,
+          month: data.run.month,
+          status: data.run.status,
+          status_label: data.run.status_label,
+          total_employees: data.total_employees,
+          grand_net: data.grand_net,
+          approved_by: data.run.approved_by,
+          approved_at: data.run.approved_at,
+          notes: data.run.notes,
+          lines: data.lines,
+        });
+      } else {
+        setSelectedRun(data);
+      }
     } catch (err: any) {
       toast.error(ar ? "فشل جلب تفاصيل المسير" : "Error loading details");
       setDetailOpen(false);

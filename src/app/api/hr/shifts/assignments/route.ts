@@ -28,7 +28,7 @@ export async function DELETE(req: NextRequest) {
 
   try {
     const res = await fetch(`${DJANGO_URL}/attendance/api/mobile/manager/shifts/assignments/${id}/delete/`, {
-      method: 'POST',
+      method: 'DELETE',
       headers: { 'Authorization': auth, 'Content-Type': 'application/json' },
     });
     const data = await res.json();

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { standardExport } from "@/lib/utils/export-report";
 import {
-  Users, Search, Filter, Plus, Upload, Download,
+  Users, Search, Filter, Plus, Upload, Download, Printer,
   Loader2, ChevronLeft, ChevronRight, UserCheck,
   UserX, Building2, Briefcase, Phone,
 } from "lucide-react";
@@ -142,7 +142,6 @@ export default function EmployeesPage() {
       rows: list,
     });
   };
-
   const loadEmployees = useCallback(() => {
     if (!token) return;
     setLoading(true);
@@ -207,6 +206,14 @@ export default function EmployeesPage() {
           >
             <Download className="w-4 h-4" />
             {lang === "ar" ? "تصدير Excel" : "Export Excel"}
+          </Button>
+          <Button
+            variant="outline" size="sm"
+            onClick={handleExportPDF}
+            className="gap-2"
+          >
+            <Printer className="w-4 h-4" />
+            {lang === "ar" ? "تصدير PDF" : "Export PDF"}
           </Button>
           <Button
             variant="outline" size="sm"

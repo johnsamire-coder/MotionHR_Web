@@ -23,7 +23,6 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
-import { exportToExcel, exportToPDF, type ExportColumn } from "@/lib/utils/export-report";
 
 interface Movement {
   date: string;
@@ -161,54 +160,23 @@ export default function PermissionsReportPage() {
   };
 
 
-  const handleExport = (format: "pdf" | "excel") => {
-    const columns: ExportColumn[] = [
-      { key: "employee_name", header: d.colEmployee, width: 30 },
-      {
-        key: "department",
-        header: d.colDept,
-        width: 25,
-        formatter: (val) => getDeptName(String(val || "")),
-      },
-      { key: "max_hours_per_month", header: d.colMaxHours, width: 18 },
-      {
-        key: "used_hours",
-        header: d.colUsedHours,
-        width: 18,
-        formatter: (val) => Number(val || 0).toFixed(1),
-      },
-      { key: "movements_count", header: d.colMovementsCount, width: 15 },
-      {
-        key: "used_hours",
-        header: d.percentageUsed,
-        width: 18,
-        formatter: (val, row) => {
-          const max = Number(row.max_hours_per_month) || 0;
-          const used = Number(val) || 0;
-          return max > 0 ? `${Math.round((used / max) * 100)}%` : "0%";
-        },
-      },
-    ];
-
-    const config = {
-      title: d.permissionsReportTitle,
-      subtitle: d.permissionsReportDesc,
-      companyName: lang === "ar" ? "شركة الإنشاء والمقاولات" : "Construction & Contracting Co.",
-      period: `${monthNames[month - 1]} ${year}`,
-      columns,
-      data: filtered as unknown as Record<string, unknown>[],
-      fileName: `permissions_${year}_${month}`,
-      lang,
-      summaryStats: [
-        { label: d.totalEmployees, value: data?.total_employees || 0 },
-        { label: d.usedHours, value: totalUsedHours.toFixed(1) },
-      ],
-    };
-
-    if (format === "pdf") {
-      exportToPDF(config);
-    } else {
-      exportToExcel(config);
+  const handleExport = async (format: "pdf" | "excel") => {
+    try {
+      const res = await fetch(`/api/hr/reports-export/permissions-report/${format}?year=${year}&month=${month}`, {
+        headers: { Authorization: authHeader },
+      });
+      if (!res.ok) { toast.error(lang === "ar" ? "فشل التصدير" : "Export failed"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `permissions_${year}_${month}.${format === "pdf" ? "pdf" : "xlsx"}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(lang === "ar" ? "فشل التصدير" : "Export failed");
     }
   };
 

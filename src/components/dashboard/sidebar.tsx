@@ -41,7 +41,6 @@ export function Sidebar() {
     { key: "terminationTitle",  href: "/hr/termination",       icon: UserMinus },
     { key: "workLocationsTitle",href: "/hr/work-locations",    icon: Map },
     { key: "geofenceTitle",     href: "/hr/geofence",          icon: MapPin },
-    { key: "companyPoliciesTitle", href: "/hr/company-policies", icon: ScrollText },
     { key: "companyRegulations", href: "/hr/regulations", icon: ScrollText },
     { key: "leaveRecallTitle",  href: "/hr/leave-recall",      icon: Calendar },
     { key: "flexShiftTitle",    href: "/hr/flex-shift",        icon: Zap },

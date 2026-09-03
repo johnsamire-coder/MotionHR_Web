@@ -12,7 +12,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useLangStore } from "@/lib/stores/language";
-import { exportToExcel, exportToPDF, type ExportColumn } from "@/lib/utils/export-report";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
 interface LogPoint {
@@ -106,59 +105,23 @@ export default function LocationTrackingPage() {
 
   const formatDate = (s: string) => new Date(s).toLocaleDateString(ar ? "ar-EG" : "en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
-  const handleExport = (format: "pdf" | "excel") => {
-    if (!filtered.length) {
-      toast.error(ar ? "لا توجد بيانات للتصدير" : "No data to export");
-      return;
-    }
-
-    const columns: ExportColumn[] = [
-      { key: "employee_code", header: ar ? "كود الموظف" : "Employee Code", width: 15 },
-      { key: "employee_name", header: ar ? "اسم الموظف" : "Employee Name", width: 25 },
-      { key: "department", header: ar ? "القسم" : "Department", width: 20 },
-      { key: "branch", header: ar ? "الفرع" : "Branch", width: 20 },
-      { key: "checkin_time", header: ar ? "الحضور" : "Check In", width: 15 },
-      { key: "checkout_time", header: ar ? "الانصراف" : "Check Out", width: 15 },
-      { key: "total_logs", header: ar ? "نقاط التتبع" : "Track Points", width: 15 },
-      { key: "last_address", header: ar ? "آخر موقع" : "Last Location", width: 35 },
-      { key: "status_label", header: ar ? "الحالة" : "Status", width: 15 },
-    ];
-
-    const exportData = filtered.map(emp => ({
-      employee_code: emp.employee_code || "—",
-      employee_name: emp.employee_name || "—",
-      department: emp.department || "—",
-      branch: emp.branch || "—",
-      checkin_time: emp.checkin_time || "—",
-      checkout_time: emp.checkout_time || "—",
-      total_logs: emp.total_logs || 0,
-      last_address: emp.last_location?.address || "—",
-      status_label: !emp.has_attendance
-        ? (ar ? "لم يحضر" : "Absent")
-        : emp.total_logs > 0
-          ? (ar ? "متتبع" : "Tracked")
-          : (ar ? "بدون تتبع" : "No tracking"),
-    }));
-
-    const config = {
-      title: ar ? "تقرير تتبع المواقع" : "Location Tracking Report",
-      period: date,
-      columns,
-      data: exportData,
-      fileName: `location_tracking_${date}`,
-      lang: (ar ? "ar" : "en") as "ar" | "en",
-      summaryStats: [
-        { label: ar ? "إجمالي الموظفين" : "Total", value: stats?.total_employees ?? 0 },
-        { label: ar ? "لديهم حضور" : "With Attendance", value: stats?.with_attendance ?? 0 },
-        { label: ar ? "متتبعين" : "Tracked", value: stats?.tracked ?? 0 },
-        { label: ar ? "غير متتبع" : "Not Tracked", value: stats?.not_tracked ?? 0 },
-      ],
-    };
-
-    if (format === "pdf") {
-      exportToPDF(config);
-    } else {
-      exportToExcel(config);
+  const handleExportPersonal = async (format: "pdf" | "excel", emp: EmployeeTracking) => {
+    try {
+      const res = await fetch(`/api/hr/reports-export/personal-location/${format}?employee_id=${emp.employee_id}&date=${date}`, {
+        headers: { Authorization: authH },
+      });
+      if (!res.ok) { toast.error(ar ? "فشل التصدير" : "Export failed"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `location_${emp.employee_code}_${date}.${format === "pdf" ? "pdf" : "xlsx"}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(ar ? "فشل التصدير" : "Export failed");
     }
   };
 
@@ -173,14 +136,6 @@ export default function LocationTrackingPage() {
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => router.push("/hr/reports")}>
             {ar ? "رجوع للتقارير" : "Back to Reports"}
-          </Button>
-          <Button variant="outline" className="gap-2" onClick={() => handleExport("excel")}>
-            <Download className="w-4 h-4" />
-            {ar ? "تصدير Excel" : "Export Excel"}
-          </Button>
-          <Button variant="outline" className="gap-2" onClick={() => handleExport("pdf")}>
-            <Printer className="w-4 h-4" />
-            {ar ? "تصدير PDF" : "Export PDF"}
           </Button>
         </div>
       </div>
@@ -288,6 +243,16 @@ export default function LocationTrackingPage() {
             <DialogHeader>
               <DialogTitle>{ar ? "تفاصيل تتبع" : "Tracking Details"}: {selected.employee_name}</DialogTitle>
             </DialogHeader>
+            <div className="flex items-center gap-2 pb-2 border-b">
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => handleExportPersonal("excel", selected)}>
+                <Download className="w-4 h-4" />
+                {ar ? "تصدير Excel" : "Export Excel"}
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => handleExportPersonal("pdf", selected)}>
+                <Printer className="w-4 h-4" />
+                {ar ? "تصدير PDF" : "Export PDF"}
+              </Button>
+            </div>
             <div className="space-y-3 pt-2">
               <div className="grid grid-cols-2 gap-3 p-3 bg-muted/30 rounded">
                 <div><span className="text-xs text-muted-foreground">{ar ? "الحضور" : "Check In"}:</span> <span className="font-mono">{selected.checkin_time || "—"}</span></div>
