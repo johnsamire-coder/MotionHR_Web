@@ -142,6 +142,37 @@ export default function EmployeesPage() {
       rows: list,
     });
   };
+
+  const handleExportPDF = async () => {
+    const list = (data?.results || []).map((e: any) => ({
+      employee_code: e.employee_code || e.code || "",
+      name: e.full_name_ar || e.name || e.employee_name || "",
+      department: e.department_name || e.department || "",
+      job_title: e.job_title_name || e.job_title || "",
+      phone: e.phone || "",
+      status: e.status || "",
+      hire_date: e.hire_date || "",
+      basic_salary: e.basic_salary ?? "",
+    }));
+    if (!list.length) { toast.error("لا توجد بيانات للتصدير"); return; }
+    await standardExport({
+      title: "كشف الموظفين",
+      fileName: `employees_${new Date().toISOString().slice(0,10)}`,
+      type: "pdf",
+      lang: "ar",
+      columns: [
+        { key: "employee_code", header: "الكود", width: 12 },
+        { key: "name", header: "الاسم", width: 24 },
+        { key: "department", header: "القسم", width: 18 },
+        { key: "job_title", header: "المسمى", width: 18 },
+        { key: "phone", header: "الموبايل", width: 14 },
+        { key: "status", header: "الحالة", width: 12 },
+        { key: "hire_date", header: "تاريخ التعيين", width: 14 },
+        { key: "basic_salary", header: "الراتب", width: 12 },
+      ],
+      rows: list,
+    });
+  };
   const loadEmployees = useCallback(() => {
     if (!token) return;
     setLoading(true);
