@@ -154,6 +154,36 @@ export default function LeavesPage() {
     });
   };
 
+  const exportPDF = async () => {
+    if (!filtered.length) {
+      toast.error(ar ? "لا توجد بيانات" : "No data");
+      return;
+    }
+    await standardExport({
+      title: ar ? "تقرير الإجازات" : "Leaves Report",
+      period: statusFilter === "pending" ? (ar ? "كل الطلبات المعلقة" : "All pending") : `${month}/${year}`,
+      fileName: `leaves_${year}_${statusFilter}`,
+      type: "pdf",
+      lang: ar ? "ar" : "en",
+      columns: [
+        { key: "employee_name", header: ar ? "الموظف" : "Employee", width: 24 },
+        { key: "department", header: ar ? "القسم" : "Department", width: 18 },
+        { key: "leave_type", header: ar ? "النوع" : "Type", width: 16 },
+        { key: "from_date", header: ar ? "من" : "From", width: 14 },
+        { key: "to_date", header: ar ? "إلى" : "To", width: 14 },
+        { key: "days", header: ar ? "أيام" : "Days", width: 10 },
+        { key: "status", header: ar ? "الحالة" : "Status", width: 12, formatter: (v) => statusLabel(String(v || "")) },
+      ],
+      rows: filtered as unknown as Record<string, unknown>[],
+      summaryStats: [
+        { label: ar ? "الإجمالي" : "Total", value: stats.total },
+        { label: ar ? "معلق" : "Pending", value: stats.pending },
+        { label: ar ? "مقبول" : "Approved", value: stats.approved },
+        { label: ar ? "مرفوض" : "Rejected", value: stats.rejected },
+      ],
+    });
+  };
+
   const CardBtn = ({
     active, label, value, color, onClick,
   }: { active: boolean; label: string; value: number; color: string; onClick: () => void }) => (
