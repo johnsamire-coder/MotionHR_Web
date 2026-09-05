@@ -436,6 +436,33 @@ department: e.department_name || e.department_name_ar || "",
     });
   };
 
+  const handleExportPDF = async () => {
+    const list = (filtered || missions || []).map((m: any) => ({
+      title: m.title || m.name || "",
+      status: m.status || "",
+      employees: Array.isArray(m.employees) ? m.employees.length : (m.assignees_count ?? m.employees_count ?? ""),
+      start_date: m.start_date || m.created_at || "",
+      end_date: m.end_date || "",
+      location: m.location || m.address || "",
+    }));
+    if (!list.length) { toast.error("لا توجد بيانات للتصدير"); return; }
+    await standardExport({
+      title: "تقرير المهمات",
+      fileName: `missions_${new Date().toISOString().slice(0,10)}`,
+      type: "pdf",
+      lang: "ar",
+      columns: [
+        { key: "title", header: "المهمة", width: 28 },
+        { key: "status", header: "الحالة", width: 14 },
+        { key: "employees", header: "الموظفين", width: 12 },
+        { key: "start_date", header: "البداية", width: 16 },
+        { key: "end_date", header: "النهاية", width: 16 },
+        { key: "location", header: "الموقع", width: 22 },
+      ],
+      rows: list,
+    });
+  };
+
   // إضافة موظف للمهمة
   const addAssignee = (emp: Employee) => {
     if (missionForm.assignees.find(a => a.employee_id === emp.id)) {
