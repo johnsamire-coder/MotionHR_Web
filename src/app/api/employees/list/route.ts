@@ -39,6 +39,8 @@ export async function GET(request: NextRequest) {
       },
       next:     data.next     ?? null,
       previous: data.previous ?? null,
+      total_pages:  data.total_pages  ?? 1,
+      current_page: data.current_page ?? 1,
     });
   } catch (error) {
     console.error("Employees list error:", error);
