@@ -200,7 +200,7 @@ export default function AttendancePage() {
     setEditingAtt({
       open: true,
       employee_id: emp.employee_id,
-      attendance_id: emp.attendance_id || emp.employee_id,
+      attendance_id: emp.attendance_id || 0,
       employee_name: emp.employee_name,
       date: selectedDate,
       check_in: emp.check_in ? emp.check_in.substring(11, 16) : (emp.check_in || ""),
