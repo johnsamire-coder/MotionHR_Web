@@ -32,6 +32,8 @@ interface MonthlyEmployee {
   total_checkins: number;
   total_checkouts: number;
   working_days: number;
+  expected_working_days: number;
+  weekly_off_days: number;
   total_month_days: number;
 }
 
@@ -331,6 +333,8 @@ export default function MonthlyAttendancePage() {
                 <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colCheckins}</TableHead>
                 <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colCheckouts}</TableHead>
                 <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colWorkingDays}</TableHead>
+                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colExpectedWorkingDays}</TableHead>
+                <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colWeeklyOffDays}</TableHead>
                 <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colMonthDays}</TableHead>
                 <TableHead className={lang === "ar" ? "text-right" : "text-left"}>{d.colAttendanceRate}</TableHead>
               </TableRow>
@@ -367,6 +371,12 @@ export default function MonthlyAttendancePage() {
                     </TableCell>
                     <TableCell className="font-mono font-semibold">
                       {emp.working_days}
+                    </TableCell>
+                    <TableCell className="font-mono text-amber-600">
+                      {emp.expected_working_days}
+                    </TableCell>
+                    <TableCell className="font-mono text-cyan-600">
+                      {emp.weekly_off_days}
                     </TableCell>
                     <TableCell className="font-mono text-muted-foreground">
                       {emp.total_month_days}

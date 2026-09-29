@@ -432,9 +432,11 @@ export default function PayrollRunsPage() {
                       <TableHead className="font-bold text-sm">{ar ? "الأساسي" : "Basic"}</TableHead>
                       <TableHead className="font-bold text-sm text-emerald-600">{ar ? "البدلات (+)" : "Allowances"}</TableHead>
                       <TableHead className="font-bold text-sm text-emerald-600">{ar ? "الأوفرتايم (+)" : "Overtime"}</TableHead>
-                      <TableHead className="font-bold text-sm text-destructive">{ar ? "الخصومات (-)" : "Deductions"}</TableHead>
+                      <TableHead className="font-bold text-sm text-destructive">{ar ? "خصم تأخير (-)" : "Late Ded."}</TableHead>
+                      <TableHead className="font-bold text-sm text-destructive">{ar ? "خصم غياب (-)" : "Absence Ded."}</TableHead>
                       <TableHead className="font-bold text-sm text-blue-600">{ar ? "صافي الراتب" : "Net Salary"}</TableHead>
                       <TableHead className="font-bold text-sm text-center">{ar ? "أيام حضور" : "Att"}</TableHead>
+                      <TableHead className="font-bold text-sm text-center">{ar ? "أيام تأخير" : "Late"}</TableHead>
                       <TableHead className="font-bold text-sm text-center">{ar ? "أيام غياب" : "Abs"}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -446,15 +448,17 @@ export default function PayrollRunsPage() {
                           <TableCell className="font-medium">{l.basic_salary} EGP</TableCell>
                           <TableCell className="text-emerald-600 font-semibold">+{Number(l.allowances_total) + Number(l.bonuses_total)} EGP</TableCell>
                           <TableCell className="text-emerald-600 font-semibold">+{l.overtime_total || 0} EGP</TableCell>
-                          <TableCell className="text-destructive font-semibold">-{l.total_deductions} EGP</TableCell>
+                          <TableCell className="text-destructive font-semibold">-{l.late_deduction || 0} EGP</TableCell>
+                          <TableCell className="text-destructive font-semibold">-{l.absence_deduction || 0} EGP</TableCell>
                           <TableCell className="font-bold text-blue-600">{l.net_salary} EGP</TableCell>
                           <TableCell className="text-center font-medium">{l.attended_days}</TableCell>
+                          <TableCell className="text-center font-medium text-amber-600">{l.late_days}</TableCell>
                           <TableCell className="text-center font-medium text-destructive">{l.absent_days}</TableCell>
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={8} className="h-28 text-center text-muted-foreground">
+                        <TableCell colSpan={10} className="h-28 text-center text-muted-foreground">
                           <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
                           <p className="font-bold">{ar ? "لا توجد سطور موظفين مسجلة في هذا المسير." : "No employee lines in this run."}</p>
                         </TableCell>
