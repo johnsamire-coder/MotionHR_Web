@@ -133,7 +133,7 @@ export default function PayrollPage() {
     loadPayrollData();
   }, [loadPayrollData]);
 
-  const handleStandardPayrollExport = async () => {
+  const handleStandardPayrollExport = async (fmt: "excel" | "pdf" = "excel") => {
     const rows = (filteredEmployees || employees || []).map((e: any) => ({
       employee_code: e.employee_code || "",
       employee_name: e.employee_name || "",
@@ -141,7 +141,8 @@ export default function PayrollPage() {
       basic_salary: e.basic_salary ?? 0,
       allowances_total: e.allowances_total ?? 0,
       overtime_bonus: e.overtime_bonus ?? 0,
-      total_deductions: e.total_deductions ?? e.deductions_total ?? 0,
+      late_deduction: e.late_deduction ?? 0,
+      absence_deduction: e.absence_deduction ?? 0,
       net_salary: e.net_salary ?? 0,
     }));
     if (!rows.length) { toast.error("لا توجد بيانات للرواتب"); return; }
@@ -149,7 +150,7 @@ export default function PayrollPage() {
       title: "مسير الرواتب",
       period: `${selectedMonth || ""}/${selectedYear || ""}`,
       fileName: `payroll_${selectedYear || "y"}_${selectedMonth || "m"}`,
-      type: "excel",
+      type: fmt,
       lang: "ar",
       columns: [
         { key: "employee_code", header: "الكود", width: 12 },
@@ -267,8 +268,11 @@ export default function PayrollPage() {
           <p className="text-sm text-muted-foreground">{ar ? "حساب الأجور، البدلات، الخصومات وصافي المرتبات تلقائياً" : "Manage payroll, allowances, deductions and net salary"}</p>
         </div>
         <div className="flex gap-2">
-          <Button className="gap-2" onClick={handleStandardPayrollExport}>
+          <Button className="gap-2" onClick={() => handleStandardPayrollExport("excel")}>
             <Download className="w-4 h-4" /> {ar ? "تصدير Excel" : "Export Excel"}
+          </Button>
+          <Button variant="outline" className="gap-2" onClick={() => handleStandardPayrollExport("pdf")}>
+            <Download className="w-4 h-4" /> {ar ? "تصدير PDF" : "Export PDF"}
           </Button>
 </div>
       </div>
