@@ -71,8 +71,8 @@ export default function PayrollPage() {
   const [deptFilter, setDeptFilter] = useState("all");
   
   // فلاتر فترات الرواتب (تلقائياً الشهر والسنة الحالية من السيرفر أو المتصفح)
-  const [selectedYear, setSelectedYear] = useState<string>("2026");
-  const [selectedMonth, setSelectedMonth] = useState<string>("8");
+  const [selectedYear, setSelectedYear] = useState<string>(() => String(new Date().getFullYear()));
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => String(new Date().getMonth() + 1));
   
   const [selectedEmp, setSelectedEmp] = useState<PayrollEmployee | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -158,7 +158,8 @@ export default function PayrollPage() {
         { key: "basic_salary", header: "الأساسي", width: 12 },
         { key: "allowances_total", header: "البدلات", width: 12 },
         { key: "overtime_bonus", header: "إضافي", width: 12 },
-        { key: "total_deductions", header: "الخصومات", width: 12 },
+        { key: "late_deduction", header: "خصم تأخير", width: 12 },
+        { key: "absence_deduction", header: "خصم غياب", width: 12 },
         { key: "net_salary", header: "الصافي", width: 12 },
       ],
       rows,
