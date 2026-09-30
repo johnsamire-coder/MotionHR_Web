@@ -6,7 +6,7 @@ import { standardExport } from "@/lib/utils/export-report";
 import {
   Play, CheckCircle2, Loader2, Plus, Eye, Calendar,
   Users, DollarSign, AlertCircle, Download, FileSpreadsheet,
-  Building2, CheckCircle, RefreshCw, FileText, AlertTriangle
+  Building2, CheckCircle, XCircle, RefreshCw, FileText, AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
