@@ -3,19 +3,6 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import ExcelJS from "exceljs";
 import { CAIRO_FONT_BASE64 } from "./cairo-font";
-import ArabicReshaper from "arabic-reshaper";
-
-/** يعالج النص العربي (تشكيل الحروف + عكس الاتجاه) عشان يظهر صح في jsPDF */
-function arFix(value: unknown): unknown {
-  if (typeof value !== "string") return value;
-  const hasArabic = /[؀-ۿ]/.test(value);
-  if (hasArabic === false) return value;
-  try {
-    return ArabicReshaper.convertArabic(value).split("").reverse().join("");
-  } catch {
-    return value;
-  }
-}
 
 export type ReportLang = "ar" | "en";
 
@@ -263,16 +250,16 @@ export async function exportToPDF(config: ExportConfig) {
     doc.setFont("Cairo", "bold");
     doc.setFontSize(14);
     doc.setTextColor(26, 10, 62);
-    doc.text(arFix(cfg.companyName || "MotionHR") as string, pageW / 2, y + 6, { align: "center" });
+    doc.text(cfg.companyName || "MotionHR", pageW / 2, y + 6, { align: "center" });
 
     doc.setFontSize(12);
-    doc.text(arFix(cfg.title || "") as string, pageW / 2, y + 14, { align: "center" });
+    doc.text(cfg.title || "", pageW / 2, y + 14, { align: "center" });
 
     doc.setFont("Cairo", "normal");
     doc.setFontSize(9);
     doc.setTextColor(100);
     const meta = [cfg.period, cfg.subtitle, new Date().toLocaleString(isAr ? "ar-EG" : "en-GB")].filter(Boolean).join(" | ");
-    doc.text(arFix(meta) as string, pageW / 2, y + 20, { align: "center" });
+    doc.text(meta, pageW / 2, y + 20, { align: "center" });
 
     y = 36;
 
@@ -280,14 +267,14 @@ export async function exportToPDF(config: ExportConfig) {
       doc.setFontSize(9);
       doc.setTextColor(40);
       for (const s of cfg.summaryStats) {
-        doc.text(arFix(`${s.label}: ${s.value}`) as string, isAr ? pageW - 14 : 14, y, { align: isAr ? "right" : "left" });
+        doc.text(`${s.label}: ${s.value}`, isAr ? pageW - 14 : 14, y, { align: isAr ? "right" : "left" });
         y += 5;
       }
       y += 2;
     }
 
-    const head = [cfg.columns.map((c) => arFix(c.header))];
-    const body = cfg.data.map((row) => cfg.columns.map((c) => arFix(cellValue(c, row))));
+    const head = [cfg.columns.map((c) => c.header)];
+    const body = cfg.data.map((row) => cfg.columns.map((c) => cellValue(c, row)));
 
     autoTable(doc, {
       startY: y,
