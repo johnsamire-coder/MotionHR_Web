@@ -134,6 +134,27 @@ export default function PayrollPage() {
   }, [loadPayrollData]);
 
   const handleStandardPayrollExport = async (fmt: "excel" | "pdf" = "excel") => {
+    if (fmt === "pdf") {
+      try {
+        const token = getToken();
+        const res = await fetch(`/api/hr/payroll-summary-export-pdf?year=${selectedYear}&month=${selectedMonth}`, {
+          headers: token ? { Authorization: `Token ${token}` } : {},
+        });
+        if (res.ok === false) throw new Error("PDF export failed");
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `payroll_${selectedYear}_${selectedMonth}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        toast.error(ar ? "فشل تصدير PDF" : "PDF export failed");
+      }
+      return;
+    }
     const rows = (filteredEmployees || employees || []).map((e: any) => ({
       employee_code: e.employee_code || "",
       employee_name: e.employee_name || "",
