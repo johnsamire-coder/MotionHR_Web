@@ -192,6 +192,26 @@ export default function PayrollRunsPage() {
     }
   };
 
+  const handleCancel = async (runId: number) => {
+    try {
+      setApproving(true);
+      const token = getAuthToken();
+      const res = await fetch(`/api/hr/payroll-runs/${runId}/cancel`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Token ${token}` } : {}),
+        },
+      });
+      setDetailOpen(false);
+      loadRuns();
+    } catch (err: any) {
+      toast.error(err.message || "فشل إلغاء المسودة");
+    } finally {
+      setApproving(false);
+    }
+  };
+
   const handleApprove = async (runId: number) => {
     try {
       setApproving(true);
@@ -409,10 +429,16 @@ export default function PayrollRunsPage() {
                   <FileText className="w-4 h-4" /> {ar ? "تنزيل / طباعة PDF" : "Download / Print PDF"}
                 </Button>
                 {selectedRun?.status !== "approved" && (
-                  <Button size="sm" onClick={() => selectedRun && handleApprove(selectedRun.run_id)} disabled={approving} className="gap-2 bg-emerald-600 hover:bg-emerald-700 px-4 py-2 font-bold">
-                    {approving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                    {ar ? "اعتماد وإغلاق المسير" : "Approve Run"}
-                  </Button>
+                  <>
+                    <Button size="sm" variant="outline" onClick={() => selectedRun && handleCancel(selectedRun.run_id)} disabled={approving} className="gap-2 text-red-700 border-red-300 bg-red-50 hover:bg-red-100 px-4 py-2 font-bold">
+                      <XCircle className="w-4 h-4" />
+                      {ar ? "إلغاء المسودة" : "Cancel Draft"}
+                    </Button>
+                    <Button size="sm" onClick={() => selectedRun && handleApprove(selectedRun.run_id)} disabled={approving} className="gap-2 bg-emerald-600 hover:bg-emerald-700 px-4 py-2 font-bold">
+                      {approving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                      {ar ? "اعتماد وإغلاق المسير" : "Approve Run"}
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
