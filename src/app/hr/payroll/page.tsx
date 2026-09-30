@@ -409,7 +409,8 @@ export default function PayrollPage() {
                   <TableHead>{ar ? "الموظف" : "Employee"}</TableHead>
                   <TableHead>{ar ? "المرتب الأساسي" : "Basic Salary"}</TableHead>
                   <TableHead className="text-emerald-600">{ar ? "البدلات (+)" : "Allowances (+)"}</TableHead>
-                  <TableHead className="text-destructive">{ar ? "الاستقطاعات (-)" : "Deductions (-)"}</TableHead>
+                  <TableHead className="text-destructive">{ar ? "خصم تأخير (-)" : "Late Ded. (-)"}</TableHead>
+                  <TableHead className="text-destructive">{ar ? "خصم غياب (-)" : "Absence Ded. (-)"}</TableHead>
                   <TableHead className="font-bold text-blue-600">{ar ? "صافي المرتب" : "Net Salary"}</TableHead>
                   <TableHead className="text-left"></TableHead>
                 </TableRow>
@@ -435,7 +436,8 @@ export default function PayrollPage() {
                         </TableCell>
                         <TableCell>{formatCurrency(emp.basic_salary)}</TableCell>
                         <TableCell className="text-emerald-600">+{formatCurrency(emp.allowances_total + (emp.overtime_bonus || 0))}</TableCell>
-                        <TableCell className="text-destructive">-{formatCurrency(totalDeductions)}</TableCell>
+                        <TableCell className="text-destructive">-{formatCurrency(emp.late_deduction || 0)}</TableCell>
+                        <TableCell className="text-destructive">-{formatCurrency(emp.absence_deduction || 0)}</TableCell>
                         <TableCell className="font-bold text-blue-600">{formatCurrency(emp.net_salary)}</TableCell>
                         <TableCell className="text-left">
                           <Button
@@ -455,7 +457,7 @@ export default function PayrollPage() {
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                       {ar ? "لا توجد مسيرات رواتب مطابقة للفلاتر المحددة." : "No payroll records found for selected filters."}
                     </TableCell>
                   </TableRow>
