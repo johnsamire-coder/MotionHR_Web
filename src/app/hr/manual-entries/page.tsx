@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
   TrendingDown, Award, DollarSign, Plus, Check, X, Loader2,
-  Clock, CheckCircle2, XCircle, Calendar, User, FileText, Trash2, Edit2
+  Clock, CheckCircle2, XCircle, Calendar, User, FileText, Trash2, Edit2,
+  Search, Banknote
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -55,6 +56,29 @@ interface Summary {
   user_role: string;
 }
 
+interface SimpleEmployee {
+  id: number;
+  full_name?: string;
+  first_name_ar?: string;
+  last_name_ar?: string;
+  employee_code?: string;
+}
+
+interface Installment {
+  id: number;
+  employee_id: number;
+  employee_name: string;
+  description: string;
+  total_amount: number;
+  monthly_amount: number;
+  paid_amount: number;
+  remaining_amount: number;
+  start_month: number;
+  start_year: number;
+  status: string;
+  notes: string;
+}
+
 const MONTHS_AR = ["","يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 
 const TYPE_CONFIG = {
@@ -82,6 +106,22 @@ export default function ManualEntriesPage() {
   const [approveDialog, setApproveDialog] = useState<Entry | null>(null);
   const [approveNotes, setApproveNotes] = useState("");
   const [viewDialog, setViewDialog] = useState<Entry | null>(null);
+
+  // ═══ السلف (Installments) ═══
+  const [installments, setInstallments] = useState<Installment[]>([]);
+  const [showInstallmentDialog, setShowInstallmentDialog] = useState(false);
+  const [installmentSaving, setInstallmentSaving] = useState(false);
+  const [allEmployees, setAllEmployees] = useState<SimpleEmployee[]>([]);
+  const [empSearch, setEmpSearch] = useState("");
+  const [instForm, setInstForm] = useState({
+    employee_id: null as number | null,
+    description: "",
+    total_amount: "",
+    monthly_amount: "",
+    start_month: String(new Date().getMonth() + 1),
+    start_year: String(new Date().getFullYear()),
+    notes: "",
+  });
 
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authH = token?.startsWith("Token") ? token : `Token ${token}`;
@@ -111,6 +151,80 @@ export default function ManualEntriesPage() {
 
   useEffect(() => { loadSummary(); }, [loadSummary]);
   useEffect(() => { loadEntries(); }, [loadEntries]);
+
+  const loadInstallments = useCallback(async () => {
+    try {
+      const res = await fetch("/api/hr/manual-entries/installment", { headers: { Authorization: authH } });
+      const data = await res.json();
+      if (data.success) setInstallments(data.results || []);
+    } catch {}
+  }, [authH]);
+
+  const loadAllEmployees = useCallback(async () => {
+    try {
+      const res = await fetch("/api/employees/list", { headers: { Authorization: authH } });
+      const data = await res.json();
+      setAllEmployees(data.results || data.employees || []);
+    } catch {}
+  }, [authH]);
+
+  useEffect(() => { loadInstallments(); loadAllEmployees(); }, [loadInstallments, loadAllEmployees]);
+
+  const handleCreateInstallment = async () => {
+    const missingEmployee = instForm.employee_id === null;
+    const missingDescription = instForm.description.trim().length === 0;
+    const missingTotal = instForm.total_amount.trim().length === 0;
+    const missingMonthly = instForm.monthly_amount.trim().length === 0;
+    if (missingEmployee || missingDescription || missingTotal || missingMonthly) {
+      toast.error(ar ? "من فضلك املأ كل الحقول المطلوبة" : "Please fill all required fields");
+      return;
+    }
+    setInstallmentSaving(true);
+    try {
+      const res = await fetch("/api/hr/manual-entries/installment", {
+        method: "POST",
+        headers: { Authorization: authH, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employee_id: instForm.employee_id,
+          description: instForm.description,
+          total_amount: Number(instForm.total_amount),
+          monthly_amount: Number(instForm.monthly_amount),
+          start_month: Number(instForm.start_month),
+          start_year: Number(instForm.start_year),
+          notes: instForm.notes,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message || (ar ? "تم إضافة السلفة" : "Advance added"));
+        if (data.warning) {
+          setTimeout(() => toast.warning(data.warning), 300);
+        }
+        setShowInstallmentDialog(false);
+        setInstForm({
+          employee_id: null, description: "", total_amount: "", monthly_amount: "",
+          start_month: String(new Date().getMonth() + 1), start_year: String(new Date().getFullYear()), notes: "",
+        });
+        setEmpSearch("");
+        loadInstallments();
+      } else {
+        toast.error(data.error || (ar ? "فشل الإضافة" : "Failed"));
+      }
+    } catch {
+      toast.error(ar ? "خطأ في الاتصال" : "Network error");
+    } finally {
+      setInstallmentSaving(false);
+    }
+  };
+
+  const filteredAllEmployees = allEmployees.filter(e => {
+    if (empSearch.trim().length === 0) return true;
+    const q = empSearch.toLowerCase();
+    const name = (e.full_name || `${e.first_name_ar || ""} ${e.last_name_ar || ""}`).toLowerCase();
+    return name.includes(q) || (e.employee_code || "").toLowerCase().includes(q);
+  });
+
+  const selectedInstEmp = allEmployees.find(e => e.id === instForm.employee_id);
 
   const handleApprove = async () => {
     if (!approveDialog) return;
@@ -253,6 +367,62 @@ export default function ManualEntriesPage() {
           </Card>
         </div>
       )}
+
+      {/* ═══ قسم السلف (Advances) ═══ */}
+      <Card className="border-2 border-cyan-200">
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center">
+                <Banknote className="w-5 h-5 text-cyan-700" />
+              </div>
+              <div>
+                <p className="font-bold text-base">{ar ? "السلف والأقساط" : "Advances & Installments"}</p>
+                <p className="text-xs text-muted-foreground">{ar ? `${installments.length} سلفة مسجّلة` : `${installments.length} registered`}</p>
+              </div>
+            </div>
+            <Button onClick={() => setShowInstallmentDialog(true)} className="gap-2 bg-cyan-600 hover:bg-cyan-700">
+              <Plus className="w-4 h-4" />
+              {ar ? "إضافة سلفة" : "Add Advance"}
+            </Button>
+          </div>
+
+          {installments.length > 0 && (
+            <div className="overflow-x-auto border rounded-lg">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="p-2 text-right">{ar ? "الموظف" : "Employee"}</th>
+                    <th className="p-2 text-right">{ar ? "الوصف" : "Description"}</th>
+                    <th className="p-2 text-right">{ar ? "الإجمالي" : "Total"}</th>
+                    <th className="p-2 text-right">{ar ? "القسط الشهري" : "Monthly"}</th>
+                    <th className="p-2 text-right">{ar ? "المتبقي" : "Remaining"}</th>
+                    <th className="p-2 text-right">{ar ? "بداية الخصم" : "Starts"}</th>
+                    <th className="p-2 text-right">{ar ? "الحالة" : "Status"}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {installments.map(inst => (
+                    <tr key={inst.id} className="border-t">
+                      <td className="p-2 font-semibold">{inst.employee_name}</td>
+                      <td className="p-2">{inst.description}</td>
+                      <td className="p-2">{inst.total_amount} {ar ? "ج.م" : "EGP"}</td>
+                      <td className="p-2">{inst.monthly_amount} {ar ? "ج.م" : "EGP"}</td>
+                      <td className="p-2 font-semibold text-cyan-700">{inst.remaining_amount} {ar ? "ج.م" : "EGP"}</td>
+                      <td className="p-2">{MONTHS_AR[inst.start_month]} {inst.start_year}</td>
+                      <td className="p-2">
+                        <Badge variant={inst.status === "active" ? "default" : "secondary"}>
+                          {inst.status === "active" ? (ar ? "نشط" : "Active") : inst.status === "completed" ? (ar ? "منتهي" : "Done") : (ar ? "ملغي" : "Cancelled")}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Type Tabs */}
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -529,6 +699,116 @@ export default function ManualEntriesPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      {/* نافذة إضافة سلفة */}
+      <Dialog open={showInstallmentDialog} onOpenChange={setShowInstallmentDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" dir={ar ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Banknote className="w-5 h-5 text-cyan-600" />
+              {ar ? "إضافة سلفة جديدة" : "Add New Advance"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-semibold block mb-1">{ar ? "الموظف *" : "Employee *"}</label>
+              {selectedInstEmp ? (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-cyan-50 border border-cyan-200">
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-cyan-600" />
+                    <div>
+                      <p className="font-semibold text-sm">
+                        {selectedInstEmp.full_name || `${selectedInstEmp.first_name_ar || ""} ${selectedInstEmp.last_name_ar || ""}`.trim()}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{selectedInstEmp.employee_code}</p>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => setInstForm(f => ({ ...f, employee_id: null }))}>
+                    {ar ? "تغيير" : "Change"}
+                  </Button>
+                </div>
+              ) : (
+                <div>
+                  <div className="relative mb-2">
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder={ar ? "ابحث بالاسم أو الكود..." : "Search by name or code..."}
+                      value={empSearch}
+                      onChange={(e) => setEmpSearch(e.target.value)}
+                      className="pr-10"
+                    />
+                  </div>
+                  <div className="max-h-48 overflow-y-auto border rounded-md">
+                    {filteredAllEmployees.length === 0 ? (
+                      <p className="text-center text-sm text-muted-foreground py-4">{ar ? "لا يوجد موظفين" : "No employees"}</p>
+                    ) : filteredAllEmployees.map(e => (
+                      <button
+                        key={e.id}
+                        onClick={() => setInstForm(f => ({ ...f, employee_id: e.id }))}
+                        className="w-full flex items-center gap-2 p-2.5 hover:bg-cyan-50 border-b text-right"
+                      >
+                        <User className="w-4 h-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">{e.full_name || `${e.first_name_ar || ""} ${e.last_name_ar || ""}`.trim()}</p>
+                          <p className="text-xs text-muted-foreground">{e.employee_code}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm font-semibold block mb-1">{ar ? "وصف السلفة *" : "Description *"}</label>
+              <Input value={instForm.description} onChange={(e) => setInstForm(f => ({ ...f, description: e.target.value }))}
+                placeholder={ar ? "مثال: سلفة طارئة" : "e.g. Emergency advance"} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-semibold block mb-1">{ar ? "إجمالي المبلغ *" : "Total Amount *"}</label>
+                <Input type="number" value={instForm.total_amount} onChange={(e) => setInstForm(f => ({ ...f, total_amount: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-sm font-semibold block mb-1">{ar ? "القسط الشهري *" : "Monthly Installment *"}</label>
+                <Input type="number" value={instForm.monthly_amount} onChange={(e) => setInstForm(f => ({ ...f, monthly_amount: e.target.value }))} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-semibold block mb-1">{ar ? "شهر بداية الخصم" : "Start Month"}</label>
+                <select className="w-full px-3 py-2 border rounded-md bg-white text-sm"
+                  value={instForm.start_month}
+                  onChange={(e) => setInstForm(f => ({ ...f, start_month: e.target.value }))}>
+                  {MONTHS_AR.slice(1).map((m, i) => (
+                    <option key={i + 1} value={i + 1}>{m}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-semibold block mb-1">{ar ? "سنة بداية الخصم" : "Start Year"}</label>
+                <Input type="number" value={instForm.start_year} onChange={(e) => setInstForm(f => ({ ...f, start_year: e.target.value }))} />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-semibold block mb-1">{ar ? "ملاحظات" : "Notes"}</label>
+              <Input value={instForm.notes} onChange={(e) => setInstForm(f => ({ ...f, notes: e.target.value }))} />
+            </div>
+
+            <div className="flex gap-2 justify-end pt-3 border-t">
+              <Button variant="outline" onClick={() => setShowInstallmentDialog(false)} disabled={installmentSaving}>
+                {ar ? "إلغاء" : "Cancel"}
+              </Button>
+              <Button onClick={handleCreateInstallment} disabled={installmentSaving} className="gap-2 bg-cyan-600 hover:bg-cyan-700">
+                {installmentSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                {ar ? "إضافة السلفة" : "Add Advance"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
