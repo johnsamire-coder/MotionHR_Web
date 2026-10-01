@@ -254,6 +254,8 @@ export default function PayrollRunsPage() {
         { key: "overtime_total", header: ar ? "إضافي" : "OT", width: 10 },
         { key: "late_deduction", header: ar ? "خصم تأخير" : "Late Ded.", width: 12 },
         { key: "absence_deduction", header: ar ? "خصم غياب" : "Absence Ded.", width: 12 },
+        { key: "penalties_total", header: ar ? "خصم جزاء" : "Penalty", width: 12 },
+        { key: "installments_total", header: ar ? "خصم سلفة" : "Advance", width: 12 },
         { key: "net_salary", header: ar ? "الصافي" : "Net", width: 12 },
         { key: "attended_days", header: ar ? "حضور" : "Att", width: 8 },
         { key: "absent_days", header: ar ? "غياب" : "Abs", width: 8 },
@@ -462,6 +464,8 @@ export default function PayrollRunsPage() {
                       <TableHead className="font-bold text-sm text-emerald-600">{ar ? "الأوفرتايم (+)" : "Overtime"}</TableHead>
                       <TableHead className="font-bold text-sm text-destructive">{ar ? "خصم تأخير (-)" : "Late Ded."}</TableHead>
                       <TableHead className="font-bold text-sm text-destructive">{ar ? "خصم غياب (-)" : "Absence Ded."}</TableHead>
+                      <TableHead className="font-bold text-sm text-destructive">{ar ? "خصم جزاء (-)" : "Penalty"}</TableHead>
+                      <TableHead className="font-bold text-sm text-destructive">{ar ? "خصم سلفة (-)" : "Advance"}</TableHead>
                       <TableHead className="font-bold text-sm text-blue-600">{ar ? "صافي الراتب" : "Net Salary"}</TableHead>
                       <TableHead className="font-bold text-sm text-center">{ar ? "أيام حضور" : "Att"}</TableHead>
                       <TableHead className="font-bold text-sm text-center">{ar ? "أيام تأخير" : "Late"}</TableHead>
@@ -478,6 +482,8 @@ export default function PayrollRunsPage() {
                           <TableCell className="text-emerald-600 font-semibold">+{l.overtime_total || 0} EGP</TableCell>
                           <TableCell className="text-destructive font-semibold">-{l.late_deduction || 0} EGP</TableCell>
                           <TableCell className="text-destructive font-semibold">-{l.absence_deduction || 0} EGP</TableCell>
+                          <TableCell className="text-destructive font-semibold">-{(l as any).penalties_total || 0} EGP</TableCell>
+                          <TableCell className="text-destructive font-semibold">-{(l as any).installments_total || 0} EGP</TableCell>
                           <TableCell className="font-bold text-blue-600">{l.net_salary} EGP</TableCell>
                           <TableCell className="text-center font-medium">{l.attended_days}</TableCell>
                           <TableCell className="text-center font-medium text-amber-600">{l.late_days}</TableCell>
@@ -486,7 +492,7 @@ export default function PayrollRunsPage() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={10} className="h-28 text-center text-muted-foreground">
+                        <TableCell colSpan={12} className="h-28 text-center text-muted-foreground">
                           <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
                           <p className="font-bold">{ar ? "لا توجد سطور موظفين مسجلة في هذا المسير." : "No employee lines in this run."}</p>
                         </TableCell>

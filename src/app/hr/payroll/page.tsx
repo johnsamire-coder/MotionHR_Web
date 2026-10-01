@@ -164,6 +164,8 @@ export default function PayrollPage() {
       overtime_bonus: e.overtime_bonus ?? 0,
       late_deduction: e.late_deduction ?? 0,
       absence_deduction: e.absence_deduction ?? 0,
+      penalties_total: e.penalties_total ?? 0,
+      installments_total: e.installments_total ?? 0,
       net_salary: e.net_salary ?? 0,
     }));
     if (!rows.length) { toast.error("لا توجد بيانات للرواتب"); return; }
@@ -182,6 +184,8 @@ export default function PayrollPage() {
         { key: "overtime_bonus", header: "إضافي", width: 12 },
         { key: "late_deduction", header: "خصم تأخير", width: 12 },
         { key: "absence_deduction", header: "خصم غياب", width: 12 },
+        { key: "penalties_total", header: "خصم جزاء", width: 12 },
+        { key: "installments_total", header: "خصم سلفة", width: 12 },
         { key: "net_salary", header: "الصافي", width: 12 },
       ],
       rows,
@@ -437,6 +441,8 @@ export default function PayrollPage() {
                   <TableHead className="text-emerald-600">{ar ? "البدلات (+)" : "Allowances (+)"}</TableHead>
                   <TableHead className="text-destructive">{ar ? "خصم تأخير (-)" : "Late Ded. (-)"}</TableHead>
                   <TableHead className="text-destructive">{ar ? "خصم غياب (-)" : "Absence Ded. (-)"}</TableHead>
+                  <TableHead className="text-destructive">{ar ? "خصم جزاء (-)" : "Penalty (-)"}</TableHead>
+                  <TableHead className="text-destructive">{ar ? "خصم سلفة (-)" : "Advance (-)"}</TableHead>
                   <TableHead className="font-bold text-blue-600">{ar ? "صافي المرتب" : "Net Salary"}</TableHead>
                   <TableHead className="text-left"></TableHead>
                 </TableRow>
@@ -464,6 +470,8 @@ export default function PayrollPage() {
                         <TableCell className="text-emerald-600">+{formatCurrency(emp.allowances_total + (emp.overtime_bonus || 0))}</TableCell>
                         <TableCell className="text-destructive">-{formatCurrency(emp.late_deduction || 0)}</TableCell>
                         <TableCell className="text-destructive">-{formatCurrency(emp.absence_deduction || 0)}</TableCell>
+                        <TableCell className="text-destructive">-{formatCurrency(emp.penalties_total || 0)}</TableCell>
+                        <TableCell className="text-destructive">-{formatCurrency(emp.installments_total || 0)}</TableCell>
                         <TableCell className="font-bold text-blue-600">{formatCurrency(emp.net_salary)}</TableCell>
                         <TableCell className="text-left">
                           <Button
@@ -483,7 +491,7 @@ export default function PayrollPage() {
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                       {ar ? "لا توجد مسيرات رواتب مطابقة للفلاتر المحددة." : "No payroll records found for selected filters."}
                     </TableCell>
                   </TableRow>
