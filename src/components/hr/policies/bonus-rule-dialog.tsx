@@ -14,6 +14,8 @@ interface Props {
   onSaved: () => void;
   ruleId: number | null;
   ar: boolean;
+  /** يقصر اختيار نوع المكافأة على القيم دي. لو قيمة واحدة بس، بتتحدد تلقائياً والاختيار بيستخبى. */
+  allowedTypes?: string[];
 }
 
 interface Branch { id: number; name_ar?: string; name?: string; }
@@ -31,6 +33,8 @@ interface Tier {
   to: number | null;
   value_type: string;
   value: number;
+  /** للأوفر تايم فقط: أقل مدة (دقيقة) في اليوم عشان اليوم يتحسب. بتتخزن في كل شريحة. */
+  min_minutes_per_day?: number;
 }
 
 const BONUS_TYPES = [
@@ -53,6 +57,7 @@ const emptyForm = {
   tiers: [{ from: 1, to: 2, value_type: "multiplier", value: 1.5 }] as Tier[],
   max_per_day: 4,
   max_per_month: 60,
+  min_minutes_per_day: 0,
   requires_approval: false,
   scope: "company",
   branch_id: null as number | null,
@@ -64,7 +69,7 @@ const emptyForm = {
   change_reason: "",
 };
 
-export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: Props) {
+export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar, allowedTypes }: Props) {
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -79,6 +84,15 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
   const authH = token?.startsWith("Token") ? token : `Token ${token}`;
 
   const currentType = BONUS_TYPES.find(t => t.value === form.bonus_type) || BONUS_TYPES[0];
+  const isOvertime = form.bonus_type === "overtime";
+
+  // مفتاح ثابت للـ deps عشان الـ array بيتعمل من جديد كل render
+  const allowedKey = allowedTypes && allowedTypes.length > 0 ? allowedTypes.join(",") : "";
+  const allowedList = allowedKey ? allowedKey.split(",") : null;
+  const visibleTypes = allowedList
+    ? BONUS_TYPES.filter(t => allowedList.includes(t.value) || (isEdit && t.value === form.bonus_type))
+    : BONUS_TYPES;
+  const typeLockedSingle = !!allowedList && allowedList.length === 1;
 
   const loadLookups = useCallback(async () => {
     try {
@@ -104,12 +118,16 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
       const data = await res.json();
       const r = data.rule || data;
       if (!r?.id) { toast.error(ar ? "فشل التحميل" : "Load failed"); return; }
+      const loadedTiers: Tier[] = r.tiers && r.tiers.length > 0 ? r.tiers : [{ from: 1, to: 2, value_type: "multiplier", value: 1.5 }];
+      const tierWithMin = loadedTiers.find(t => t && t.min_minutes_per_day !== undefined && t.min_minutes_per_day !== null);
+      const numOr = (v: any, fallback: number) => (v === null || v === undefined || v === "" || isNaN(Number(v)) ? fallback : Number(v));
       setForm({
         name: r.name,
         bonus_type: r.bonus_type,
-        tiers: r.tiers && r.tiers.length > 0 ? r.tiers : [{ from: 1, to: 2, value_type: "multiplier", value: 1.5 }],
-        max_per_day: Number(r.max_per_day) || 4,
-        max_per_month: Number(r.max_per_month) || 60,
+        tiers: loadedTiers,
+        max_per_day: numOr(r.max_per_day, 4),
+        max_per_month: numOr(r.max_per_month, 60),
+        min_minutes_per_day: tierWithMin ? Number(tierWithMin.min_minutes_per_day) || 0 : 0,
         requires_approval: r.requires_approval,
         scope: r.scope,
         branch_id: r.branch_id || null,
@@ -128,9 +146,14 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
     if (open) {
       loadLookups();
       if (ruleId) loadRule();
-      else { setForm({ ...emptyForm }); setVersionInfo(null); setEmpSearch(""); }
+      else {
+        const initialType = allowedKey ? allowedKey.split(",")[0] : emptyForm.bonus_type;
+        setForm({ ...emptyForm, bonus_type: initialType });
+        setVersionInfo(null);
+        setEmpSearch("");
+      }
     }
-  }, [open, ruleId, loadLookups, loadRule]);
+  }, [open, ruleId, loadLookups, loadRule, allowedKey]);
 
   const addTier = () => {
     const lastTier = form.tiers[form.tiers.length - 1];
@@ -176,8 +199,16 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
     try {
       const url = isEdit ? `/api/hr/policies/rules-bonus/${ruleId}` : "/api/hr/policies/rules-bonus";
       const method = isEdit ? "PUT" : "POST";
+      const { min_minutes_per_day, ...formRest } = form;
+      const minMinutes = Number(min_minutes_per_day) || 0;
       const payload = {
-        ...form,
+        ...formRest,
+        // أقل مدة في اليوم بتتخزن جوه كل شريحة (للأوفر تايم)
+        tiers: isOvertime
+          ? form.tiers.map(t => ({ ...t, min_minutes_per_day: minMinutes }))
+          : form.tiers,
+        max_per_day: Number(form.max_per_day) || 0,
+        max_per_month: Number(form.max_per_month) || 0,
         branch_id: form.scope === "branch" ? form.branch_id : null,
         department_id: form.scope === "department" ? form.department_id : null,
         specific_employees: form.scope === "employees" ? form.specific_employees : [],
@@ -234,10 +265,16 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
             </div>
 
             {/* نوع المكافأة */}
+            {typeLockedSingle ? (
+              <div className="text-sm">
+                <span className="font-semibold">{ar ? "نوع المكافأة: " : "Bonus Type: "}</span>
+                <span className="px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800">{currentType.label_ar}</span>
+              </div>
+            ) : (
             <div>
               <label className="text-sm font-semibold block mb-2">{ar ? "نوع المكافأة *" : "Bonus Type *"}</label>
               <div className="grid grid-cols-2 gap-2">
-                {BONUS_TYPES.map(t => (
+                {visibleTypes.map(t => (
                   <button key={t.value} type="button" disabled={isEdit}
                     onClick={() => setForm({ ...form, bonus_type: t.value })}
                     className={`p-3 rounded-lg border-2 text-right transition ${
@@ -248,6 +285,7 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
                 ))}
               </div>
             </div>
+            )}
 
             {/* الشرائح */}
             <div className="p-4 rounded-lg bg-emerald-50 border-2 border-emerald-200">
@@ -307,20 +345,34 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
 
             {/* الحدود */}
             <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-              <p className="font-semibold text-sm mb-3">{ar ? "الحدود القصوى" : "Max Limits"}</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">{ar ? "أقصى ساعات/يوم (0=بدون)" : "Max hours/day (0=none)"}</label>
-                  <Input type="number" step="0.5" value={form.max_per_day}
-                    onChange={(e) => setForm({ ...form, max_per_day: Number(e.target.value) || 0 })} />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">{ar ? "أقصى ساعات/شهر (0=بدون)" : "Max hours/month (0=none)"}</label>
-                  <Input type="number" value={form.max_per_month}
-                    onChange={(e) => setForm({ ...form, max_per_month: Number(e.target.value) || 0 })} />
-                </div>
-              </div>
-              <label className="flex items-center gap-2 mt-3 text-sm cursor-pointer">
+              {isOvertime && (
+                <>
+                  <p className="font-semibold text-sm mb-3">{ar ? "الحد الأدنى والحدود القصوى" : "Minimum & Max Limits"}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">{ar ? "أقل مدة في اليوم (دقيقة)" : "Min per day (minutes)"}</label>
+                      <Input type="number" min={0} step="5" value={form.min_minutes_per_day}
+                        onChange={(e) => setForm({ ...form, min_minutes_per_day: Number(e.target.value) || 0 })} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">{ar ? "الحد الأقصى في اليوم (ساعة)" : "Max per day (hours)"}</label>
+                      <Input type="number" min={0} step="0.5" value={form.max_per_day}
+                        onChange={(e) => setForm({ ...form, max_per_day: Number(e.target.value) || 0 })} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">{ar ? "الحد الأقصى في الشهر (ساعة)" : "Max per month (hours)"}</label>
+                      <Input type="number" min={0} value={form.max_per_month}
+                        onChange={(e) => setForm({ ...form, max_per_month: Number(e.target.value) || 0 })} />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {ar
+                      ? "0 = بدون حد. الأيام اللي فيها أوفر تايم أقل من الحد الأدنى مش بتتحسب"
+                      : "0 = no limit. Days with overtime below the minimum are not counted"}
+                  </p>
+                </>
+              )}
+              <label className={`flex items-center gap-2 text-sm cursor-pointer ${isOvertime ? "mt-3" : ""}`}>
                 <input type="checkbox" checked={form.requires_approval}
                   onChange={(e) => setForm({ ...form, requires_approval: e.target.checked })} />
                 {ar ? "يحتاج موافقة مسبقة" : "Requires prior approval"}

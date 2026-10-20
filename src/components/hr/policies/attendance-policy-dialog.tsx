@@ -238,6 +238,13 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
         assignment_type:               form.assignment_type,
         branch_id:     form.assignment_type === "branch"     && form.branch_id     ? Number(form.branch_id)     : null,
         department_id: form.assignment_type === "department" && form.department_id ? Number(form.department_id) : null,
+        // late_rules / absence_rules / overtime_rules مش بتتبعت خالص:
+        // قواعد التأخير والغياب والأوفر تايم بقت ليها كروت لوحدها (PenaltyRule / BonusRule)،
+        // وعدم إرسال المفاتيح بيضمن إن تعديل المسودة ما يمسحش القواعد اللي لسه متخزنة في الباك إند.
+      };
+      // الكود القديم لبناء القواعد — محفوظ للرجوع إليه بس مش بيتبعت ومش بيتنفذ
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const legacyRulesPayload = () => ({
         late_rules:    form.late_rules.map(r => ({
           from_minutes:    Number(r.from_minutes),
           to_minutes:      Number(r.to_minutes),
@@ -259,7 +266,7 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
           max_hours_per_month:r.max_hours_per_month ? Number(r.max_hours_per_month) : null,
           requires_approval:  r.requires_approval,
         })),
-      };
+      });
 
       const res  = await fetch(url, {
         method,
@@ -298,7 +305,8 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
     setForm(p => ({ ...p, overtime_rules: p.overtime_rules.map((r, idx) => idx === i ? { ...r, [key]: val } : r) }));
 
   // قسم "الإنذارات والخصم" مخفي لأن الباك إند لا يستخدمه
-  const HIDDEN_SECTIONS: Section[] = ["warnings"];
+  // أقسام التأخير والغياب والأوفر تايم مخفية: بقت ليها كروت لوحدها في صفحة السياسات (قواعد الجزاءات والمكافآت)
+  const HIDDEN_SECTIONS: Section[] = ["warnings", "late", "absence", "overtime"];
   const allSections: { key: Section; label: string; count: number | null }[] = [
     { key: "basic",       label: "البيانات الأساسية", count: null },
     { key: "permissions", label: "الأذونات",           count: null },
@@ -315,7 +323,7 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="w-5 h-5 text-brand-primary" />
-            {policyId ? "تعديل سياسة الحضور" : "سياسة حضور جديدة"}
+            {policyId ? "تعديل سياسة الحضور والأذونات" : "سياسة الحضور والأذونات"}
           </DialogTitle>
         </DialogHeader>
 

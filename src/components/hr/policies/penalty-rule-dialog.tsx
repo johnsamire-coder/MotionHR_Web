@@ -14,6 +14,8 @@ interface Props {
   onSaved: () => void;
   ruleId: number | null;
   ar: boolean;
+  /** يقصر اختيار نوع الجزاء على القيم دي. لو قيمة واحدة بس، بتتحدد تلقائياً والاختيار بيستخبى. */
+  allowedTypes?: string[];
 }
 
 interface Branch { id: number; name_ar?: string; name?: string; }
@@ -44,6 +46,7 @@ const DEDUCTION_TYPES = [
   { value: "fixed_per_unit",    label_ar: "مبلغ ثابت لكل وحدة",   needs_value: true,  suffix: "EGP" },
   { value: "fixed_total",       label_ar: "مبلغ ثابت إجمالي",     needs_value: true,  suffix: "EGP" },
   { value: "percent_basic",     label_ar: "% من الراتب الأساسي",  needs_value: true,  suffix: "%" },
+  { value: "day_fraction",      label_ar: "نسبة من أجر اليوم",    needs_value: true,  suffix: "يوم" },
   { value: "quarter_day",       label_ar: "ربع يوم",               needs_value: false, suffix: "" },
   { value: "half_day",          label_ar: "نصف يوم",               needs_value: false, suffix: "" },
   { value: "full_day",          label_ar: "يوم كامل",              needs_value: false, suffix: "" },
@@ -73,7 +76,7 @@ const emptyForm = {
   change_reason: "",
 };
 
-export default function PenaltyRuleDialog({ open, onClose, onSaved, ruleId, ar }: Props) {
+export default function PenaltyRuleDialog({ open, onClose, onSaved, ruleId, ar, allowedTypes }: Props) {
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -88,6 +91,14 @@ export default function PenaltyRuleDialog({ open, onClose, onSaved, ruleId, ar }
   const authH = token?.startsWith("Token") ? token : `Token ${token}`;
 
   const currentType = PENALTY_TYPES.find(t => t.value === form.penalty_type) || PENALTY_TYPES[0];
+
+  // مفتاح ثابت للـ deps عشان الـ array بيتعمل من جديد كل render
+  const allowedKey = allowedTypes && allowedTypes.length > 0 ? allowedTypes.join(",") : "";
+  const allowedList = allowedKey ? allowedKey.split(",") : null;
+  const visibleTypes = allowedList
+    ? PENALTY_TYPES.filter(t => allowedList.includes(t.value) || (isEdit && t.value === form.penalty_type))
+    : PENALTY_TYPES;
+  const typeLockedSingle = !!allowedList && allowedList.length === 1;
 
   const loadLookups = useCallback(async () => {
     try {
@@ -140,9 +151,14 @@ export default function PenaltyRuleDialog({ open, onClose, onSaved, ruleId, ar }
     if (open) {
       loadLookups();
       if (ruleId) loadRule();
-      else { setForm({ ...emptyForm }); setVersionInfo(null); setEmpSearch(""); }
+      else {
+        const initialType = allowedKey ? allowedKey.split(",")[0] : emptyForm.penalty_type;
+        setForm({ ...emptyForm, penalty_type: initialType });
+        setVersionInfo(null);
+        setEmpSearch("");
+      }
     }
-  }, [open, ruleId, loadLookups, loadRule]);
+  }, [open, ruleId, loadLookups, loadRule, allowedKey]);
 
   const addTier = () => {
     const lastTier = form.tiers[form.tiers.length - 1];
@@ -255,10 +271,16 @@ export default function PenaltyRuleDialog({ open, onClose, onSaved, ruleId, ar }
             </div>
 
             {/* نوع الجزاء */}
+            {typeLockedSingle ? (
+              <div className="text-sm">
+                <span className="font-semibold">{ar ? "نوع الجزاء: " : "Penalty Type: "}</span>
+                <span className="px-2 py-0.5 rounded bg-red-50 border border-red-200 text-red-800">{currentType.label_ar}</span>
+              </div>
+            ) : (
             <div>
               <label className="text-sm font-semibold block mb-2">{ar ? "نوع الجزاء *" : "Penalty Type *"}</label>
               <div className="grid grid-cols-2 gap-2">
-                {PENALTY_TYPES.map(t => (
+                {visibleTypes.map(t => (
                   <button
                     key={t.value}
                     type="button"
@@ -275,6 +297,7 @@ export default function PenaltyRuleDialog({ open, onClose, onSaved, ruleId, ar }
                 ))}
               </div>
             </div>
+            )}
 
             {/* فترة السماح */}
             <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
@@ -368,6 +391,13 @@ export default function PenaltyRuleDialog({ open, onClose, onSaved, ruleId, ar }
                             </label>
                             <Input type="number" step="0.01" value={tier.value || 0}
                               onChange={(e) => updateTier(idx, "value", Number(e.target.value) || 0)} />
+                            {tier.deduction_type === "day_fraction" && (
+                              <p className="text-[11px] text-muted-foreground mt-1">
+                                {ar
+                                  ? "مضروبة في أجر اليوم: 0.25 = ربع يوم، 0.5 = نص يوم، 1 = يوم، 1.5 = يوم ونص"
+                                  : "Multiplied by the daily wage: 0.25 = quarter day, 0.5 = half day, 1 = full day, 1.5 = day and a half"}
+                              </p>
+                            )}
                           </div>
                         )}
                       </div>
