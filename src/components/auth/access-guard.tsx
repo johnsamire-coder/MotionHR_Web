@@ -18,7 +18,7 @@ function isBlocked(data: unknown): string | null {
   const d = data as Record<string, unknown>;
   const message = String(d.message || d.detail || d.error || "");
   if (BLOCK_CODES.includes(String(d.code || "")) || BLOCK_TEXTS.some((t) => message.includes(t))) {
-    return message || "اشتراك الشركة متوقف لحين السداد. برجاء التواصل مع إدارة الشركة.";
+    return message || "اشتراك الشركة متوقف. برجاء التواصل مع إدارة الشركة.";
   }
   return null;
 }
