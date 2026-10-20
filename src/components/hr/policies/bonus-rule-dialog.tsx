@@ -211,7 +211,7 @@ export default function BonusRuleDialog({ open, onClose, onSaved, ruleId, ar }: 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Award className="w-5 h-5 text-emerald-600" />
-            {isEdit ? (ar ? "تعديل قاعدة مكافأة" : "Edit Bonus Rule") : (ar ? "إنشاء قاعدة مكافأة" : "Create Bonus Rule")}
+            {isEdit ? (ar ? "تعديل قاعدة أوفر تايم / شيفت ليلي / عمل في الإجازات" : "Edit Overtime / Night / Holiday Work Rule") : (ar ? "إنشاء قاعدة أوفر تايم / شيفت ليلي / عمل في الإجازات" : "Create Overtime / Night / Holiday Work Rule")}
           </DialogTitle>
         </DialogHeader>
 

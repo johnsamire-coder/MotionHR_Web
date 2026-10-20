@@ -35,7 +35,8 @@ interface Tier {
 
 const PENALTY_TYPES = [
   { value: "late_arrival",     label_ar: "تأخير الحضور",       unit_ar: "دقيقة" },
-    { value: "early_leave",      label_ar: "الخروج المبكر",      unit_ar: "دقيقة" },
+  { value: "absence",          label_ar: "الغياب",              unit_ar: "يوم" },
+  { value: "early_leave",      label_ar: "الخروج المبكر",      unit_ar: "دقيقة" },
   { value: "missing_checkout", label_ar: "عدم تسجيل الخروج",   unit_ar: "مرة" },
 ];
 
@@ -225,7 +226,7 @@ export default function PenaltyRuleDialog({ open, onClose, onSaved, ruleId, ar }
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <TrendingDown className="w-5 h-5 text-red-600" />
-            {isEdit ? (ar ? "تعديل قاعدة جزاء" : "Edit Penalty Rule") : (ar ? "إنشاء قاعدة جزاء" : "Create Penalty Rule")}
+            {isEdit ? (ar ? "تعديل قاعدة جزاء (تأخير / غياب / انصراف مبكر)" : "Edit Penalty Rule") : (ar ? "إنشاء قاعدة جزاء (تأخير / غياب / انصراف مبكر)" : "Create Penalty Rule")}
           </DialogTitle>
         </DialogHeader>
 
@@ -283,9 +284,13 @@ export default function PenaltyRuleDialog({ open, onClose, onSaved, ruleId, ar }
               <Input type="number" value={form.grace_amount}
                 onChange={(e) => setForm({ ...form, grace_amount: Number(e.target.value) || 0 })} />
               <p className="text-xs text-muted-foreground mt-1">
-                {ar
-                  ? `الـ ${currentType.unit_ar} الأولى من الجزاء لا تُحسب`
-                  : `First units are ignored`}
+                {form.penalty_type === "absence"
+                  ? (ar
+                      ? `أول ${form.grace_amount || 0} أيام غياب في الشهر من غير خصم`
+                      : `First ${form.grace_amount || 0} absence days per month are not deducted`)
+                  : (ar
+                      ? "الخصم بيبدأ بعد فترة السماح، ودقائق السماح نفسها مش بتتخصم. لو الشيفت ليه فترة سماح، بيتطبق الأكبر فيهم مرة واحدة بس."
+                      : "Deduction starts after the grace period; the grace minutes themselves are not deducted. If the shift has its own grace, only the larger of the two is applied, once.")}
               </p>
             </div>
 
@@ -301,6 +306,20 @@ export default function PenaltyRuleDialog({ open, onClose, onSaved, ruleId, ar }
                   {ar ? "أضف شريحة" : "Add Tier"}
                 </Button>
               </div>
+              {form.penalty_type === "absence" && (
+                <p className="text-xs text-red-800 bg-white/70 border border-red-100 rounded px-2 py-1.5 mb-3">
+                  {ar
+                    ? "الشرائح تصاعدية: كل يوم غياب بيتخصم حسب الشريحة اللي رقمه واقع فيها (مثلاً اليوم الأول يوم، التاني يومين)"
+                    : "Tiers are progressive: each absence day is deducted according to the tier its number falls in (e.g. 1st day = 1 day, 2nd day = 2 days)"}
+                </p>
+              )}
+              {form.penalty_type === "late_arrival" && (
+                <p className="text-xs text-red-800 bg-white/70 border border-red-100 rounded px-2 py-1.5 mb-3">
+                  {ar
+                    ? "الشرائح بتتطبق على تأخير كل يوم لوحده"
+                    : "Tiers are applied to each day's lateness separately"}
+                </p>
+              )}
               <div className="space-y-3">
                 {form.tiers.map((tier, idx) => {
                   const dtDef = DEDUCTION_TYPES.find(d => d.value === tier.deduction_type) || DEDUCTION_TYPES[0];

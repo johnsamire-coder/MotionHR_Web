@@ -24,6 +24,15 @@ import EosPolicyDialog from "@/components/hr/policies/eos-policy-dialog";
 import PayrollCyclePolicyDialog from "@/components/hr/policies/payroll-cycle-policy-dialog";
 import OfficialHolidayDialog from "@/components/hr/policies/official-holiday-dialog";
 
+// كروت غير مربوطة بمحرك الرواتب حالياً — مخفية من الـ hub (الملفات موجودة)
+const SHOW_PAYROLL_CYCLE = false;
+
+const ATTENDANCE_STATUS: Record<string, { ar: string; en: string; cls: string }> = {
+  draft:    { ar: "مسودة",   en: "Draft",    cls: "bg-amber-100 text-amber-800 border-amber-200" },
+  active:   { ar: "معتمدة",  en: "Approved", cls: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+  archived: { ar: "مؤرشفة",  en: "Archived", cls: "bg-slate-100 text-slate-700 border-slate-200" },
+};
+
 export default function PoliciesPage() {
   const d = useDict();
   const lang = useLangStore((s) => s.lang);
@@ -60,6 +69,7 @@ export default function PoliciesPage() {
   const [payrollCycleId, setPayrollCycleId]     = useState<number | null>(null);
 
   const [holidayOpen, setHolidayOpen]       = useState(false);
+  const [approvingId, setApprovingId]       = useState<number | null>(null);
 
   // Policies Data States
   const [attendancePolicies, setAttendancePolicies]     = useState<any[]>([]);
@@ -94,7 +104,9 @@ export default function PoliciesPage() {
       fetch("/api/hr/policies/insurance-policies", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({})),
       fetch("/api/hr/policies/tax", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({})),
       fetch("/api/hr/policies/eos", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({})),
-      fetch("/api/hr/policies/payroll-cycle-policies", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({})),
+      SHOW_PAYROLL_CYCLE
+        ? fetch("/api/hr/policies/payroll-cycle-policies", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({}))
+        : Promise.resolve([]),
     ])
       .then(([att, lv, all, bon, pen, ins, tax, eos, cyc]) => {
         setAttendancePolicies(extractArray(att));
@@ -111,6 +123,27 @@ export default function PoliciesPage() {
   }, [token, authH]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
+
+  const approveAttendancePolicy = async (id: number) => {
+    setApprovingId(id);
+    try {
+      const res = await fetch(`/api/hr/policies/attendance-policy/${id}/approve`, {
+        method: "POST",
+        headers: { Authorization: authH },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success !== false) {
+        toast.success(data.message || (ar ? "تم اعتماد السياسة" : "Policy approved"));
+        loadAll();
+      } else {
+        toast.error(data.error || data.message || (ar ? "فشل الاعتماد" : "Approval failed"));
+      }
+    } catch {
+      toast.error(ar ? "خطأ في الاتصال" : "Network error");
+    } finally {
+      setApprovingId(null);
+    }
+  };
 
   return (
     <div className="space-y-8 pb-10">
@@ -133,7 +166,7 @@ export default function PoliciesPage() {
           <div className="space-y-4">
             <h2 className="text-lg font-bold text-brand-primary border-b pb-2 flex items-center gap-2">
               <Clock className="w-5 h-5" />
-              <span>{ar ? "سياسات الحضور والانصراف ودورة الرواتب" : "Attendance & Payroll Cycle Group"}</span>
+              <span>{ar ? "سياسات الحضور والانصراف" : "Attendance Group"}</span>
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
@@ -155,26 +188,47 @@ export default function PoliciesPage() {
                     <h3 className="font-bold text-base">{ar ? "سياسات الحضور والغياب" : "Attendance Policy"}</h3>
                     <p className="text-xs text-muted-foreground mt-1">{ar ? "إعدادات التأخيرات والغياب المتدرج والـ Overtime" : "Late rules, progressive absence, overtime"}</p>
                   </div>
+                  <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                    {ar ? "السياسة لا تُطبَّق على الرواتب إلا بعد الاعتماد" : "A policy only applies to payroll after it is approved"}
+                  </p>
                   <div className="pt-2 border-t text-xs text-muted-foreground flex justify-between items-center">
                     <span>{ar ? "السياسات المتاحة:" : "Active:"}</span>
                     <Badge variant="secondary" className="font-bold">{attendancePolicies.length}</Badge>
                   </div>
                   {attendancePolicies.length > 0 && (
-                    <div className="space-y-1 pt-1" onClick={(e) => e.stopPropagation()}>
-                      {attendancePolicies.slice(0, 3).map((p: any) => (
-                        <div key={p.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs hover:bg-muted/60 transition">
-                          <span className="font-semibold truncate max-w-[170px]">{p.name || p.rule_name || p.allowance_name || p.title || (ar ? "بدل مسجل" : "Policy")}</span>
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setAttendanceId(p.id); setAttendanceOpen(true); }}>
-                            <Edit2 className="w-3 h-3 text-amber-600" />
-                          </Button>
-                        </div>
-                      ))}
+                    <div className="space-y-1 pt-1 max-h-56 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                      {attendancePolicies.map((p: any) => {
+                        const st = ATTENDANCE_STATUS[p.status] || ATTENDANCE_STATUS.draft;
+                        return (
+                          <div key={p.id} className="flex items-center justify-between gap-2 p-2 bg-muted/30 rounded text-xs hover:bg-muted/60 transition">
+                            <span className="font-semibold truncate max-w-[120px]">{p.name || p.rule_name || p.title || (ar ? "سياسة" : "Policy")}</span>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <span className={`px-1.5 py-0.5 rounded border text-[10px] font-semibold ${st.cls}`}>{ar ? st.ar : st.en}</span>
+                              {p.status === "draft" && (
+                                <Button
+                                  variant="outline" size="sm"
+                                  className="h-6 px-2 text-[10px] gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                                  disabled={approvingId === p.id}
+                                  onClick={() => approveAttendancePolicy(p.id)}
+                                >
+                                  {approvingId === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                                  {ar ? "اعتماد" : "Approve"}
+                                </Button>
+                              )}
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setAttendanceId(p.id); setAttendanceOpen(true); }}>
+                                <Edit2 className="w-3 h-3 text-amber-600" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>
               </Card>
 
               {/* Payroll Cycle Card */}
+              {SHOW_PAYROLL_CYCLE && (
               <Card 
                 className="border-border/60 hover:border-brand-primary/50 hover:shadow-md transition cursor-pointer"
                 onClick={() => { setPayrollCycleId(null); setPayrollCycleOpen(true); }}
@@ -210,6 +264,7 @@ export default function PoliciesPage() {
                   )}
                 </CardContent>
               </Card>
+              )}
 
               {/* Official Holidays Card */}
               <Card 
@@ -336,12 +391,12 @@ export default function PoliciesPage() {
                       <Award className="w-5 h-5" />
                     </div>
                     <Button size="sm" variant="outline" className="text-xs gap-1" onClick={(e) => { e.stopPropagation(); setBonusId(null); setBonusOpen(true); }}>
-                      <Plus className="w-3.5 h-3.5" />{ar ? "إضافة مكافأة" : "New"}
+                      <Plus className="w-3.5 h-3.5" />{ar ? "إضافة قاعدة" : "New"}
                     </Button>
                   </div>
                   <div>
-                    <h3 className="font-bold text-base">{ar ? "سياسات المكافآت والحوافز" : "Bonuses Policy"}</h3>
-                    <p className="text-xs text-muted-foreground mt-1">{ar ? "المكافآت والمنح الدورية والانتاجية" : "Periodic and production bonuses"}</p>
+                    <h3 className="font-bold text-base">{ar ? "قواعد الأوفر تايم والشيفت الليلي والعمل في الإجازات" : "Overtime, Night Shift & Holiday Work Rules"}</h3>
+                    <p className="text-xs text-muted-foreground mt-1">{ar ? "أجر الساعات الإضافية والشيفت الليلي والعمل في الويكند والإجازات الرسمية" : "Overtime, night shift, weekend and holiday work pay"}</p>
                   </div>
                   <div className="pt-2 border-t text-xs text-muted-foreground flex justify-between items-center">
                     <span>{ar ? "السياسات المتاحة:" : "Active:"}</span>
@@ -458,12 +513,12 @@ export default function PoliciesPage() {
                       <FileSignature className="w-5 h-5" />
                     </div>
                     <Button size="sm" variant="outline" className="text-xs gap-1" onClick={(e) => { e.stopPropagation(); setPenaltyId(null); setPenaltyOpen(true); }}>
-                      <Plus className="w-3.5 h-3.5" />{ar ? "إدارية" : "New"}
+                      <Plus className="w-3.5 h-3.5" />{ar ? "إضافة قاعدة" : "New"}
                     </Button>
                   </div>
                   <div>
-                    <h3 className="font-bold text-base">{ar ? "لائحة الجزاءات الإدارية" : "Disciplinary Penalties"}</h3>
-                    <p className="text-xs text-muted-foreground mt-1">{ar ? "المخالفات التأديبية والتلفيات (بدون غياب)" : "Administrative & behavioral penalties"}</p>
+                    <h3 className="font-bold text-base">{ar ? "لائحة جزاءات التأخير والغياب والانصراف المبكر" : "Late, Absence & Early Leave Penalties"}</h3>
+                    <p className="text-xs text-muted-foreground mt-1">{ar ? "تتطبق على المرتب وليها الأولوية على سياسة الحضور" : "Applied to payroll; takes priority over the attendance policy"}</p>
                   </div>
                   <div className="pt-2 border-t text-xs text-muted-foreground flex justify-between items-center">
                     <span>{ar ? "السياسات المتاحة:" : "Active:"}</span>
@@ -535,7 +590,7 @@ export default function PoliciesPage() {
       <InsurancePolicyDialog open={insuranceOpen} onClose={() => setInsuranceOpen(false)} onSaved={loadAll} policyId={insuranceId} ar={ar} />
       <TaxPolicyDialog open={taxOpen} onClose={() => setTaxOpen(false)} onSaved={loadAll} policyId={taxId} ar={ar} />
       <EosPolicyDialog open={eosOpen} onClose={() => setEosOpen(false)} onSaved={loadAll} policyId={eosId} ar={ar} />
-      <PayrollCyclePolicyDialog open={payrollCycleOpen} onClose={() => setPayrollCycleOpen(false)} onSaved={loadAll} policyId={payrollCycleId} ar={ar} />
+      {SHOW_PAYROLL_CYCLE && <PayrollCyclePolicyDialog open={payrollCycleOpen} onClose={() => setPayrollCycleOpen(false)} onSaved={loadAll} policyId={payrollCycleId} ar={ar} />}
       <OfficialHolidayDialog open={holidayOpen} onClose={() => setHolidayOpen(false)} onSaved={loadAll} ar={ar} />
     </div>
   );
