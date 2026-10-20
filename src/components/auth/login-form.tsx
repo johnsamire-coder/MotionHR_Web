@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,6 +18,7 @@ import { loginSchema, LoginFormData } from "@/lib/schemas/auth";
 import { authApi } from "@/lib/api/endpoints/auth";
 import { useAuthStore } from "@/lib/stores/auth";
 import { STORAGE_KEYS, ROUTES, ROLES } from "@/lib/constants/config";
+import { BLOCKED_MESSAGE_KEY } from "@/components/auth/access-guard";
 
 export function LoginForm() {
   const router = useRouter();
@@ -33,6 +34,18 @@ export function LoginForm() {
   const [actUsername, setActUsername] = useState("");
   const [actLoading, setActLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // رسالة الإيقاف لو اتخرّج من السيستم عشان حسابه أو شركته موقوفة
+  const [blockedMessage, setBlockedMessage] = useState("");
+  useEffect(() => {
+    try {
+      const blocked = sessionStorage.getItem(BLOCKED_MESSAGE_KEY);
+      if (blocked) {
+        sessionStorage.removeItem(BLOCKED_MESSAGE_KEY);
+        setBlockedMessage(blocked);
+      }
+    } catch {}
+  }, []);
 
   const handleVerifyIdentity = async () => {
     if (!phone.trim() || !nationalSuffix.trim()) {
@@ -225,6 +238,11 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      {blockedMessage && (
+        <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          {blockedMessage}
+        </div>
+      )}
       <div className="space-y-2">
         <Label htmlFor="username">اسم المستخدم</Label>
         <Input
