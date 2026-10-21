@@ -27,9 +27,17 @@ export function useAuth(requiredRoles?: string[]) {
         router.push("/login");
       }
     }
+
+    // لازم يغيّر كلمة السر الأول قبل أي صفحة تانية
+    if (user.must_change_password) {
+      router.replace("/change-password");
+    }
   }, [isHydrated, isAuthenticated, user, requiredRoles, router]);
 
-  return { user, isAuthenticated: isHydrated && isAuthenticated, logout };
+  // الصفحة ماتظهرش خالص لحد غير مسموحله (قبل كده كانت بتظهر لحظة قبل ما تطرده)
+  const roleAllowed = !requiredRoles || requiredRoles.length === 0 || (!!user && requiredRoles.includes(user.role));
+  const passwordOk = !user?.must_change_password;
+  return { user, isAuthenticated: isHydrated && isAuthenticated && roleAllowed && passwordOk, logout };
 }
 
 export function useIsHR() {

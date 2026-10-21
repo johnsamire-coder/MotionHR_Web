@@ -31,6 +31,9 @@ interface Announcement {
   is_read?: boolean;
   created_at: string;
   created_by_name?: string;
+  // السيرفر بيرجّع النص في message والتاريخ في publish_at
+  message?: string;
+  publish_at?: string;
   read_count?: number;
   total_recipients?: number;
 }
@@ -188,13 +191,16 @@ export default function AnnouncementsPage() {
     new Date(a.created_at).toDateString() === new Date().toDateString()
   ).length;
 
-  const fmtDate = (d: string) =>
-    new Date(d).toLocaleDateString(ar ? "ar-EG" : "en-US", {
+  const fmtDate = (d: string) => {
+    const dt = new Date(d);
+    if (!d || isNaN(dt.getTime())) return d || "—";
+    return dt.toLocaleDateString(ar ? "ar-EG" : "en-US", {
       year: "numeric", month: "short", day: "numeric",
     });
+  };
 
   const openEdit = (item: Announcement) => {
-    setForm({ title: item.title, content: item.content, priority: (item.priority as "low" | "medium" | "high") });
+    setForm({ title: item.title, content: item.content || item.message || "", priority: (item.priority as "low" | "medium" | "high") });
     setEditItem(item);
   };
 
@@ -314,11 +320,11 @@ export default function AnnouncementsPage() {
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground line-clamp-2">
-                          {item.content}
+                          {item.content || item.message}
                         </p>
                         <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                           {item.created_by_name && <span>{item.created_by_name}</span>}
-                          <span>{fmtDate(item.created_at)}</span>
+                          <span>{fmtDate(item.created_at || item.publish_at || "")}</span>
                         </div>
                       </div>
                     </div>

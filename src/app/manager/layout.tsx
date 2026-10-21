@@ -30,7 +30,8 @@ interface NavSection {
 }
 
 export default function ManagerLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth([ROLES.manager, ROLES.employee]);
+  // بوابة المدير للمديرين بس (الموظف العادي ليه بوابة الموظف)
+  const { isAuthenticated } = useAuth([ROLES.manager]);
   const pathname = usePathname();
   const lang = useLangStore((s) => s.lang);
   const ar = lang === "ar";

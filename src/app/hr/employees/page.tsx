@@ -112,10 +112,27 @@ export default function EmployeesPage() {
   }, []);
 
   // â”€â”€ Load Employees â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // التصدير بيجيب كل الموظفين بنفس الفلاتر (قبل كده كان بيصدّر الصفحة الظاهرة بس، أول 25)
+  const fetchAllForExport = async (): Promise<any[]> => {
+    const params = new URLSearchParams();
+    params.set("page", "1");
+    params.set("page_size", "10000");
+    if (search)                       params.set("search", search);
+    if (deptFilter !== "all")         params.set("department", deptFilter);
+    if (statusFilter !== "all")       params.set("status", statusFilter);
+    try {
+      const r = await fetch(`/api/employees/list?${params}`, { headers: { Authorization: authHeader } });
+      const d = await r.json();
+      return Array.isArray(d?.results) ? d.results : (data?.results || []);
+    } catch {
+      return data?.results || [];
+    }
+  };
+
   const handleExportExcel = async () => {
-    const list = (data?.results || []).map((e: any) => ({
+    const list = (await fetchAllForExport()).map((e: any) => ({
       employee_code: e.employee_code || e.code || "",
-      name: e.full_name_ar || e.name || e.employee_name || "",
+      name: e.full_name || e.full_name_ar || e.name || e.employee_name || "",
       department: e.department_name || e.department || "",
       job_title: e.job_title_name || e.job_title || "",
       phone: e.phone || "",
@@ -144,9 +161,9 @@ export default function EmployeesPage() {
   };
 
   const handleExportPDF = async () => {
-    const list = (data?.results || []).map((e: any) => ({
+    const list = (await fetchAllForExport()).map((e: any) => ({
       employee_code: e.employee_code || e.code || "",
-      name: e.full_name_ar || e.name || e.employee_name || "",
+      name: e.full_name || e.full_name_ar || e.name || e.employee_name || "",
       department: e.department_name || e.department || "",
       job_title: e.job_title_name || e.job_title || "",
       phone: e.phone || "",

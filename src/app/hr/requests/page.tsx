@@ -230,6 +230,7 @@ export default function RequestsPage() {
       setRejectTarget(requestId);
       return;
     }
+    if (actionLoading) return;   // مايتنفذش مرتين لو الزرار اتداس بسرعة
     setActionLoading(true);
     try {
       const res = await fetch("/api/manager/action", {
@@ -590,10 +591,10 @@ export default function RequestsPage() {
                       <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => setSelectedReq(req)}><Eye className="w-4 h-4" /></Button>
                       {req.status === "pending" && (
                         <>
-                          <Button onClick={() => handleAction(req.id, "approve")} variant="ghost" size="sm" className="h-8 px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
+                          <Button onClick={() => handleAction(req.id, "approve")} disabled={actionLoading} variant="ghost" size="sm" className="h-8 px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
                             <Check className="w-4 h-4" />
                           </Button>
-                          <Button onClick={() => handleAction(req.id, "reject")} variant="ghost" size="sm" className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50">
+                          <Button onClick={() => handleAction(req.id, "reject")} disabled={actionLoading} variant="ghost" size="sm" className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50">
                             <X className="w-4 h-4" />
                           </Button>
                         </>

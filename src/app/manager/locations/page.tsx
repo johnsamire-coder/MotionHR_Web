@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import { escapeHtml } from "@/lib/utils";
 
 interface LiveEmployee {
   employee_id: number;
@@ -81,7 +82,7 @@ export default function ManagerLocationsPage() {
           display:flex;align-items:center;justify-content:center;
           color:white;font-weight:bold;font-size:14px;
           box-shadow:0 2px 8px rgba(0,0,0,0.3);
-        ">${emp.employee_name?.[0] || "?"}</div>`,
+        ">${escapeHtml(emp.employee_name?.[0] || "?")}</div>`,
         className: "",
         iconSize: [36, 36],
         iconAnchor: [18, 18],
@@ -96,7 +97,7 @@ export default function ManagerLocationsPage() {
         const marker = L.marker([emp.latitude, emp.longitude], { icon })
           .addTo(mapInstanceRef.current);
         (marker as { bindPopup: (html: string) => unknown }).bindPopup(
-          `<b>${emp.employee_name}</b><br/>${emp.employee_code}`
+          `<b>${escapeHtml(emp.employee_name)}</b><br/>${escapeHtml(emp.employee_code)}`
         );
         markersRef.current.set(emp.employee_id, marker);
       }
