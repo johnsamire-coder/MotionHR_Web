@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import { todayCairo } from "@/lib/utils";
 
 interface AttRecord {
   employee_id: number;
@@ -49,7 +50,7 @@ export default function ManagerAttendancePage() {
   const d = useDict();
   const lang = useLangStore((s) => s.lang);
 
-  const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(() => todayCairo());
   const [records, setRecords] = useState<AttRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -96,7 +97,7 @@ export default function ManagerAttendancePage() {
     setDate(d.toISOString().split("T")[0]);
   };
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayCairo();
 
   const stats = {
     present: records.filter(r => r.status_code === "present").length,

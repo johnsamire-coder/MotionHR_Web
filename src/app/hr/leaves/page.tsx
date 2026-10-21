@@ -100,6 +100,36 @@ export default function LeavesPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // الموافقة والرفض من الشاشة دي (الداشبورد بيودّي هنا للإجازات المعلقة)
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const decide = async (l: LeaveRow, action: "approve" | "reject") => {
+    let notes = "";
+    if (action === "reject") {
+      notes = (window.prompt(ar ? "سبب الرفض:" : "Rejection reason:") || "").trim();
+      if (!notes) return;
+    }
+    setBusyId(l.id);
+    try {
+      const t = token();
+      const res = await fetch("/api/manager/action", {
+        method: "POST",
+        headers: { Authorization: t.startsWith("Token ") ? t : `Token ${t}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "leave", id: l.id, action, notes }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success !== false) {
+        toast.success(data.message || (action === "approve" ? (ar ? "تمت الموافقة" : "Approved") : (ar ? "تم الرفض" : "Rejected")));
+        load();
+      } else {
+        toast.error(data.message || data.error || (ar ? "فشلت العملية" : "Action failed"));
+      }
+    } catch {
+      toast.error(ar ? "خطأ في الاتصال" : "Network error");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return leaves;
@@ -271,6 +301,7 @@ export default function LeavesPage() {
                   <TableHead>{ar ? "إلى" : "To"}</TableHead>
                   <TableHead>{ar ? "أيام" : "Days"}</TableHead>
                   <TableHead>{ar ? "الحالة" : "Status"}</TableHead>
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -286,6 +317,20 @@ export default function LeavesPage() {
                       <span className={`px-2 py-1 rounded-full text-xs font-bold ${statusBadge(l.status)}`}>
                         {statusLabel(l.status)}
                       </span>
+                    </TableCell>
+                    <TableCell>
+                      {l.status === "pending" && (
+                        <div className="flex gap-2">
+                          <Button size="sm" disabled={busyId !== null} onClick={() => decide(l, "approve")}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                            {ar ? "موافقة" : "Approve"}
+                          </Button>
+                          <Button size="sm" variant="outline" disabled={busyId !== null} onClick={() => decide(l, "reject")}
+                            className="border-red-300 text-red-600">
+                            {ar ? "رفض" : "Reject"}
+                          </Button>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

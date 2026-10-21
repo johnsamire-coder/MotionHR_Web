@@ -127,8 +127,10 @@ export default function MyLeavesPage() {
       approved: { label: d.leaveApproved, color: "bg-emerald-500/10 text-emerald-700", icon: CheckCircle2 },
       pending: { label: d.leavePending, color: "bg-amber-500/10 text-amber-700", icon: Clock },
       rejected: { label: d.leaveRejected, color: "bg-red-500/10 text-red-700", icon: XCircle },
+      cancelled: { label: lang === "en" ? "Cancelled" : "ملغية", color: "bg-slate-500/10 text-slate-600", icon: XCircle },
     };
-    const info = map[status || ""] || map.pending;
+    // أي حالة مش معروفة بتظهر باسمها، مش "معلقة" (قبل كده الملغية كانت بتبان معلقة)
+    const info = map[status || ""] || { label: status || "—", color: "bg-slate-500/10 text-slate-600", icon: Clock };
     const Icon = info.icon;
     return (
       <Badge className={`${info.color} border-0 gap-1`}>

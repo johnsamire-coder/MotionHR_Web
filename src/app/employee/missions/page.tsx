@@ -237,6 +237,10 @@ export default function EmployeeMissionsPage() {
       toast.error(ar ? "التاريخ والوقت مطلوبين (من وإلى)" : "Date and time are required");
       return;
     }
+    if (`${form.end_date}T${form.end_time}` <= `${form.start_date}T${form.start_time}`) {
+      toast.error(ar ? "وقت النهاية لازم يكون بعد وقت البداية" : "End time must be after start time");
+      return;
+    }
     if (!form.location_lat || !form.location_lng) {
       toast.error(ar ? "يرجى تحديد الموقع على الخريطة" : "Please pin location on map");
       return;

@@ -104,6 +104,8 @@ export default function ImportPage() {
         toast.success(
           `${d.importSuccess}: ${data.created || 0} ${d.newEmployees} | ${data.updated || 0} ${d.updatedEmployees}`
         );
+      } else if (data.pending) {
+        toast.info(data.message);
       } else {
         toast.error(data.message || d.importFailed);
       }

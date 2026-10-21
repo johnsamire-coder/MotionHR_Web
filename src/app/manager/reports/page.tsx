@@ -94,23 +94,24 @@ export default function ManagerReportsHubPage() {
   const formatNum = (val: number) => new Intl.NumberFormat(lang === "ar" ? "ar-EG" : "en-US").format(val);
 
   // تقارير المدير (بدون Payroll)
+  // التقارير اللي لسه نسختها للـ HR بس بتظهر "قريباً" بدل ما تودي المدير لصفحة ممنوعة عليه
   const attendanceReports: ReportItem[] = [
     { key: "daily-attendance", title: d.reportDailyAttendance, description: d.reportDailyAttendanceDesc, icon: Clock, color: "text-blue-600", bgColor: "bg-blue-500/10", href: "/manager/attendance", status: "ready" },
-    { key: "monthly-attendance", title: d.reportMonthlyAttendance, description: d.reportMonthlyAttendanceDesc, icon: Calendar, color: "text-indigo-600", bgColor: "bg-indigo-500/10", href: "/hr/reports/monthly-attendance", status: "ready" },
-    { key: "late", title: d.reportLate, description: d.reportLateDesc, icon: Timer, color: "text-amber-600", bgColor: "bg-amber-500/10", href: "/hr/reports/late", status: "ready" },
-    { key: "absence", title: d.reportAbsence, description: d.reportAbsenceDesc, icon: UserX, color: "text-red-600", bgColor: "bg-red-500/10", href: "/hr/reports/absence", status: "ready" },
+    { key: "monthly-attendance", title: d.reportMonthlyAttendance, description: d.reportMonthlyAttendanceDesc, icon: Calendar, color: "text-indigo-600", bgColor: "bg-indigo-500/10", href: "/hr/reports/monthly-attendance", status: "coming_soon" },
+    { key: "late", title: d.reportLate, description: d.reportLateDesc, icon: Timer, color: "text-amber-600", bgColor: "bg-amber-500/10", href: "/hr/reports/late", status: "coming_soon" },
+    { key: "absence", title: d.reportAbsence, description: d.reportAbsenceDesc, icon: UserX, color: "text-red-600", bgColor: "bg-red-500/10", href: "/hr/reports/absence", status: "coming_soon" },
   ];
 
   const leavesReports: ReportItem[] = [
-    { key: "leaves", title: d.reportLeaves, description: d.reportLeavesDesc, icon: Calendar, color: "text-cyan-600", bgColor: "bg-cyan-500/10", href: "/hr/reports/leaves-basic", status: "ready" },
+    { key: "leaves", title: d.reportLeaves, description: d.reportLeavesDesc, icon: Calendar, color: "text-cyan-600", bgColor: "bg-cyan-500/10", href: "/hr/reports/leaves-basic", status: "coming_soon" },
     { key: "requests", title: d.reportRequests, description: d.reportRequestsDesc, icon: FileText, color: "text-purple-600", bgColor: "bg-purple-500/10", href: "/manager/requests", status: "ready" },
-    { key: "permissions", title: d.reportPermissions, description: d.reportPermissionsDesc, icon: ShieldCheck, color: "text-teal-600", bgColor: "bg-teal-500/10", href: "/hr/reports/permissions", status: "ready" },
+    { key: "permissions", title: d.reportPermissions, description: d.reportPermissionsDesc, icon: ShieldCheck, color: "text-teal-600", bgColor: "bg-teal-500/10", href: "/hr/reports/permissions", status: "coming_soon" },
   ];
 
   const missionReports: ReportItem[] = [
     { key: "missions", title: d.missionsTitle, description: d.missionsDesc, icon: Sparkles, color: "text-emerald-600", bgColor: "bg-emerald-500/10", href: "/manager/missions", status: "ready" },
     { key: "locations", title: d.locationsTitle, description: d.locationsDesc, icon: Users, color: "text-pink-600", bgColor: "bg-pink-500/10", href: "/manager/locations", status: "ready" },
-    { key: "work-hours", title: d.reportWorkHours, description: d.reportWorkHoursDesc, icon: TrendingUp, color: "text-orange-600", bgColor: "bg-orange-500/10", href: "/hr/reports/work-hours", status: "ready" },
+    { key: "work-hours", title: d.reportWorkHours, description: d.reportWorkHoursDesc, icon: TrendingUp, color: "text-orange-600", bgColor: "bg-orange-500/10", href: "/hr/reports/work-hours", status: "coming_soon" },
   ];
 
   return (

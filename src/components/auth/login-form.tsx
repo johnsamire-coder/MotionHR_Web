@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff, LogIn } from "lucide-react";
@@ -119,7 +119,7 @@ export function LoginForm() {
 
   // Remember Me — جلب الداتا المحفوظة
   const savedUsername = typeof window !== "undefined"
-    ? localStorage.getItem(STORAGE_KEYS.savedUsernamee) || ""
+    ? localStorage.getItem(STORAGE_KEYS.savedUsername) || ""
     : "";
   const savedRememberMe = typeof window !== "undefined"
     ? localStorage.getItem(STORAGE_KEYS.rememberMe) === "true"
@@ -127,6 +127,7 @@ export function LoginForm() {
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
   } = useForm<LoginFormData>({
@@ -160,10 +161,10 @@ export function LoginForm() {
         // Remember Me
         if (values.remember_me) {
           localStorage.setItem(STORAGE_KEYS.rememberMe, "true");
-          localStorage.setItem(STORAGE_KEYS.savedUsernamee, values.username);
+          localStorage.setItem(STORAGE_KEYS.savedUsername, values.username);
         } else {
           localStorage.removeItem(STORAGE_KEYS.rememberMe);
-          localStorage.removeItem(STORAGE_KEYS.savedUsernamee);
+          localStorage.removeItem(STORAGE_KEYS.savedUsername);
         }
       }
 
@@ -292,9 +293,17 @@ export function LoginForm() {
 
       <div className="flex items-center justify-between">
         <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-          <Checkbox
-            {...register("remember_me")}
-            disabled={isLoading}
+          {/* الـ Checkbox ده بيبلّغ بالتغيير عن طريق onCheckedChange مش onChange، فـ register ماكانش بيوصله */}
+          <Controller
+            name="remember_me"
+            control={control}
+            render={({ field }) => (
+              <Checkbox
+                checked={!!field.value}
+                onCheckedChange={(v) => field.onChange(!!v)}
+                disabled={isLoading}
+              />
+            )}
           />
           <span>تذكرني</span>
         </label>

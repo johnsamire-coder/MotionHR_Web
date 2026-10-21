@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import { todayCairo } from "@/lib/utils";
 
 interface RequestType {
   id: number;
@@ -111,7 +112,7 @@ const handleStandardRequestsExport = async (rowsInput?: any[]) => {
     if (!list.length) { toast.error("لا توجد طلبات للتصدير"); return; }
     await standardExport({
       title: "تقرير الطلبات",
-      fileName: `requests_${new Date().toISOString().slice(0,10)}`,
+      fileName: `requests_${todayCairo()}`,
       type: "excel",
       lang: "ar",
       columns: [
@@ -150,7 +151,10 @@ export default function RequestsPage() {
     if (!token) return;
     setLoading(true);
     Promise.all([
-      fetch(`/api/requests/report?year=${year}&month=${month}`, { headers: { Authorization: authHeader } }).then(r => r.json()),
+      // تبويب "المعلق" بيجيب كل الطلبات المعلقة من أي شهر
+      fetch(activeTab === "pending"
+        ? `/api/requests/report?year=${year}&month=${month}&status=pending&all_months=1`
+        : `/api/requests/report?year=${year}&month=${month}`, { headers: { Authorization: authHeader } }).then(r => r.json()),
       fetch("/api/requests/types", { headers: { Authorization: authHeader } }).then(r => r.json()),
     ]).then(([reportData, typesData]) => {
       setReport(reportData);
@@ -158,7 +162,7 @@ export default function RequestsPage() {
     })
       .catch(() => toast.error(d.failedLoad))
       .finally(() => setLoading(false));
-  }, [year, month]);
+  }, [year, month, activeTab]);
 
   const getName = (item: { name: string; name_en?: string }) => {
     return lang === "en" && item.name_en ? item.name_en : item.name;

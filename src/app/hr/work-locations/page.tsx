@@ -245,10 +245,7 @@ export default function WorkLocationsPage() {
     let body: any = { scope: assignScope };
 
     if (assignScope === "employees") {
-      if (selectedEmpIds.length === 0) {
-        toast.error(ar ? "اختر موظفين" : "Select employees");
-        return;
-      }
+      // القايمة دي هي اللي هتتحفظ بالظبط (اللي اتشال علامته بيتشال من الموقع، وفاضية = مفيش حد)
       body.employee_ids = selectedEmpIds;
     } else if (assignScope === "department") {
       if (!selectedDeptId) {
@@ -273,7 +270,7 @@ export default function WorkLocationsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(ar ? `تم تعيين ${selectedEmpIds.length} موظف` : `Assigned ${selectedEmpIds.length}`);
+        toast.success(data.message || (ar ? "تم الحفظ" : "Saved"));
         setAssignLoc(null);
         loadData();
       } else {
@@ -844,7 +841,6 @@ export default function WorkLocationsPage() {
                 onClick={handleAssignEmployees}
                 disabled={
                   assigning ||
-                  (assignScope === "employees" && selectedEmpIds.length === 0) ||
                   (assignScope === "department" && !selectedDeptId) ||
                   (assignScope === "branch" && !selectedBranchId)
                 }

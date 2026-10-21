@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cairoYearMonth } from "@/lib/utils";
 
 const BACKEND = "https://jssolutions-eg.com";
 
@@ -8,8 +9,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { searchParams } = new URL(request.url);
-  const year = searchParams.get("year") || new Date().getFullYear();
-  const month = searchParams.get("month") || new Date().getMonth() + 1;
+  const year = searchParams.get("year") || cairoYearMonth().year;
+  const month = searchParams.get("month") || cairoYearMonth().month;
 
   try {
     const res = await fetch(

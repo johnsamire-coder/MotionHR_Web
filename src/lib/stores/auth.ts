@@ -62,9 +62,9 @@ export const useAuthStore = create<AuthState>()(
           const token = localStorage.getItem(STORAGE_KEYS.token);
           if (token) {
             try {
-              await fetch("https://jssolutions-eg.com/attendance/api/mobile/logout/", {
+              await fetch("/api/auth/logout", {
                 method: "POST",
-                headers: { "Authorization": `Token ${token}` }
+                headers: { "Authorization": token.startsWith("Token ") || token.startsWith("Bearer ") ? token : `Token ${token}` }
               });
             } catch (e) { console.error("Logout API error", e); }
           }

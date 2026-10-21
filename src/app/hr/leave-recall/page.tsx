@@ -29,6 +29,8 @@ export default function LeaveRecallPage() {
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
+  // الطلب اللي بيتكتب عليه ملاحظة (منفصل عن الطلب اللي بيتنفذ، عشان الكتابة ماتقفلش الزراير)
+  const [noteId, setNoteId] = useState<number | null>(null);
 
   const loadRecalls = async () => {
     if (!token) return;
@@ -52,7 +54,7 @@ export default function LeaveRecallPage() {
       const res = await fetch(`/api/hr/leave-recall/${id}/review`, {
         method: "POST",
         headers: { Authorization: authH, "Content-Type": "application/json" },
-        body: JSON.stringify({ action, notes }),
+        body: JSON.stringify({ action, notes: noteId === id ? notes : "" }),
       });
       const data = await res.json();
       if (data.success) {
@@ -60,6 +62,7 @@ export default function LeaveRecallPage() {
           ? (ar ? "تم اعتماد الاستدعاء" : "Recall approved")
           : (ar ? "تم رفض الاستدعاء" : "Recall rejected"));
         setNotes("");
+        setNoteId(null);
         loadRecalls();
       } else {
         toast.error(data.error || (ar ? "فشلت العملية" : "Action failed"));
@@ -124,8 +127,8 @@ export default function LeaveRecallPage() {
                   <textarea
                     className="w-full border rounded-lg px-3 py-2 text-sm min-h-[60px]"
                     placeholder={ar ? "ملاحظات المراجعة (اختياري)" : "Review notes (optional)"}
-                    value={actionId === r.id ? notes : ""}
-                    onChange={(e) => { setActionId(r.id); setNotes(e.target.value); }}
+                    value={noteId === r.id ? notes : ""}
+                    onChange={(e) => { setNoteId(r.id); setNotes(e.target.value); }}
                   />
                   <div className="flex gap-2 justify-end">
                     <button

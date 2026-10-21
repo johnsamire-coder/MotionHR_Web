@@ -49,8 +49,9 @@ export default function ExportPage() {
       const res = await fetch("/api/employees/list", { headers: { Authorization: authH }, cache: "no-store" });
       const data = await res.json();
       const list = data.results || data.employees || data.data || [];
-      setUsers(list.map((e: any) => ({
-        id: e.user_id || e.id,
+      // رقم المستخدم بس (رقم الموظف ممكن يطابق مستخدم تاني فيطلع صلاحياته)
+      setUsers(list.filter((e: any) => e.user_id).map((e: any) => ({
+        id: e.user_id,
         username: e.employee_code || e.username || `emp${e.id}`,
         first_name: e.full_name || e.first_name_ar || e.first_name || "",
         last_name: "",

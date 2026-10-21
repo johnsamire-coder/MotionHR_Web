@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import { todayCairo } from "@/lib/utils";
 
 interface Shift {
   id: number;
@@ -79,7 +80,7 @@ export default function ShiftsPage() {
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   };
-  const [startDate, setStartDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [startDate, setStartDate] = useState<string>(todayCairo());
   const [endDate, setEndDate] = useState<string>("");
   const [isAssigning, setIsAssigning] = useState(false);
   const [deletingAssignId, setDeletingAssignId] = useState<number | null>(null);
@@ -244,7 +245,7 @@ export default function ShiftsPage() {
     setAssignmentType("branch");
     setSelectedTargetId("");
     setSelectedTargetIds([]);
-    setStartDate(new Date().toISOString().split("T")[0]);
+    setStartDate(todayCairo());
     setEndDate("");
   };
 

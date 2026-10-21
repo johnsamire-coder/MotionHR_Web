@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { todayCairo } from "@/lib/utils";
 
 const BACKEND = "https://jssolutions-eg.com";
 
@@ -9,7 +10,7 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  const asOfDate = searchParams.get("as_of_date") || new Date().toISOString().slice(0, 10);
+  const asOfDate = searchParams.get("as_of_date") || todayCairo();
 
   try {
     const url = `${BACKEND}/attendance/api/mobile/manager/reports/eos/export/pdf/?as_of_date=${encodeURIComponent(asOfDate)}`;

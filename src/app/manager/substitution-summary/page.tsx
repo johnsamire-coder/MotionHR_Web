@@ -9,6 +9,15 @@ import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 import { toast } from "sonner";
 
+const STATUS_VIEW: Record<string, { ar: string; en: string; cls: string }> = {
+  approved: { ar: "موافق", en: "Approved", cls: "bg-emerald-500/10 text-emerald-700" },
+  rejected: { ar: "مرفوض", en: "Rejected", cls: "bg-red-500/10 text-red-700" },
+  pending: { ar: "معلق", en: "Pending", cls: "bg-amber-500/10 text-amber-700" },
+  manager_approved: { ar: "موافقة المدير", en: "Manager approved", cls: "bg-sky-500/10 text-sky-700" },
+  hr_approved: { ar: "موافقة HR", en: "HR approved", cls: "bg-sky-500/10 text-sky-700" },
+  cancelled: { ar: "ملغي", en: "Cancelled", cls: "bg-slate-500/10 text-slate-600" },
+};
+
 export default function SubstitutionSummaryPage() {
   const lang = useLangStore(s => s.lang);
   const ar = lang === "ar";
@@ -28,12 +37,17 @@ export default function SubstitutionSummaryPage() {
   }, []);
 
   const markViewed = async () => {
-    await fetch("/api/manager/substitution-summary", {
-      method: "POST",
-      headers: { Authorization: authH },
-    });
-    setData((prev: any) => ({ ...prev, summary_viewed: true }));
-    toast.success(ar ? "تم تعليم الملخص كمُراجَع" : "Marked as reviewed");
+    try {
+      const res = await fetch("/api/manager/substitution-summary", {
+        method: "POST",
+        headers: { Authorization: authH },
+      });
+      if (!res.ok) throw new Error();
+      setData((prev: any) => ({ ...prev, summary_viewed: true }));
+      toast.success(ar ? "تم تعليم الملخص كمُراجَع" : "Marked as reviewed");
+    } catch {
+      toast.error(ar ? "ماتحفظش، حاول تاني" : "Not saved, try again");
+    }
   };
 
   if (loading) return <div className="flex items-center justify-center py-24"><Loader2 className="w-8 h-8 animate-spin" /></div>;
@@ -118,10 +132,16 @@ export default function SubstitutionSummaryPage() {
                     <td className="px-4 py-3">{r.type}</td>
                     <td className="px-4 py-3">{r.subject}</td>
                     <td className="px-4 py-3">
-                      <Badge className={r.status === "approved" ? "bg-emerald-500/10 text-emerald-700 border-0" : "bg-red-500/10 text-red-700 border-0"}>
-                        {r.status === "approved" ? <CheckCircle2 className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
-                        {r.status === "approved" ? (ar ? "موافق" : "Approved") : (ar ? "مرفوض" : "Rejected")}
-                      </Badge>
+                      {(() => {
+                        // الحالة الحقيقية (قبل كده أي حالة غير "موافق" كانت بتظهر "مرفوض")
+                        const st = STATUS_VIEW[r.status] || { ar: r.status || "—", en: r.status || "—", cls: "bg-slate-500/10 text-slate-600" };
+                        return (
+                          <Badge className={`${st.cls} border-0`}>
+                            {r.status === "approved" ? <CheckCircle2 className="w-3 h-3 mr-1" /> : r.status === "rejected" ? <XCircle className="w-3 h-3 mr-1" /> : null}
+                            {ar ? st.ar : st.en}
+                          </Badge>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-3 font-mono text-xs">{r.updated_at}</td>
                   </tr>

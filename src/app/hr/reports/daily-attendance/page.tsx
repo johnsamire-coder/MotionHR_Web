@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Clock, Loader2, Search } from "lucide-react";
 import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import { todayCairo } from "@/lib/utils";
 
 export default function DailyAttendanceReportPage() {
   const router = useRouter();
@@ -14,7 +15,7 @@ export default function DailyAttendanceReportPage() {
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authH = token?.startsWith("Token") ? token : `Token ${token}`;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayCairo();
   const [date, setDate] = useState(today);
   const [status, setStatus] = useState("all");
   const [data, setData] = useState<any>(null);

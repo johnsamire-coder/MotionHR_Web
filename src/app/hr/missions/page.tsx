@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import { todayCairo } from "@/lib/utils";
 
 interface Mission {
   id: number;
@@ -421,7 +422,7 @@ department: e.department_name || e.department_name_ar || "",
     if (!list.length) { toast.error("لا توجد بيانات للتصدير"); return; }
     await standardExport({
       title: "تقرير المهمات",
-      fileName: `missions_${new Date().toISOString().slice(0,10)}`,
+      fileName: `missions_${todayCairo()}`,
       type: "excel",
       lang: "ar",
       columns: [
@@ -448,7 +449,7 @@ department: e.department_name || e.department_name_ar || "",
     if (!list.length) { toast.error("لا توجد بيانات للتصدير"); return; }
     await standardExport({
       title: "تقرير المهمات",
-      fileName: `missions_${new Date().toISOString().slice(0,10)}`,
+      fileName: `missions_${todayCairo()}`,
       type: "pdf",
       lang: "ar",
       columns: [

@@ -48,7 +48,8 @@ export default function AssignRolesPage() {
         fetch("/api/hr/permissions-roles", { headers: { Authorization: authH } }).then(r => r.json()),
         fetch("/api/hr/permissions-users", { headers: { Authorization: authH } }).then(r => r.json()),
       ]);
-      setRoles(rolesRes?.roles || []);
+      setRoles(Array.isArray(rolesRes?.roles) ? rolesRes.roles : []);
+      if (rolesRes?.success === false && rolesRes?.message) toast.error(rolesRes.message);
       setUsers(usersRes?.users || []);
     } catch {
       toast.error(ar ? "فشل تحميل البيانات" : "Failed to load");

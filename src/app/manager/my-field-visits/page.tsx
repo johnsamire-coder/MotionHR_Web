@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import { todayCairo } from "@/lib/utils";
 
 // ── Types ─────────────────────────────────────────
 interface Visit {
@@ -256,7 +257,7 @@ export default function MyFieldVisitsPage() {
   };
 
   const fmtDateLabel = (d: string) => {
-    if (d === new Date().toISOString().split("T")[0])
+    if (d === todayCairo())
       return ar ? "اليوم" : "Today";
     return new Date(d).toLocaleDateString(ar ? "ar-EG" : "en-US", {
       weekday: "short", day: "numeric", month: "short", year: "numeric",

@@ -20,6 +20,7 @@ import {
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 import { CreateEmployeeDialog } from "@/components/hr/create-employee-dialog";
+import { todayCairo } from "@/lib/utils";
 
 interface Employee {
   id: number;
@@ -143,7 +144,7 @@ export default function EmployeesPage() {
     if (!list.length) { toast.error("لا توجد بيانات للتصدير"); return; }
     await standardExport({
       title: "كشف الموظفين",
-      fileName: `employees_${new Date().toISOString().slice(0,10)}`,
+      fileName: `employees_${todayCairo()}`,
       type: "excel",
       lang: "ar",
       columns: [
@@ -174,7 +175,7 @@ export default function EmployeesPage() {
     if (!list.length) { toast.error("لا توجد بيانات للتصدير"); return; }
     await standardExport({
       title: "كشف الموظفين",
-      fileName: `employees_${new Date().toISOString().slice(0,10)}`,
+      fileName: `employees_${todayCairo()}`,
       type: "pdf",
       lang: "ar",
       columns: [

@@ -42,7 +42,8 @@ export default function OrgChartPage() {
     fetch("/api/employees/list", { headers: { Authorization: authHeader } })
       .then(r => r.json())
       .then(data => {
-        const employees: Employee[] = data?.employees || [];
+        // البروكسي بيرجع القايمة في results
+        const employees: Employee[] = data?.results || data?.employees || [];
 
         // نبني الشجرة
         const map = new Map<number, TreeNode>();

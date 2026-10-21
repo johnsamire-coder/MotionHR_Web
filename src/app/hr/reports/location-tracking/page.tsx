@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import { todayCairo } from "@/lib/utils";
 
 interface LogPoint {
   timestamp: string;
@@ -73,7 +74,7 @@ export default function LocationTrackingPage() {
   const lang = useLangStore((s) => s.lang);
   const ar = lang === "ar";
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayCairo();
   const [date, setDate] = useState(today);
   const [data, setData] = useState<TrackingData | null>(null);
   const [loading, setLoading] = useState(true);
