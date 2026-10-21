@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import EmployeeDocuments from "@/components/employees/employee-documents";
 
 interface EmployeeData {
   id: number;
@@ -248,7 +249,6 @@ export default function EmployeeDetailPage() {
   const [attendanceData, setAttendanceData] = useState<any[]>([]);
   const [leavesData, setLeavesData] = useState<any[]>([]);
   const [requestsData, setRequestsData] = useState<any[]>([]);
-  const [folderData, setFolderData] = useState<any[]>([]);
   const [tabDataLoading, setTabDataLoading] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
 
@@ -546,7 +546,7 @@ export default function EmployeeDetailPage() {
     if ((tab === "attendance" && attendanceData.length > 0) ||
         (tab === "leaves" && leavesData.length > 0) ||
         (tab === "requests" && requestsData.length > 0) ||
-        (tab === "folder" && folderData.length > 0)) return;
+        tab === "folder") return;
 
     setTabDataLoading(true);
     try {
@@ -577,11 +577,6 @@ export default function EmployeeDetailPage() {
         const res = await fetch(`/api/hr/employees/${employee.id}/summary`, { headers: { Authorization: authH } });
         const data = await res.json();
         setRequestsData(Array.isArray(data?.requests_list) ? data.requests_list : []);
-      } else if (tab === "folder") {
-        const res = await fetch(`/api/hr/employees/${employee.id}/documents`, { headers: { Authorization: authH } });
-        const data = await res.json();
-        const docsRaw = data?.documents ?? data?.results ?? data;
-        setFolderData(Array.isArray(docsRaw) ? docsRaw : []);
       }
     } catch {} finally { setTabDataLoading(false); }
   };
@@ -1138,35 +1133,7 @@ export default function EmployeeDetailPage() {
           )}
 
           {activeTab === "folder" && (
-            <div className="space-y-3">
-              <h3 className="text-lg font-semibold">{ar ? "ملف الموظف - المستندات" : "Employee Folder - Documents"}</h3>
-              {tabDataLoading ? (
-                <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-              ) : folderData.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">{ar ? "لا توجد مستندات" : "No documents"}</p>
-              ) : (
-                <div className="space-y-2">
-                  {folderData.map((doc: any, i: number) => (
-                    <Card key={i}>
-                      <CardContent className="p-3 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <FileText className="w-5 h-5 text-brand-primary" />
-                          <div>
-                            <p className="font-semibold text-sm">{doc.title || doc.document_type}</p>
-                            {doc.expiry_date && <p className="text-xs text-muted-foreground">{ar ? "ينتهي:" : "Expires:"} {doc.expiry_date}</p>}
-                          </div>
-                        </div>
-                        {doc.file_url && (
-                          <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="text-brand-primary text-xs hover:underline">
-                            {ar ? "فتح" : "Open"}
-                          </a>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
+            <EmployeeDocuments employeeId={employee.id} ar={ar} authH={authH} />
           )}
 
           {activeTab === "contract" && (
