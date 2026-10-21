@@ -179,6 +179,16 @@ export default function ManualEntriesPage() {
       toast.error(ar ? "من فضلك املأ كل الحقول المطلوبة" : "Please fill all required fields");
       return;
     }
+    const total = Number(instForm.total_amount);
+    const monthly = Number(instForm.monthly_amount);
+    if (!(total > 0) || !(monthly > 0)) {
+      toast.error(ar ? "المبلغ والقسط الشهري لازم يكونوا أكبر من صفر" : "Amount and monthly installment must be greater than zero");
+      return;
+    }
+    if (monthly > total) {
+      toast.error(ar ? "القسط الشهري مينفعش يكون أكبر من إجمالي السلفة" : "Monthly installment cannot exceed the total");
+      return;
+    }
     setInstallmentSaving(true);
     try {
       const res = await fetch("/api/hr/manual-entries/installment", {

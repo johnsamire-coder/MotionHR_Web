@@ -45,6 +45,9 @@ const STATUS_CONFIG: Record<string, {
   completed:        { color: "text-blue-700",    bg: "bg-blue-500/10",    label_ar: "منتهي",            label_en: "Completed" },
   cancelled:        { color: "text-red-700",     bg: "bg-red-500/10",     label_ar: "ملغي",             label_en: "Cancelled" },
   assigned:         { color: "text-purple-700",  bg: "bg-purple-500/10",  label_ar: "مُعيّن",           label_en: "Assigned" },
+  accepted:         { color: "text-emerald-700", bg: "bg-emerald-500/10", label_ar: "مقبولة",           label_en: "Accepted" },
+  in_progress:      { color: "text-emerald-700", bg: "bg-emerald-500/10", label_ar: "جارية",            label_en: "In progress" },
+  rejected:         { color: "text-red-700",     bg: "bg-red-500/10",     label_ar: "مرفوضة",           label_en: "Rejected" },
 };
 
 const EMPTY_FORM = {
@@ -284,15 +287,17 @@ export default function EmployeeMissionsPage() {
   };
 
   // ── Filters ──────────────────────────────────────────────
+  const ACTIVE_STATUSES = ["accepted", "in_progress", "active", "assigned"];
   const filtered = data.missions.filter(m => {
-    if (tab === "active")    return ["active","assigned"].includes(m.status);
+    // حالات التعيين من السيرفر: المقبولة والجارية هما النشطة
+    if (tab === "active")    return ACTIVE_STATUSES.includes(m.status);
     if (tab === "pending")   return ["pending","pending_approval"].includes(m.status);
     if (tab === "completed") return m.status === "completed";
     return true;
   });
 
   const counts = {
-    active:    data.missions.filter(m => ["active","assigned"].includes(m.status)).length,
+    active:    data.missions.filter(m => ACTIVE_STATUSES.includes(m.status)).length,
     pending:   data.missions.filter(m => ["pending","pending_approval"].includes(m.status)).length,
     completed: data.missions.filter(m => m.status === "completed").length,
   };

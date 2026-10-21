@@ -115,7 +115,20 @@ export default function LeavesBasicReportPage() {
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i);
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
-  const leaves = data?.employees || [];
+  // السيرفر بيرجّع موظف وتحته إجازاته (leaves)، فبنفردها صف لكل إجازة
+  const leaves: LeaveDetail[] = (data?.employees || []).flatMap((e: any) =>
+    Array.isArray(e?.leaves)
+      ? e.leaves.map((l: any) => ({
+          employee_name: e.name || e.employee_name || "",
+          department: e.department || "",
+          leave_type: l.type || l.leave_type || "",
+          start_date: l.from || l.start_date,
+          end_date: l.to || l.end_date,
+          days_count: l.days ?? l.days_count,
+          status: l.status,
+        }))
+      : [e]
+  );
 
   const filtered = leaves.filter(lv => {
     const matchSearch = !search ||

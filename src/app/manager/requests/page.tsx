@@ -32,6 +32,10 @@ interface PendingItem {
   submitted_at?: string;
   reason?: string;
   amount?: number;
+  type_name?: string;
+  category_name?: string;
+  subject?: string;
+  details?: string;
 }
 
 interface Substitute {
@@ -93,6 +97,17 @@ export default function ManagerRequestsPage() {
   };
 
   const handleAction = async (item: PendingItem, action: "approve" | "reject", isLeave: boolean) => {
+    // الرفض: تأكيد وسبب (السيرفر بيرفض الرفض من غير سبب)
+    if (action === "reject") {
+      const reason = window.prompt(lang === "ar" ? "اكتب سبب الرفض:" : "Rejection reason:");
+      if (reason === null) return;
+      if (!reason.trim()) {
+        toast.error(lang === "ar" ? "سبب الرفض مطلوب" : "Rejection reason is required");
+        return;
+      }
+      await doAction(item, action, isLeave, "", reason.trim());
+      return;
+    }
     // لو مرضية + approve → نفتح dialog البديل لو مفيش بديل محدد مسبقًا
     if (isLeave && action === "approve" && item.leave_type_category === "sick" && !item.substitute_employee_id) {
       setSubstituteDialog({ item, isLeave });
@@ -103,7 +118,7 @@ export default function ManagerRequestsPage() {
     await doAction(item, action, isLeave, "");
   };
 
-  const doAction = async (item: PendingItem, action: "approve" | "reject", isLeave: boolean, substituteId: string) => {
+  const doAction = async (item: PendingItem, action: "approve" | "reject", isLeave: boolean, substituteId: string, notes = "") => {
     setActionLoading(item.id);
     try {
       const body: Record<string, unknown> = isLeave
@@ -111,6 +126,7 @@ export default function ManagerRequestsPage() {
         : { type: "request", id: item.id, action };
 
       if (substituteId) body["substitute_employee_id"] = substituteId;
+      if (notes) body["notes"] = notes;
 
       const res = await fetch("/api/manager/action", {
         method: "POST",
@@ -261,8 +277,13 @@ export default function ManagerRequestsPage() {
                           </Badge>
                         </div>
                         <p className="text-sm font-medium text-brand-primary">
-                          {item.leave_type || item.request_type}
+                          {item.leave_type || item.request_type || item.type_name}
+                          {item.category_name && <span className="text-xs text-muted-foreground"> · {item.category_name}</span>}
                         </p>
+                        {item.subject && <p className="text-sm mt-1">{item.subject}</p>}
+                        {item.details && (
+                          <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line line-clamp-4">{item.details}</p>
+                        )}
                         {(item.start_date || item.end_date) && (
                           <p className="text-xs text-muted-foreground mt-1 font-mono" dir="ltr">
                             {formatDate(item.start_date)}

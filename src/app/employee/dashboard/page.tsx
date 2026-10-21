@@ -110,14 +110,18 @@ export default function EmployeeDashboardPage() {
   const doAttendance = async (action: "check_in" | "check_out") => {
     setChecking(true);
     try {
-      let lat = 30.0444, lng = 31.2357;
+      // من غير موقع حقيقي مانسجلش (قبل كده كان بيتسجل كأنه في وسط القاهرة)
+      let lat: number, lng: number;
       try {
         const pos = await new Promise<GeolocationPosition>((res, rej) =>
           navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
         );
         lat = pos.coords.latitude;
         lng = pos.coords.longitude;
-      } catch { }
+      } catch {
+        toast.error(ar ? "لازم تفتح الـ GPS وتسمح للمتصفح بالوصول لموقعك عشان تسجّل" : "Please enable location (GPS) and allow access to continue");
+        return;
+      }
 
       const res = await fetch("/api/employee/attendance", {
         method: "POST",
@@ -149,13 +153,17 @@ export default function EmployeeDashboardPage() {
   const doPartialCheckout = async () => {
     setChecking(true);
     try {
-      let lat = 30.0444, lng = 31.2357;
+      // من غير موقع حقيقي مانسجلش (قبل كده كان بيتسجل كأنه في وسط القاهرة)
+      let lat: number, lng: number;
       try {
         const pos = await new Promise<GeolocationPosition>((res, rej) =>
           navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
         );
         lat = pos.coords.latitude; lng = pos.coords.longitude;
-      } catch { }
+      } catch {
+        toast.error(ar ? "لازم تفتح الـ GPS وتسمح للمتصفح بالوصول لموقعك عشان تسجّل" : "Please enable location (GPS) and allow access to continue");
+        return;
+      }
       const res = await fetch("/api/employee/partial-checkout", {
         method: "POST",
         headers: { Authorization: authHeader, "Content-Type": "application/json" },
@@ -178,13 +186,17 @@ export default function EmployeeDashboardPage() {
   const doResume = async () => {
     setChecking(true);
     try {
-      let lat = 30.0444, lng = 31.2357;
+      // من غير موقع حقيقي مانسجلش (قبل كده كان بيتسجل كأنه في وسط القاهرة)
+      let lat: number, lng: number;
       try {
         const pos = await new Promise<GeolocationPosition>((res, rej) =>
           navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
         );
         lat = pos.coords.latitude; lng = pos.coords.longitude;
-      } catch { }
+      } catch {
+        toast.error(ar ? "لازم تفتح الـ GPS وتسمح للمتصفح بالوصول لموقعك عشان تسجّل" : "Please enable location (GPS) and allow access to continue");
+        return;
+      }
       const res = await fetch("/api/employee/resume-checkin", {
         method: "POST",
         headers: { Authorization: authHeader, "Content-Type": "application/json" },

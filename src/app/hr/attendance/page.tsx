@@ -99,7 +99,7 @@ function StatCard({
 
 export default function AttendancePage() {
   const handleExportAttendance = async () => {
-    const rows = (filteredData || data || []).map((r: any) => ({
+    const rows = (filtered || []).map((r: any) => ({  // نفس الصفوف الظاهرة في الجدول بعد الفلترة
       employee_name: r.employee_name || r.name || "",
       department: r.department_name || r.department || "",
       status: r.status || "",
@@ -128,7 +128,7 @@ export default function AttendancePage() {
   };
 
   const handleExportAttendancePDF = async () => {
-    const rows = (filteredData || data || []).map((r: any) => ({
+    const rows = (filtered || []).map((r: any) => ({  // نفس الصفوف الظاهرة في الجدول بعد الفلترة
       employee_name: r.employee_name || r.name || "",
       department: r.department_name || r.department || "",
       status: r.status || "",

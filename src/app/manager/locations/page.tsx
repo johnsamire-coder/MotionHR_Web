@@ -45,7 +45,12 @@ export default function ManagerLocationsPage() {
         headers: { Authorization: authHeader },
       });
       const data = await res.json();
-      const emps = Array.isArray(data?.employees) ? data.employees : (Array.isArray(data) ? data : []);
+      // السيرفر بيرجّع locations (اللي ليهم موقع بس) والوقت في timestamp؛ واللي إحداثياته فاضية مايترسمش
+      const raw: any[] = Array.isArray(data?.locations) ? data.locations
+        : Array.isArray(data?.employees) ? data.employees : (Array.isArray(data) ? data : []);
+      const emps: LiveEmployee[] = raw
+        .filter((e: any) => e && e.latitude != null && e.longitude != null && !isNaN(Number(e.latitude)) && !isNaN(Number(e.longitude)))
+        .map((e: any) => ({ ...e, latitude: Number(e.latitude), longitude: Number(e.longitude), last_update: e.last_update || e.timestamp }));
       setEmployees(Array.isArray(emps) ? emps : []);
       setLastUpdate(new Date());
       if (emps.length > 0) updateMapMarkers(emps);
@@ -140,7 +145,9 @@ export default function ManagerLocationsPage() {
 
   const fmtTime = (t?: string) => {
     if (!t) return "—";
-    return new Date(t).toLocaleTimeString(lang === "ar" ? "ar-EG" : "en-US", {
+    const dt = new Date(t);
+    if (isNaN(dt.getTime())) return t;
+    return dt.toLocaleTimeString(lang === "ar" ? "ar-EG" : "en-US", {
       hour: "2-digit", minute: "2-digit",
     });
   };

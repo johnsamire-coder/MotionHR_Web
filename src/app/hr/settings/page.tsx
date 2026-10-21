@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import { useAuthStore } from "@/lib/stores/auth";
 
 interface Profile {
   id: number;
@@ -97,7 +98,7 @@ export default function SettingsPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          old_password: passwords.current,
+          current_password: passwords.current,
           new_password: passwords.new,
         }),
       });
@@ -106,6 +107,12 @@ export default function SettingsPage() {
       if (!res.ok) {
         toast.error(data?.message || d.passwordChangeFailed);
         return;
+      }
+
+      // السيرفر بيلغي مفتاح الدخول القديم ويرجّع واحد جديد — لازم نحفظه وإلا هيتعمل خروج إجباري
+      if (data?.token) {
+        localStorage.setItem(STORAGE_KEYS.token, data.token);
+        useAuthStore.setState({ token: data.token });
       }
 
       toast.success(d.passwordChanged);

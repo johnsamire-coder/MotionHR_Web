@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const url = `/attendance/api/mobile/leave-recall/list/`;
+    const url = `${BACKEND}/attendance/api/mobile/leave-recall/list/`;
     const res = await fetch(url, {
       headers: { Authorization: authHeader, "Accept-Language": "ar" },
       cache: "no-store",

@@ -36,10 +36,14 @@ export default function MyPermissionsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const totalHours = balance?.max_hours_per_month || balance?.total_hours || 4;
-  const usedHours = balance?.used_hours || 0;
-  const remainingHours = totalHours - usedHours;
-  const usedPercent = totalHours > 0 ? (usedHours / totalHours) * 100 : 0;
+  // من أرقام السيرفر الحقيقية (قبل كده كان ثابت 4 ساعات ومستخدم صفر)
+  const permissionsEnabled = balance?.enabled !== false;
+  const totalHours = Number(balance?.monthly_hours ?? balance?.max_hours_per_month ?? balance?.total_hours ?? 0);
+  const usedHours = Math.round((Number(balance?.used_minutes ?? 0) / 60) * 100) / 100;
+  const remainingHours = balance?.remaining_hours != null
+    ? Number(balance.remaining_hours)
+    : Math.max(0, totalHours - usedHours);
+  const usedPercent = totalHours > 0 ? Math.min(100, (usedHours / totalHours) * 100) : 0;
 
   return (
     <div className="space-y-6">
@@ -54,6 +58,12 @@ export default function MyPermissionsPage() {
         <div className="flex items-center justify-center py-24">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
+      ) : !permissionsEnabled ? (
+        <Card>
+          <CardContent className="p-6 text-center text-muted-foreground">
+            {lang === "ar" ? "الأذونات مش مفعّلة في شركتك." : "Permissions are not enabled for your company."}
+          </CardContent>
+        </Card>
       ) : (
         <>
           {/* Main Balance */}
