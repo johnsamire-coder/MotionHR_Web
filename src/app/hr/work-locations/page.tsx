@@ -307,8 +307,13 @@ export default function WorkLocationsPage() {
 
   const handleRejectLocation = async (loc: WorkLocation) => {
     const reason = prompt(ar ? "أدخل سبب الرفض:" : "Enter rejection reason:");
+    if (reason === null) return; // اتلغى
+    if (!reason.trim()) {
+      toast.error(ar ? "سبب الرفض مطلوب" : "Rejection reason is required");
+      return;
+    }
     try {
-      const res = await fetch(`/api/hr/work-locations/${loc.id}/approve`, {
+      const res = await fetch(`/api/hr/work-locations/${loc.id}/reject`, {
         method: "POST",
         headers: { Authorization: authHeader, "Content-Type": "application/json" },
         body: JSON.stringify({ reason: reason.trim() }),
