@@ -205,6 +205,16 @@ export default function ReportsHubPage() {
   // Payroll & Others (4)
   const locationReports: ReportItem[] = [
     {
+      key: "field-visits",
+      title: lang === "ar" ? "تقرير الزيارات الميدانية" : "Field Visits Report",
+      description: lang === "ar" ? "كل زيارة: قعد قد إيه، وصل ومشي إمتى ومنين، وخط سيره" : "Duration, places and route of each field visit",
+      icon: MapPin,
+      color: "text-teal-600",
+      bgColor: "bg-teal-500/10",
+      href: "/hr/reports/field-visits",
+      status: "ready",
+    },
+    {
       key: "location-tracking",
       title: lang === "ar" ? "تقرير المواقع الحية" : "Live Location Tracking",
       description: lang === "ar" ? "تتبع مواقع الموظفين ومراجعة خطوط السير" : "Track employee locations and review routes",

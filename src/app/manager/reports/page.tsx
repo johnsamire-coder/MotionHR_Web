@@ -109,6 +109,7 @@ export default function ManagerReportsHubPage() {
   ];
 
   const missionReports: ReportItem[] = [
+    { key: "field-visits", title: lang === "ar" ? "تقرير الزيارات الميدانية" : "Field Visits Report", description: lang === "ar" ? "زيارات فريقك: المدة والأماكن وخط السير" : "Your team's visits: duration, places, route", icon: Calendar, color: "text-teal-600", bgColor: "bg-teal-500/10", href: "/manager/field-visits-report", status: "ready" },
     { key: "missions", title: d.missionsTitle, description: d.missionsDesc, icon: Sparkles, color: "text-emerald-600", bgColor: "bg-emerald-500/10", href: "/manager/missions", status: "ready" },
     { key: "locations", title: d.locationsTitle, description: d.locationsDesc, icon: Users, color: "text-pink-600", bgColor: "bg-pink-500/10", href: "/manager/locations", status: "ready" },
     { key: "work-hours", title: d.reportWorkHours, description: d.reportWorkHoursDesc, icon: TrendingUp, color: "text-orange-600", bgColor: "bg-orange-500/10", href: "/hr/reports/work-hours", status: "coming_soon" },

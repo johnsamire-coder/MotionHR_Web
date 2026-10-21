@@ -30,6 +30,7 @@ export function Sidebar() {
     { key: "locations",        href: "/hr/locations",         icon: MapPin },
     { key: "announcements",    href: "/hr/announcements",     icon: Bell },
     { key: "reports",          href: "/hr/reports",           icon: FileBarChart },
+    { key: "auditLog",         href: "/hr/audit",             icon: ScrollText },
     { key: "departments",      href: "/hr/departments",       icon: Building2 },
     { key: "branches",         href: "/hr/branches",          icon: MapPin },
     { key: "shifts",           href: "/hr/shifts",            icon: Clock },

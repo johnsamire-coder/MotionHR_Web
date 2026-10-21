@@ -653,6 +653,11 @@ export default function EmployeeDetailPage() {
                     {ar ? "تعديل" : "Edit"}
                   </Button>
 
+                  {/* كل اللي اتغير في الموظف ده: قبل وبعد وبالتاريخ واليوزر */}
+                  <Button variant="outline" onClick={() => router.push(`/hr/audit?employee=${params.id}`)} className="bg-white/10 border-white/20 text-white hover:bg-white/20 gap-2">
+                    {ar ? "سجل التعديلات" : "Change log"}
+                  </Button>
+
                   <Button variant="outline" onClick={handleResetPassword} disabled={actionLoading}
                     className="bg-yellow-500/20 border-yellow-300/30 text-white hover:bg-yellow-500/30 gap-2 text-xs">
                     {ar ? "اعادة كلمة المرور" : "Reset Password"}
