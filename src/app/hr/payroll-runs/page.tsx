@@ -143,7 +143,18 @@ export default function PayrollRunsPage() {
       const data = await res.json();
       if (!res.ok || data.success === false) throw new Error(data.error || data.message || "فشل إنشاء مسير الرواتب");
 
-      toast.success(ar ? `تم إنشاء مسير الرواتب لـ ${data.total_employees} موظف بنجاح!` : "Payroll run created successfully!");
+      if (data.errors_count > 0) {
+        // بعض الموظفين ماتحسبوش: لازم يبان قبل الاعتماد
+        const names = (data.errors || []).slice(0, 5).map((e: any) => e.employee_name).join("، ");
+        toast.warning(
+          ar
+            ? `اتحسب ${data.total_employees} موظف، و${data.errors_count} موظف ماتحسبش: ${names}. راجعهم قبل الاعتماد.`
+            : `${data.total_employees} calculated, ${data.errors_count} failed: ${names}. Review before approving.`,
+          { duration: 15000 },
+        );
+      } else {
+        toast.success(ar ? `تم إنشاء مسير الرواتب لـ ${data.total_employees} موظف بنجاح!` : "Payroll run created successfully!");
+      }
       setNewRunOpen(false);
       loadRuns();
     } catch (err: any) {
