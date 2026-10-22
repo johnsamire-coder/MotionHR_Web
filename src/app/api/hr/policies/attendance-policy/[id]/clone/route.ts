@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { todayCairo } from "@/lib/utils";
 const BACKEND = "https://jssolutions-eg.com";
 
 export async function POST(
@@ -31,7 +32,7 @@ export async function POST(
     // 2) نعمل نسخة جديدة كـ draft
     const newPolicy = {
       name: `${p.name} (${lang === "ar" ? "نسخة" : "Copy"})`,
-      effective_from: new Date().toISOString().split("T")[0],
+      effective_from: todayCairo(),
       effective_to: null,
       status: "draft",
       notes: p.notes || "",

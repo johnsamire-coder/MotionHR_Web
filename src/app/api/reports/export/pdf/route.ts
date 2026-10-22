@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cairoYearMonth } from "@/lib/utils";
 
 const BACKEND = "https://jssolutions-eg.com";
 
@@ -10,8 +11,8 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const reportType = searchParams.get("report_type") || "attendance";
-  const year = searchParams.get("year") || new Date().getFullYear();
-  const month = searchParams.get("month") || new Date().getMonth() + 1;
+  const year = searchParams.get("year") || cairoYearMonth().year;
+  const month = searchParams.get("month") || cairoYearMonth().month;
 
   try {
     const url = `${BACKEND}/attendance/api/mobile/manager/reports/export/pdf/?report_type=${reportType}&year=${year}&month=${month}`;

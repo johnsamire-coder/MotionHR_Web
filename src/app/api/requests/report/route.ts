@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cairoYearMonth } from "@/lib/utils";
 
 const BACKEND = "https://jssolutions-eg.com";
 
@@ -9,11 +10,15 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const year = searchParams.get("year") || new Date().getFullYear();
-  const month = searchParams.get("month") || new Date().getMonth() + 1;
+  const year = searchParams.get("year") || cairoYearMonth().year;
+  const month = searchParams.get("month") || cairoYearMonth().month;
 
   try {
-    const url = `${BACKEND}/attendance/api/mobile/manager/reports/requests/?year=${year}&month=${month}`;
+    const extra = new URLSearchParams();
+    const status = searchParams.get("status");
+    if (status) extra.set("status", status);
+    if (searchParams.get("all_months") === "1") extra.set("all_months", "1");
+    const url = `${BACKEND}/attendance/api/mobile/manager/reports/requests/?year=${year}&month=${month}${extra.toString() ? `&${extra}` : ""}`;
     const res = await fetch(url, {
       headers: {
         Authorization: authHeader,

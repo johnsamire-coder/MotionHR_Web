@@ -26,6 +26,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import { todayCairo } from "@/lib/utils";
 
 interface AttendanceEmployee {
   employee_id: number;
@@ -99,7 +100,7 @@ function StatCard({
 
 export default function AttendancePage() {
   const handleExportAttendance = async () => {
-    const rows = (filteredData || data || []).map((r: any) => ({
+    const rows = (filtered || []).map((r: any) => ({  // نفس الصفوف الظاهرة في الجدول بعد الفلترة
       employee_name: r.employee_name || r.name || "",
       department: r.department_name || r.department || "",
       status: r.status || "",
@@ -111,7 +112,7 @@ export default function AttendancePage() {
     if (!rows.length) { toast.error("لا توجد بيانات للتصدير"); return; }
     await standardExport({
       title: "تقرير الحضور اليومي",
-      fileName: `attendance_${new Date().toISOString().slice(0,10)}`,
+      fileName: `attendance_${todayCairo()}`,
       type: "excel",
       lang: "ar",
       columns: [
@@ -128,7 +129,7 @@ export default function AttendancePage() {
   };
 
   const handleExportAttendancePDF = async () => {
-    const rows = (filteredData || data || []).map((r: any) => ({
+    const rows = (filtered || []).map((r: any) => ({  // نفس الصفوف الظاهرة في الجدول بعد الفلترة
       employee_name: r.employee_name || r.name || "",
       department: r.department_name || r.department || "",
       status: r.status || "",
@@ -140,7 +141,7 @@ export default function AttendancePage() {
     if (!rows.length) { toast.error("لا توجد بيانات للتصدير"); return; }
     await standardExport({
       title: "تقرير الحضور اليومي",
-      fileName: `attendance_${new Date().toISOString().slice(0,10)}`,
+      fileName: `attendance_${todayCairo()}`,
       type: "pdf",
       lang: "ar",
       columns: [
@@ -162,7 +163,7 @@ export default function AttendancePage() {
   const d = useDict();
   const lang = useLangStore((s) => s.lang);
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = todayCairo();
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [data, setData] = useState<AttendanceData | null>(null);
   const [deptMap, setDeptMap] = useState<Record<string, DeptLookup>>({});

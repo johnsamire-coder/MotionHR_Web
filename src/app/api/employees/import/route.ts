@@ -32,12 +32,13 @@ export async function POST(request: NextRequest) {
     if (!contentType.includes("application/json")) {
       const text = await response.text();
       console.error("Non-JSON response:", text.substring(0, 300));
+      // رد مش مفهوم من السيرفر = حصلت مشكلة؛ نقول كده بدل "جاري"
       return NextResponse.json(
         {
           success: false,
-          message: `الاستيراد جاري - قد تحتاج تحديث الصفحة للتأكد (${response.status})`,
+          message: `حصلت مشكلة في السيرفر أثناء الاستيراد (${response.status}). راجع سجل الاستيراد قبل ما تعيد المحاولة.`,
         },
-        { status: 200 } // نرجع 200 عشان الويب مايظهرش خطأ
+        { status: response.ok ? 502 : response.status }
       );
     }
 
@@ -48,12 +49,14 @@ export async function POST(request: NextRequest) {
     const err = error as { name?: string; message?: string };
 
     if (err.name === "AbortError") {
+      // الملف كبير والسيرفر لسه بيشتغل عليه: مانقولش "نجح" لأننا مانعرفش النتيجة
       return NextResponse.json(
         {
-          success: true,
-          message: "الاستيراد جاري في الخلفية - راجع قائمة الموظفين بعد دقيقة",
+          success: false,
+          pending: true,
+          message: "الاستيراد لسه شغال على السيرفر. راجع سجل الاستيراد بعد دقيقة عشان تعرف النتيجة، وماتعيدش رفع الملف.",
         },
-        { status: 200 }
+        { status: 202 }
       );
     }
 

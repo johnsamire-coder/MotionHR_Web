@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import { todayCairo } from "@/lib/utils";
 
 interface AttRecord {
   employee_id: number;
@@ -36,11 +37,20 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string }> = {
   mission:  { color: "text-purple-700",  bg: "bg-purple-500/10" },
 };
 
+// حالات السيرفر → حالات الشاشة
+const STATUS_CODE_MAP: Record<string, string> = {
+  present: "present", late: "late", absent: "absent", on_leave: "leave", leave: "leave",
+  weekend: "weekend", holiday: "weekend", mission: "mission", on_mission: "mission",
+};
+const STATUS_LABEL_AR: Record<string, string> = {
+  present: "حاضر", late: "متأخر", absent: "غائب", leave: "إجازة", weekend: "عطلة", mission: "مأمورية",
+};
+
 export default function ManagerAttendancePage() {
   const d = useDict();
   const lang = useLangStore((s) => s.lang);
 
-  const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(() => todayCairo());
   const [records, setRecords] = useState<AttRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -57,7 +67,23 @@ export default function ManagerAttendancePage() {
     })
       .then(r => r.json())
       .then(data => {
-        setRecords(Array.isArray(data?.records) ? data.records : (Array.isArray(data) ? data : []));
+        // السيرفر بيرجّع items بأسماء check_in_time / check_out_time / status (نفس اللي الموبايل بيستخدمه)
+        const raw: any[] = Array.isArray(data?.items) ? data.items
+          : Array.isArray(data?.records) ? data.records : (Array.isArray(data) ? data : []);
+        setRecords(raw.map((x: any, i: number) => {
+          const code = STATUS_CODE_MAP[String(x.status_code || x.status || "").toLowerCase()] || "absent";
+          return {
+            employee_id: x.employee_id ?? i,
+            employee_name: x.employee_name || "",
+            employee_code: x.employee_code || "",
+            department: x.department || "",
+            check_in: x.check_in || x.check_in_time || "",
+            check_out: x.check_out || x.check_out_time || "",
+            late_minutes: x.late_minutes,
+            status: STATUS_LABEL_AR[code] || x.status || "",
+            status_code: code,
+          };
+        }));
       })
       .catch(() => toast.error(d.failedLoad))
       .finally(() => setLoading(false));
@@ -71,7 +97,7 @@ export default function ManagerAttendancePage() {
     setDate(d.toISOString().split("T")[0]);
   };
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayCairo();
 
   const stats = {
     present: records.filter(r => r.status_code === "present").length,
@@ -89,7 +115,10 @@ export default function ManagerAttendancePage() {
 
   const fmt = (t?: string) => {
     if (!t) return "—";
-    return new Date(`2000-01-01T${t}`).toLocaleTimeString(
+    const dt = new Date(`2000-01-01T${t}`);
+    // السيرفر بيبعت الوقت جاهز زي "09:05 AM"
+    if (isNaN(dt.getTime())) return t;
+    return dt.toLocaleTimeString(
       lang === "ar" ? "ar-EG" : "en-US",
       { hour: "2-digit", minute: "2-digit" }
     );

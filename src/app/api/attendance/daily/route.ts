@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { todayCairo } from "@/lib/utils";
 
 const BACKEND = "https://jssolutions-eg.com";
 
@@ -9,7 +10,7 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const date = searchParams.get("date") || new Date().toISOString().split("T")[0];
+  const date = searchParams.get("date") || todayCairo();
 
   try {
     const url = `${BACKEND}/attendance/api/mobile/manager/reports/daily-attendance/?date=${date}`;

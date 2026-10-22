@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import { todayCairo } from "@/lib/utils";
 
 interface Props {
   open: boolean;
@@ -77,7 +78,7 @@ interface Policy {
 
 const EMPTY: Policy = {
   name: "",
-  effective_from: new Date().toISOString().split("T")[0],
+  effective_from: todayCairo(),
   effective_to: "",
   status: "draft",
   assignment_type: "company",

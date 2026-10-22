@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import { todayCairo } from "@/lib/utils";
 
 // ── Types ─────────────────────────────────────────
 interface Visit {
@@ -56,7 +57,13 @@ const LOC_STATUS: Record<string, { label_ar: string; label_en: string; color: st
   approved: { label_ar: "معتمد",             label_en: "Approved", color: "bg-emerald-500/10 text-emerald-700" },
   pending:  { label_ar: "بانتظار الموافقة",  label_en: "Pending",  color: "bg-amber-500/10 text-amber-700" },
   rejected: { label_ar: "مرفوض",             label_en: "Rejected", color: "bg-red-500/10 text-red-700" },
+  // الحالات اللي السيرفر بيرجعها فعلاً (الصفحة كانت بتقع عليها)
+  pending_manager: { label_ar: "قيد موافقة المدير", label_en: "Pending manager", color: "bg-amber-500/10 text-amber-700" },
+  pending_hr:      { label_ar: "قيد اعتماد HR",     label_en: "Pending HR",      color: "bg-amber-500/10 text-amber-700" },
+  expired:         { label_ar: "منتهي",             label_en: "Expired",         color: "bg-slate-500/10 text-slate-700" },
+  suspended:       { label_ar: "موقوف مؤقتاً",      label_en: "Suspended",       color: "bg-slate-500/10 text-slate-700" },
 };
+const LOC_STATUS_FALLBACK = { label_ar: "غير معروف", label_en: "Unknown", color: "bg-slate-500/10 text-slate-700" };
 
 function fmtMins(m?: number | null, ar = true) {
   if (!m || m <= 0) return "—";
@@ -250,7 +257,7 @@ export default function MyFieldVisitsPage() {
   };
 
   const fmtDateLabel = (d: string) => {
-    if (d === new Date().toISOString().split("T")[0])
+    if (d === todayCairo())
       return ar ? "اليوم" : "Today";
     return new Date(d).toLocaleDateString(ar ? "ar-EG" : "en-US", {
       weekday: "short", day: "numeric", month: "short", year: "numeric",
@@ -337,7 +344,7 @@ export default function MyFieldVisitsPage() {
               </Card>
             ) : (
               workLocations.map(loc => {
-                const sc = LOC_STATUS[loc.status || "pending"];
+                const sc = LOC_STATUS[loc.status || "pending"] || LOC_STATUS_FALLBACK;
                 return (
                   <Card key={loc.id} className="hover:shadow-md transition">
                     <CardContent className="p-4">

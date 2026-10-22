@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import { useAuthStore } from "@/lib/stores/auth";
 
 export default function ChangePasswordPage() {
   const router = useRouter();
@@ -74,11 +75,19 @@ export default function ChangePasswordPage() {
         const authData = JSON.parse(localStorage.getItem(STORAGE_KEYS.user) || "{}");
         authData.must_change_password = false;
         localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(authData));
-        
+        // الدور الحقيقي في مخزن الدخول (قبل كده كان بيتقرا من مكان فاضي فالكل بيروح لصفحة الموظف)
+        const storeUser = useAuthStore.getState().user;
+        if (storeUser) {
+          useAuthStore.setState({
+            user: { ...storeUser, must_change_password: false },
+            ...(data.token ? { token: data.token } : {}),
+          });
+        }
+
         toast.success("تم تغيير كلمة المرور بنجاح ✅");
-        
+
         setTimeout(() => {
-          const role = authData.role || "employee";
+          const role = storeUser?.role || authData.role || "employee";
           if (role === "company_admin" || role === "hr_manager") router.replace("/hr/dashboard");
           else if (role === "manager") router.replace("/manager/dashboard");
           else router.replace("/employee/dashboard");

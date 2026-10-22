@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import { todayCairo } from "@/lib/utils";
 
 // ── Types ──────────────────────────────────────────
 interface AttStatus {
@@ -360,7 +361,7 @@ export default function MyAttendancePage() {
   };
 
   // ── Today's Visits ───────────────────────────────
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = todayCairo();
   const todayVisits = fieldData.visits.filter(v => v.arrival_time);
 
   return (

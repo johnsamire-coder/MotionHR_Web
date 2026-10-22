@@ -50,6 +50,8 @@ interface RequestCategory {
 interface MyRequest {
   id: number;
   request_type_name: string;
+  type_name?: string;
+  subject?: string;
   status: string;
   status_display?: string;
   created_at: string;
@@ -218,10 +220,14 @@ export default function EmployeeRequestsPage() {
     );
   };
 
-  const fmtDate = (d: string) =>
-    new Date(d).toLocaleDateString(ar ? "ar-EG" : "en-US", {
+  const fmtDate = (d: string) => {
+    // السيرفر بيبعت التاريخ زي "2026-10-05 09:15 AM"
+    const dt = new Date(String(d || "").slice(0, 10));
+    if (!d || isNaN(dt.getTime())) return d || "—";
+    return dt.toLocaleDateString(ar ? "ar-EG" : "en-US", {
       year: "numeric", month: "short", day: "numeric",
     });
+  };
 
   return (
     <div className="space-y-6 pb-6">
@@ -374,7 +380,8 @@ export default function EmployeeRequestsPage() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium text-sm">{req.request_type_name}</p>
+                        <p className="font-medium text-sm">{req.request_type_name || req.type_name}</p>
+                        {req.subject && <p className="text-xs text-muted-foreground">{req.subject}</p>}
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {fmtDate(req.created_at)}
                         </p>

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import { todayCairo } from "@/lib/utils";
 
 type PolicyKind = "allowance" | "deduction" | "bonus";
 
@@ -134,7 +135,7 @@ const EMPTY: Form = {
   specific_employees: [],
   is_monthly:         true,
   is_active:          true,
-  start_date:         new Date().toISOString().split("T")[0],
+  start_date:         todayCairo(),
   end_date:           "",
   notes:              "",
 };
@@ -252,7 +253,7 @@ export default function PayrollPolicyDialog({ open, onClose, onSaved, policyId, 
           specific_employees: Array.isArray(p.specific_employees) ? p.specific_employees : [],
           is_monthly:         p.is_monthly  !== undefined ? p.is_monthly  : true,
           is_active:          p.is_active   !== undefined ? p.is_active   : true,
-          start_date:         p.start_date  || new Date().toISOString().split("T")[0],
+          start_date:         p.start_date  || todayCairo(),
           end_date:           p.end_date    || "",
           notes:              p.notes       || "",
         });

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useDict, useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import { escapeHtml } from "@/lib/utils";
 
 interface LiveEmployee {
   employee_id: number;
@@ -45,7 +46,12 @@ export default function ManagerLocationsPage() {
         headers: { Authorization: authHeader },
       });
       const data = await res.json();
-      const emps = Array.isArray(data?.employees) ? data.employees : (Array.isArray(data) ? data : []);
+      // السيرفر بيرجّع locations (اللي ليهم موقع بس) والوقت في timestamp؛ واللي إحداثياته فاضية مايترسمش
+      const raw: any[] = Array.isArray(data?.locations) ? data.locations
+        : Array.isArray(data?.employees) ? data.employees : (Array.isArray(data) ? data : []);
+      const emps: LiveEmployee[] = raw
+        .filter((e: any) => e && e.latitude != null && e.longitude != null && !isNaN(Number(e.latitude)) && !isNaN(Number(e.longitude)))
+        .map((e: any) => ({ ...e, latitude: Number(e.latitude), longitude: Number(e.longitude), last_update: e.last_update || e.timestamp }));
       setEmployees(Array.isArray(emps) ? emps : []);
       setLastUpdate(new Date());
       if (emps.length > 0) updateMapMarkers(emps);
@@ -76,7 +82,7 @@ export default function ManagerLocationsPage() {
           display:flex;align-items:center;justify-content:center;
           color:white;font-weight:bold;font-size:14px;
           box-shadow:0 2px 8px rgba(0,0,0,0.3);
-        ">${emp.employee_name?.[0] || "?"}</div>`,
+        ">${escapeHtml(emp.employee_name?.[0] || "?")}</div>`,
         className: "",
         iconSize: [36, 36],
         iconAnchor: [18, 18],
@@ -91,7 +97,7 @@ export default function ManagerLocationsPage() {
         const marker = L.marker([emp.latitude, emp.longitude], { icon })
           .addTo(mapInstanceRef.current);
         (marker as { bindPopup: (html: string) => unknown }).bindPopup(
-          `<b>${emp.employee_name}</b><br/>${emp.employee_code}`
+          `<b>${escapeHtml(emp.employee_name)}</b><br/>${escapeHtml(emp.employee_code)}`
         );
         markersRef.current.set(emp.employee_id, marker);
       }
@@ -140,7 +146,9 @@ export default function ManagerLocationsPage() {
 
   const fmtTime = (t?: string) => {
     if (!t) return "—";
-    return new Date(t).toLocaleTimeString(lang === "ar" ? "ar-EG" : "en-US", {
+    const dt = new Date(t);
+    if (isNaN(dt.getTime())) return t;
+    return dt.toLocaleTimeString(lang === "ar" ? "ar-EG" : "en-US", {
       hour: "2-digit", minute: "2-digit",
     });
   };

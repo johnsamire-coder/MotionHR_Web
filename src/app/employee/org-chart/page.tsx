@@ -175,6 +175,8 @@ export default function OrgChartPage() {
   const ar = lang === "ar";
 
   const [data, setData]         = useState<HierarchyData | null>(null);
+  // رسالة السيرفر لو رفض (بدل شاشة فاضية من غير سبب)
+  const [denied, setDenied]     = useState<string | null>(null);
   const [loading, setLoading]   = useState(true);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [search, setSearch]     = useState("");
@@ -191,7 +193,9 @@ export default function OrgChartPage() {
         headers: { Authorization: authH, "Accept-Language": langH },
       });
       const d: HierarchyData = await res.json();
-      if (d.success !== false) {
+      if (d.success === false) {
+        setDenied((d as any).error || (d as any).message || (ar ? "الهيكل التنظيمي مش متاح لحسابك" : "Org chart is not available for your account"));
+      } else {
         setData(d);
         // فتح الطبقة الأولى تلقائياً
         if (d.root) {
@@ -310,7 +314,7 @@ export default function OrgChartPage() {
         <Card>
           <CardContent className="py-16 text-center">
             <Users className="w-14 h-14 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-muted-foreground">{ar ? "لا يوجد بيانات" : "No data"}</p>
+            <p className="text-muted-foreground">{denied || (ar ? "لا يوجد بيانات" : "No data")}</p>
           </CardContent>
         </Card>
       ) : (

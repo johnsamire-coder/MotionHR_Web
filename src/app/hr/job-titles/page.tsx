@@ -55,6 +55,7 @@ interface DepartmentItem {
 interface EmployeeLite {
   id: number;
   job_title?: string;
+  job_title_id?: number;
 }
 
 interface StatCardProps {
@@ -118,7 +119,7 @@ export default function JobTitlesPage() {
     ])
       .then(([jtRes, empRes, brRes, depRes]) => {
         setJobTitles(Array.isArray(jtRes) ? jtRes : jtRes.job_titles || jtRes.jobTitles || []);
-        setEmployees(Array.isArray(empRes) ? empRes : empRes.employees || []);
+        setEmployees(Array.isArray(empRes) ? empRes : empRes.results || empRes.employees || []);
         setBranches(Array.isArray(brRes) ? brRes : brRes.branches || []);
         setDepartments(Array.isArray(depRes) ? depRes : depRes.departments || []);
       })
@@ -133,7 +134,9 @@ export default function JobTitlesPage() {
 
   const getEmployeesCount = (item: JobTitleItem) =>
     employees.filter((emp) =>
-      emp.job_title === item.name_ar || emp.job_title === item.name_en
+      (emp.job_title_id != null
+        ? emp.job_title_id === item.id
+        : emp.job_title === item.name_ar || emp.job_title === item.name_en)
     ).length;
 
   const totalEmployees = jobTitles.reduce(

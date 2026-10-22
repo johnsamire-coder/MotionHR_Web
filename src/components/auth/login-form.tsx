@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff, LogIn } from "lucide-react";
@@ -18,6 +18,7 @@ import { loginSchema, LoginFormData } from "@/lib/schemas/auth";
 import { authApi } from "@/lib/api/endpoints/auth";
 import { useAuthStore } from "@/lib/stores/auth";
 import { STORAGE_KEYS, ROUTES, ROLES } from "@/lib/constants/config";
+import { BLOCKED_MESSAGE_KEY } from "@/components/auth/access-guard";
 
 export function LoginForm() {
   const router = useRouter();
@@ -33,6 +34,18 @@ export function LoginForm() {
   const [actUsername, setActUsername] = useState("");
   const [actLoading, setActLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // رسالة الإيقاف لو اتخرّج من السيستم عشان حسابه أو شركته موقوفة
+  const [blockedMessage, setBlockedMessage] = useState("");
+  useEffect(() => {
+    try {
+      const blocked = sessionStorage.getItem(BLOCKED_MESSAGE_KEY);
+      if (blocked) {
+        sessionStorage.removeItem(BLOCKED_MESSAGE_KEY);
+        setBlockedMessage(blocked);
+      }
+    } catch {}
+  }, []);
 
   const handleVerifyIdentity = async () => {
     if (!phone.trim() || !nationalSuffix.trim()) {
@@ -106,7 +119,7 @@ export function LoginForm() {
 
   // Remember Me — جلب الداتا المحفوظة
   const savedUsername = typeof window !== "undefined"
-    ? localStorage.getItem(STORAGE_KEYS.savedUsernamee) || ""
+    ? localStorage.getItem(STORAGE_KEYS.savedUsername) || ""
     : "";
   const savedRememberMe = typeof window !== "undefined"
     ? localStorage.getItem(STORAGE_KEYS.rememberMe) === "true"
@@ -114,6 +127,7 @@ export function LoginForm() {
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
   } = useForm<LoginFormData>({
@@ -147,10 +161,10 @@ export function LoginForm() {
         // Remember Me
         if (values.remember_me) {
           localStorage.setItem(STORAGE_KEYS.rememberMe, "true");
-          localStorage.setItem(STORAGE_KEYS.savedUsernamee, values.username);
+          localStorage.setItem(STORAGE_KEYS.savedUsername, values.username);
         } else {
           localStorage.removeItem(STORAGE_KEYS.rememberMe);
-          localStorage.removeItem(STORAGE_KEYS.savedUsernamee);
+          localStorage.removeItem(STORAGE_KEYS.savedUsername);
         }
       }
 
@@ -225,6 +239,11 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      {blockedMessage && (
+        <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          {blockedMessage}
+        </div>
+      )}
       <div className="space-y-2">
         <Label htmlFor="username">اسم المستخدم</Label>
         <Input
@@ -274,9 +293,17 @@ export function LoginForm() {
 
       <div className="flex items-center justify-between">
         <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-          <Checkbox
-            {...register("remember_me")}
-            disabled={isLoading}
+          {/* الـ Checkbox ده بيبلّغ بالتغيير عن طريق onCheckedChange مش onChange، فـ register ماكانش بيوصله */}
+          <Controller
+            name="remember_me"
+            control={control}
+            render={({ field }) => (
+              <Checkbox
+                checked={!!field.value}
+                onCheckedChange={(v) => field.onChange(!!v)}
+                disabled={isLoading}
+              />
+            )}
           />
           <span>تذكرني</span>
         </label>

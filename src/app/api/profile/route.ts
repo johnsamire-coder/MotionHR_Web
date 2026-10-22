@@ -19,7 +19,8 @@ export async function GET(request: NextRequest) {
     };
 
     // 1. محاولة جلب بيانات الموظف
-    const statusRes = await fetch(`${BACKEND}/attendance/api/mobile/status/`, {
+    // source=web: عشان السيرفر مايسجلش تنبيه "GPS مقفول" كل ما صفحة تتفتح
+    const statusRes = await fetch(`${BACKEND}/attendance/api/mobile/status/?source=web`, {
       headers,
       cache: "no-store",
     });
@@ -45,11 +46,13 @@ export async function GET(request: NextRequest) {
         manager: "مدير القسم",
       };
 
+      // حساب إدارة مالوش ملف موظف: نعرض دوره الحقيقي بدل "مسؤول النظام" للكل
+      const roleLabel = roleMap[permData?.role] || "";
       return NextResponse.json(
         {
           id: 0,
-          full_name: "مسؤول النظام",
-          name: "مسؤول النظام",
+          full_name: roleLabel,
+          name: roleLabel,
           role: permData?.role || "company_admin",
           job_title: roleMap[permData?.role] || "إدارة النظام",
           department: "الإدارة العامة",
@@ -60,23 +63,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // استجابة آمنة لمنع أي انهيار في الـ Header
-    return NextResponse.json(
-      {
-        job_title: "مسؤول النظام",
-        department: "الإدارة العامة",
-        role: "admin",
-      },
-      { status: 200 }
-    );
+    // مانرجعش بيانات "مسؤول النظام" وهمية لو حصل خطأ
+    return NextResponse.json({ error: "تعذر تحميل الملف الشخصي" }, { status: statusRes.status >= 400 ? statusRes.status : 502 });
   } catch (error) {
-    return NextResponse.json(
-      {
-        job_title: "مسؤول النظام",
-        department: "الإدارة العامة",
-        role: "admin",
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({ error: "Network error" }, { status: 502 });
   }
 }

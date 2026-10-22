@@ -1,12 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-const BACKEND = process.env.NEXT_PUBLIC_API_BASE || "https://jssolutions-eg.com";
+import { forwardDocuments } from "@/lib/documents-proxy";
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const auth = req.headers.get("authorization") || "";
-  const res = await fetch(
-    `${BACKEND}/attendance/api/mobile/manager/employees/${id}/documents/`,
-    { headers: { Authorization: auth } }
-  );
-  return NextResponse.json(await res.json());
-}
+type Ctx = { params: Promise<{ id: string }> };
+export async function GET(req: Request, { params }: Ctx) { return forwardDocuments(req, (await params).id); }
+export async function POST(req: Request, { params }: Ctx) { return forwardDocuments(req, (await params).id); }

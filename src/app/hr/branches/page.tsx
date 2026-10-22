@@ -81,7 +81,8 @@ export default function BranchesPage() {
       fetch("/api/employees/list", { headers: { Authorization: authHeader } }).then(r => r.json()).catch(() => ({})),
     ]).then(([brs, emps]) => {
       setBranches(Array.isArray(brs) ? brs : brs.branches || []);
-      setEmployees(Array.isArray(emps) ? emps : emps.employees || []);
+      // البروكسي بيرجع القايمة في results (قبل كده كانت بتتقري من employees فالعدد صفر)
+      setEmployees(Array.isArray(emps) ? emps : emps.results || emps.employees || []);
     }).catch(() => toast.error(d.failedLoad || (ar ? "فشل تحميل الفروع" : "Failed to load branches")))
       .finally(() => setLoading(false));
   };

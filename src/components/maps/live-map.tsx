@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import "leaflet/dist/leaflet.css";
+import { escapeHtml } from "@/lib/utils";
 
 export interface LocationMarker {
   id: number;
@@ -76,10 +77,10 @@ export default function LiveMap({
 
       markers.forEach(marker => {
         const m = L.marker([marker.lat, marker.lng]).bindPopup(`<div style="font-size:13px;min-width:200px">
-            <strong>${marker.name}</strong>
-            ${marker.department ? `<br/><span style="color:#555">🏢 ${marker.department}</span>` : ""}
-            ${marker.address ? `<br/><span style="color:#333">📍 ${marker.address}</span>` : ""}
-            ${marker.lastSeen ? `<br/><small style="color:#666">🕐 ${marker.lastSeen}</small>` : ""}
+            <strong>${escapeHtml(marker.name)}</strong>
+            ${marker.department ? `<br/><span style="color:#555">🏢 ${escapeHtml(marker.department)}</span>` : ""}
+            ${marker.address ? `<br/><span style="color:#333">📍 ${escapeHtml(marker.address)}</span>` : ""}
+            ${marker.lastSeen ? `<br/><small style="color:#666">🕐 ${escapeHtml(marker.lastSeen)}</small>` : ""}
           </div>`);
         markersLayerRef.current!.addLayer(m);
       });

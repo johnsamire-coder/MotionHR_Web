@@ -273,6 +273,10 @@ export default function ManagerMissionsPage() {
       toast.error(ar ? "التاريخ والوقت مطلوبين" : "Date and time required");
       return;
     }
+    if (`${createForm.end_date}T${createForm.end_time}` <= `${createForm.start_date}T${createForm.start_time}`) {
+      toast.error(ar ? "وقت النهاية لازم يكون بعد وقت البداية" : "End time must be after start time");
+      return;
+    }
     if (!createForm.lat || !createForm.lng) {
       toast.error(ar ? "الموقع مطلوب" : "Location required");
       return;
@@ -317,7 +321,8 @@ export default function ManagerMissionsPage() {
 
   // ── Filters ──────────────────────────────────────
   const pending   = missions.filter(m => m.status === "pending_approval");
-  const active    = missions.filter(m => ["approved", "active"].includes(m.status));
+  // "جارية" اسمها in_progress في السيرفر (قبل كده المهمة اللي بدأت كانت بتختفي)
+  const active    = missions.filter(m => ["approved", "in_progress", "active"].includes(m.status));
   const completed = missions.filter(m => ["completed", "cancelled"].includes(m.status));
 
   const currentList = tab === "pending" ? pending : tab === "active" ? active : completed;

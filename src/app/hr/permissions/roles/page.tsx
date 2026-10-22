@@ -13,7 +13,9 @@ import { useLangStore } from "@/lib/stores/language";
 
 const STORAGE_KEYS = { token: "motionhr_token" };
 
-type Scope = "company" | "department" | "branch" | "self";
+// نفس أسماء النطاقات اللي السيرفر بيقبلها (قبل كده "department" و"branch" كانوا بيترفضوا في صمت)
+type Scope = "company" | "dept" | "team" | "self";
+const ALL_SCOPES: Scope[] = ["company", "dept", "team", "self"];
 
 interface Permission {
   code: string;
@@ -33,8 +35,8 @@ interface Role {
 
 const SCOPE_LABELS: Record<Scope, { ar: string; en: string; color: string }> = {
   company:    { ar: "الشركة",        en: "Company",    color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
-  department: { ar: "القسم",         en: "Department", color: "bg-purple-500/10 text-purple-600 border-purple-500/20" },
-  branch:     { ar: "الفرع",         en: "Branch",     color: "bg-orange-500/10 text-orange-600 border-orange-500/20" },
+  dept:       { ar: "قسمه",          en: "Department", color: "bg-purple-500/10 text-purple-600 border-purple-500/20" },
+  team:       { ar: "فريقه",         en: "Team",       color: "bg-orange-500/10 text-orange-600 border-orange-500/20" },
   self:       { ar: "الموظف نفسه",   en: "Self",       color: "bg-gray-500/10 text-gray-600 border-gray-500/20" },
 };
 
@@ -70,7 +72,8 @@ export default function RolesPage() {
       ]);
       const rolesData = await rolesRes.json();
       const permsData = await permsRes.json();
-      if (rolesData.success) setRoles(rolesData.roles || rolesData.data || []);
+      if (rolesData.success) setRoles(Array.isArray(rolesData.roles) ? rolesData.roles : []);
+      else if (rolesRes.status === 403) toast.error(rolesData.message || (ar ? "الأدوار لصاحب الشركة بس" : "Roles are for the company owner only"));
       if (permsData.success) setAvailablePerms(permsData.permissions || permsData.data || []);
     } catch (e) {
       toast.error(ar ? "فشل تحميل البيانات" : "Failed to load data");
@@ -424,9 +427,9 @@ export default function RolesPage() {
                         </p>
                       </div>
                     </div>
-                    {selected && perm.scopes && perm.scopes.length > 0 && (
+                    {selected && (
                       <div className="flex gap-1.5 mt-2 mr-8 flex-wrap">
-                        {perm.scopes.map(scope => (
+                        {(perm.scopes && perm.scopes.length > 0 ? perm.scopes : ALL_SCOPES).filter(sc => sc in SCOPE_LABELS).map(scope => (
                           <button
                             key={scope}
                             onClick={() => setScope(perm.code, scope)}

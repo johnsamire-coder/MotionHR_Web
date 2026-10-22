@@ -6,7 +6,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const authHeader = request.headers.get("authorization");
   if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
-    const res = await fetch(`/attendance/api/mobile/manager/deduction-policies/${'$'}{id}/`, {
+    const res = await fetch(`${BACKEND}/attendance/api/mobile/manager/deduction-policies/${id}/`, {
       headers: { Authorization: authHeader, "Host": "jssolutions-eg.com" },
       cache: "no-store",
     });
@@ -20,7 +20,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const body = await request.json();
-    const res = await fetch(`/attendance/api/mobile/manager/deduction-policies/${'$'}{id}/`, {
+    const res = await fetch(`${BACKEND}/attendance/api/mobile/manager/deduction-policies/${id}/`, {
       method: "PUT",
       headers: { Authorization: authHeader, "Content-Type": "application/json", "Host": "jssolutions-eg.com" },
       body: JSON.stringify(body),
@@ -34,7 +34,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const authHeader = request.headers.get("authorization");
   if (!authHeader) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
-    const res = await fetch(`/attendance/api/mobile/manager/deduction-policies/${'$'}{id}/`, {
+    const res = await fetch(`${BACKEND}/attendance/api/mobile/manager/deduction-policies/${id}/`, {
       method: "DELETE",
       headers: { Authorization: authHeader, "Host": "jssolutions-eg.com" },
     });

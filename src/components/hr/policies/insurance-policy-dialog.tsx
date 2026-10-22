@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { STORAGE_KEYS } from "@/lib/constants/config";
+import { todayCairo } from "@/lib/utils";
 
 type InsuranceType = "social" | "medical";
 
@@ -60,7 +61,7 @@ const emptyForm = {
   department_id: null as number | null,
   specific_employees: [] as number[],
   is_active: true,
-  start_date: new Date().toISOString().slice(0, 10),
+  start_date: todayCairo(),
   end_date: "",
   change_reason: "",
 };

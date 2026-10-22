@@ -6,6 +6,7 @@ import { ArrowRight, ArrowLeft, FileText, Users, DollarSign, Download } from "lu
 import { STORAGE_KEYS } from "@/lib/constants/config";
 import { useLangStore } from "@/lib/stores/language";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { todayCairo } from "@/lib/utils";
 
 interface EosEmployee {
   employee_id: number;
@@ -38,7 +39,7 @@ export default function EosReportPage() {
   const [data, setData] = useState<EosData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [asOfDate, setAsOfDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [asOfDate, setAsOfDate] = useState(() => todayCairo());
   const [exporting, setExporting] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
 

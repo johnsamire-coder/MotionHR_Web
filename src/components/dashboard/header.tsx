@@ -37,6 +37,11 @@ interface Notification {
 export function Header() {
   const router = useRouter();
   const { user, company, logout } = useAuthStore();
+  // الهيدر مشترك بين HR والمدير والموظف، فالروابط لازم تروح لصفحات الدور ده
+  // (قبل كده الإشعارات كانت بتودي الموظف والمدير على صفحات HR الممنوعة عليهم)
+  const area: "hr" | "manager" | "employee" =
+    ["company_admin", "hr_manager", "super_admin"].includes(user?.role ?? "") ? "hr"
+      : user?.role === "manager" ? "manager" : "employee";
   const { lang, setLang } = useLangStore();
   const d = useDict();
 
@@ -185,22 +190,27 @@ export function Header() {
 
     setNotifsOpen(false);
 
-    if (notif.link) {
+    if (notif.link && (area === "hr" || !notif.link.startsWith("/hr/"))) {
       router.push(notif.link);
       return;
     }
 
     const type = (notif.related_type || notif.notification_type || "").toLowerCase();
+    const routes = {
+      hr: { leave: "/hr/leaves", request: "/hr/requests", attendance: "/hr/attendance", mission: "/hr/missions", other: "/hr/announcements" },
+      manager: { leave: "/manager/requests", request: "/manager/requests", attendance: "/manager/attendance", mission: "/manager/missions", other: "/manager/notifications" },
+      employee: { leave: "/employee/leaves", request: "/employee/requests", attendance: "/employee/attendance", mission: "/employee/missions", other: "/employee/notifications" },
+    }[area];
     if (type.includes("leave")) {
-      router.push("/hr/leaves");
+      router.push(routes.leave);
     } else if (type.includes("request")) {
-      router.push("/hr/requests");
+      router.push(routes.request);
     } else if (type.includes("attendance") || type.includes("late") || type.includes("tracking")) {
-      router.push("/hr/attendance");
+      router.push(routes.attendance);
     } else if (type.includes("mission")) {
-      router.push("/hr/missions");
+      router.push(routes.mission);
     } else {
-      router.push("/hr/announcements");
+      router.push(routes.other);
     }
   };
 
@@ -269,7 +279,8 @@ export function Header() {
   useEffect(() => {
     const authHeader = getAuthHeader();
     const q = searchQuery.trim();
-    if (!authHeader || !q || q.length < 2) {
+    // البحث بيودي على صفحات HR، فهو للـ HR والأدمن بس
+    if (!authHeader || !q || q.length < 2 || area !== "hr") {
       setSearchResults([]);
       setSearchOpen(false);
       return;
@@ -604,7 +615,7 @@ export function Header() {
                 <button
                   onClick={() => {
                     setNotifsOpen(false);
-                    router.push("/hr/announcements");
+                    router.push(area === "hr" ? "/hr/announcements" : `/${area}/notifications`);
                   }}
                   className="w-full text-center text-xs text-brand-primary hover:underline py-1"
                 >

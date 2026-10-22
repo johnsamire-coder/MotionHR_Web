@@ -106,6 +106,8 @@ export const dict = {
     notifications: "الإشعارات",
     companyRegulations: "اللائحة التنظيمية",
     reports: "التقارير",
+    auditLog: "سجل التعديلات",
+    biometricDevices: "أجهزة البصمة",
     // Header
     logout: "تسجيل الخروج",
     profile: "الملف الشخصي",
@@ -1032,6 +1034,8 @@ export const dict = {
     notifications: "Notifications",
     companyRegulations: "Company Regulations & Charter",
     reports: "Reports",
+    auditLog: "Change Log",
+    biometricDevices: "Biometric Devices",
     // Header
     logout: "Logout",
     profile: "Profile",

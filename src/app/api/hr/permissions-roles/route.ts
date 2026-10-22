@@ -17,12 +17,22 @@ export async function GET(request: NextRequest) {
       cache: "no-store",
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
 
-    // normalize — الباك بيرجع { roles: [...] } بدون success
+    // لو السيرفر رفض (زي مدير الـ HR: الأدوار لصاحب الشركة بس) نرجّع الرفض زي ما هو
+    // (قبل كده كان بيرجع "نجاح" والصفحة تقع شاشة بيضا)
+    if (!res.ok) {
+      return NextResponse.json({
+        success: false,
+        roles: [],
+        message: data.error || data.message || "غير مصرح",
+      }, { status: res.status });
+    }
+
+    const roles = data.roles ?? data.data ?? data;
     return NextResponse.json({
       success: true,
-      roles: data.roles ?? data.data ?? data ?? [],
+      roles: Array.isArray(roles) ? roles : [],
     }, { status: 200 });
 
   } catch {
