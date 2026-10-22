@@ -53,6 +53,10 @@ interface Policy {
   effective_from: string;
   effective_to: string;
   status: string;
+  assignment_type: "company" | "branch" | "department";
+  branch_ids: number[];
+  branch_id: number | string | null;
+  department_id: number | string | null;
   notes: string;
   permission_enabled: boolean;
   permission_monthly_hours: number;
@@ -77,7 +81,7 @@ const EMPTY: Policy = {
   effective_to: "",
   status: "draft",
   assignment_type: "company",
-  branch_ids: [] as number[],
+  branch_ids: [],
   branch_id: "",
   department_id: "",
   notes: "",
@@ -188,9 +192,15 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
       const data = await res.json();
       const p    = data.policy || data;
       if (p?.id) {
+        // النطاق: من الحقول المباشرة لو موجودة، وإلا من أول assignment
+        const asg = Array.isArray(p.assignments) && p.assignments.length > 0 ? p.assignments[0] : null;
+        const assignmentType = (p.assignment_type || asg?.assignment_type || "company") as Policy["assignment_type"];
         setForm({
           ...EMPTY,
           ...p,
+          assignment_type: assignmentType,
+          branch_id:     p.branch_id     ?? asg?.branch_id     ?? "",
+          department_id: p.department_id ?? asg?.department_id ?? "",
           effective_to:  p.effective_to  || "",
           notes:         p.notes         || "",
           late_rules:    p.late_rules    || [],
@@ -205,6 +215,8 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
   const handleSave = async () => {
     if (!form.name.trim())        { toast.error("اسم السياسة مطلوب");  return; }
     if (!form.effective_from)     { toast.error("تاريخ البداية مطلوب"); return; }
+    if (form.assignment_type === "branch" && !form.branch_id)         { toast.error("اختر الفرع");  return; }
+    if (form.assignment_type === "department" && !form.department_id) { toast.error("اختر القسم"); return; }
 
     setSaving(true);
     try {
@@ -223,12 +235,16 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
         permission_max_hours_per_request: Number(form.permission_max_hours_per_request),
         permission_fraction_as_full:   form.permission_fraction_as_full,
         permission_reset_cycle:        form.permission_reset_cycle,
-        late_warning_enabled:          form.late_warning_enabled,
-        late_warning_threshold:        form.late_warning_threshold,
-        late_warning_deduction_type:   form.late_warning_deduction_type,
-        late_warning_deduction_value:  form.late_warning_deduction_value,
-        late_warning_max_deduction:    form.late_warning_max_deduction,
-        late_warning_step_rate:        form.late_warning_step_rate,
+        assignment_type:               form.assignment_type,
+        branch_id:     form.assignment_type === "branch"     && form.branch_id     ? Number(form.branch_id)     : null,
+        department_id: form.assignment_type === "department" && form.department_id ? Number(form.department_id) : null,
+        // late_rules / absence_rules / overtime_rules مش بتتبعت خالص:
+        // قواعد التأخير والغياب والأوفر تايم بقت ليها كروت لوحدها (PenaltyRule / BonusRule)،
+        // وعدم إرسال المفاتيح بيضمن إن تعديل المسودة ما يمسحش القواعد اللي لسه متخزنة في الباك إند.
+      };
+      // الكود القديم لبناء القواعد — محفوظ للرجوع إليه بس مش بيتبعت ومش بيتنفذ
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const legacyRulesPayload = () => ({
         late_rules:    form.late_rules.map(r => ({
           from_minutes:    Number(r.from_minutes),
           to_minutes:      Number(r.to_minutes),
@@ -250,7 +266,7 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
           max_hours_per_month:r.max_hours_per_month ? Number(r.max_hours_per_month) : null,
           requires_approval:  r.requires_approval,
         })),
-      };
+      });
 
       const res  = await fetch(url, {
         method,
@@ -288,14 +304,18 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
   const updateOvertimeRule = (i: number, key: keyof OvertimeRule, val: unknown) =>
     setForm(p => ({ ...p, overtime_rules: p.overtime_rules.map((r, idx) => idx === i ? { ...r, [key]: val } : r) }));
 
-  const sections = [
+  // قسم "الإنذارات والخصم" مخفي لأن الباك إند لا يستخدمه
+  // أقسام التأخير والغياب والأوفر تايم مخفية: بقت ليها كروت لوحدها في صفحة السياسات (قواعد الجزاءات والمكافآت)
+  const HIDDEN_SECTIONS: Section[] = ["warnings", "late", "absence", "overtime"];
+  const allSections: { key: Section; label: string; count: number | null }[] = [
     { key: "basic",       label: "البيانات الأساسية", count: null },
     { key: "permissions", label: "الأذونات",           count: null },
     { key: "late",        label: "قوانين التأخير",     count: form.late_rules.length },
     { key: "warnings",    label: "الإنذارات والخصم",   count: form.late_warning_enabled ? 1 : null },
     { key: "absence",     label: "قوانين الغياب",      count: form.absence_rules.length },
     { key: "overtime",    label: "الأوفرتايم",          count: form.overtime_rules.length },
-  ] as const;
+  ];
+  const sections = allSections.filter(s => !HIDDEN_SECTIONS.includes(s.key));
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -303,7 +323,7 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="w-5 h-5 text-brand-primary" />
-            {policyId ? "تعديل سياسة الحضور" : "سياسة حضور جديدة"}
+            {policyId ? "تعديل سياسة الحضور والأذونات" : "سياسة الحضور والأذونات"}
           </DialogTitle>
         </DialogHeader>
 
@@ -358,21 +378,60 @@ export default function AttendancePolicyDialog({ open, onClose, onSaved, policyI
                         onChange={e => setForm(p => ({ ...p, effective_to: e.target.value }))} />
                     </div>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">الحالة</label>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium mb-1 block">نطاق تطبيق السياسة *</label>
                     <div className="flex gap-2">
-                      {["draft", "active", "archived"].map(s => (
-                        <button key={s} onClick={() => setForm(p => ({ ...p, status: s }))}
+                      {([
+                        { value: "company",    label: "كل الشركة" },
+                        { value: "branch",     label: "فرع" },
+                        { value: "department", label: "قسم" },
+                      ] as const).map(opt => (
+                        <button key={opt.value} type="button"
+                          onClick={() => setForm(p => ({
+                            ...p,
+                            assignment_type: opt.value,
+                            branch_id:     opt.value === "branch"     ? p.branch_id     : "",
+                            department_id: opt.value === "department" ? p.department_id : "",
+                          }))}
                           className={`flex-1 py-2 rounded-lg border text-sm font-medium transition ${
-                            form.status === s
-                              ? s === "active" ? "border-emerald-500 bg-emerald-500/10 text-emerald-700"
-                              : s === "draft"  ? "border-amber-500 bg-amber-500/10 text-amber-700"
-                              :                  "border-slate-400 bg-slate-100 text-slate-700"
+                            form.assignment_type === opt.value
+                              ? "border-brand-primary bg-brand-primary/10 text-brand-primary"
                               : "border-border text-muted-foreground"
                           }`}>
-                          {s === "draft" ? "مسودة" : s === "active" ? "نشط" : "مؤرشف"}
+                          {opt.label}
                         </button>
                       ))}
+                    </div>
+                    {form.assignment_type === "branch" && (
+                      <select value={form.branch_id ?? ""}
+                        onChange={e => setForm(p => ({ ...p, branch_id: e.target.value ? Number(e.target.value) : "" }))}
+                        className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background">
+                        <option value="">— اختر الفرع —</option>
+                        {(branches || []).map((b: any) => (
+                          <option key={b.id} value={b.id}>{ar ? b.name_ar : (b.name_en || b.name_ar)}</option>
+                        ))}
+                      </select>
+                    )}
+                    {form.assignment_type === "department" && (
+                      <select value={form.department_id ?? ""}
+                        onChange={e => setForm(p => ({ ...p, department_id: e.target.value ? Number(e.target.value) : "" }))}
+                        className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background">
+                        <option value="">— اختر القسم —</option>
+                        {(departments || []).map((d: any) => (
+                          <option key={d.id} value={d.id}>{ar ? d.name_ar : (d.name_en || d.name_ar)}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">الحالة</label>
+                    {/* الحالة بتتغير بزرار "اعتماد" في مركز السياسات بس */}
+                    <div className={`py-2 px-3 rounded-lg border text-sm font-medium ${
+                      form.status === "active" ? "border-emerald-500 bg-emerald-500/10 text-emerald-700"
+                      : form.status === "archived" ? "border-slate-400 bg-slate-100 text-slate-700"
+                      : "border-amber-500 bg-amber-500/10 text-amber-700"
+                    }`}>
+                      {form.status === "active" ? "معتمدة" : form.status === "archived" ? "مؤرشفة" : "مسودة — لازم تتعتمد عشان تتطبق على المرتبات"}
                     </div>
                   </div>
                   <div>

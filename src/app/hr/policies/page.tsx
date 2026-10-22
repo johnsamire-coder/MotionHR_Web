@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type ComponentType } from "react";
 import { toast } from "sonner";
 import {
-  Clock, Calendar, FileText, Banknote, ShieldAlert, Award, FileSignature,
+  Clock, Calendar, FileText, Banknote, ShieldAlert,
   Receipt, Landmark, RefreshCw, Plus, Edit2, Loader2, CheckCircle2,
+  CalendarX, LogOut, Timer, Moon, Scale,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,6 +24,64 @@ import TaxPolicyDialog from "@/components/hr/policies/tax-policy-dialog";
 import EosPolicyDialog from "@/components/hr/policies/eos-policy-dialog";
 import PayrollCyclePolicyDialog from "@/components/hr/policies/payroll-cycle-policy-dialog";
 import OfficialHolidayDialog from "@/components/hr/policies/official-holiday-dialog";
+
+// كروت غير مربوطة بمحرك الرواتب حالياً — مخفية من الـ hub (الملفات موجودة)
+const SHOW_PAYROLL_CYCLE = false;
+
+const ATTENDANCE_STATUS: Record<string, { ar: string; en: string; cls: string }> = {
+  draft:    { ar: "مسودة",   en: "Draft",    cls: "bg-amber-100 text-amber-800 border-amber-200" },
+  active:   { ar: "معتمدة",  en: "Approved", cls: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+  archived: { ar: "مؤرشفة",  en: "Archived", cls: "bg-slate-100 text-slate-700 border-slate-200" },
+};
+
+// ── كروت قواعد الحضور والمرتبات: كل بند ليه كارت واحد بس ──
+type RuleKind = "penalty" | "bonus";
+interface RuleCardDef {
+  key: string;
+  kind: RuleKind;
+  types: string[];
+  title_ar: string;
+  title_en: string;
+  desc_ar: string;
+  desc_en: string;
+  icon: ComponentType<{ className?: string }>;
+  iconCls: string;
+}
+
+const RULE_CARDS: RuleCardDef[] = [
+  {
+    key: "late", kind: "penalty", types: ["late_arrival"],
+    title_ar: "التأخير", title_en: "Late Arrival",
+    desc_ar: "فترة السماح وشرائح الخصم لكل يوم تأخير", desc_en: "Grace period and deduction tiers per late day",
+    icon: Clock, iconCls: "bg-red-500/10 text-red-600",
+  },
+  {
+    key: "absence", kind: "penalty", types: ["absence"],
+    title_ar: "الغياب", title_en: "Absence",
+    desc_ar: "شرائح تصاعدية لكل يوم غياب في الشهر", desc_en: "Progressive tiers per absence day in the month",
+    icon: CalendarX, iconCls: "bg-rose-500/10 text-rose-600",
+  },
+  {
+    key: "early", kind: "penalty", types: ["early_leave", "missing_checkout"],
+    title_ar: "الانصراف المبكر ونسيان البصمة", title_en: "Early Leave & Missing Checkout",
+    desc_ar: "خصم الخروج قبل الميعاد أو عدم تسجيل الانصراف", desc_en: "Deductions for leaving early or not checking out",
+    icon: LogOut, iconCls: "bg-orange-500/10 text-orange-600",
+  },
+  {
+    key: "overtime", kind: "bonus", types: ["overtime"],
+    title_ar: "الأوفر تايم", title_en: "Overtime",
+    desc_ar: "أقل مدة في اليوم والمعامل والحدود", desc_en: "Minimum per day, multiplier and limits",
+    icon: Timer, iconCls: "bg-emerald-500/10 text-emerald-600",
+  },
+  {
+    key: "night", kind: "bonus", types: ["night_shift", "weekend_work", "holiday_work"],
+    title_ar: "الشيفت الليلي والعمل في يوم الراحة", title_en: "Night Shift & Rest-day Work",
+    desc_ar: "أجر الشيفت الليلي والعمل في الويكند والإجازات الرسمية", desc_en: "Night shift, weekend and holiday work pay",
+    icon: Moon, iconCls: "bg-indigo-500/10 text-indigo-600",
+  },
+];
+
+const isActiveRule = (r: any) => r && r.is_active !== false && !r.is_superseded;
 
 export default function PoliciesPage() {
   const d = useDict();
@@ -47,6 +106,10 @@ export default function PoliciesPage() {
   const [penaltyOpen, setPenaltyOpen]       = useState(false);
   const [penaltyId, setPenaltyId]           = useState<number | null>(null);
 
+  // الأنواع المسموحة في الديالوج حسب الكارت اللي اتفتح منه
+  const [penaltyAllowed, setPenaltyAllowed] = useState<string[] | undefined>(undefined);
+  const [bonusAllowed, setBonusAllowed]     = useState<string[] | undefined>(undefined);
+
   const [insuranceOpen, setInsuranceOpen] = useState(false);
   const [insuranceId, setInsuranceId]     = useState<number | null>(null);
 
@@ -60,6 +123,7 @@ export default function PoliciesPage() {
   const [payrollCycleId, setPayrollCycleId]     = useState<number | null>(null);
 
   const [holidayOpen, setHolidayOpen]       = useState(false);
+  const [approvingId, setApprovingId]       = useState<number | null>(null);
 
   // Policies Data States
   const [attendancePolicies, setAttendancePolicies]     = useState<any[]>([]);
@@ -94,7 +158,9 @@ export default function PoliciesPage() {
       fetch("/api/hr/policies/insurance-policies", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({})),
       fetch("/api/hr/policies/tax", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({})),
       fetch("/api/hr/policies/eos", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({})),
-      fetch("/api/hr/policies/payroll-cycle-policies", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({})),
+      SHOW_PAYROLL_CYCLE
+        ? fetch("/api/hr/policies/payroll-cycle-policies", { headers: { Authorization: authH } }).then(r => r.json()).catch(() => ({}))
+        : Promise.resolve([]),
     ])
       .then(([att, lv, all, bon, pen, ins, tax, eos, cyc]) => {
         setAttendancePolicies(extractArray(att));
@@ -111,6 +177,45 @@ export default function PoliciesPage() {
   }, [token, authH]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
+
+  const approveAttendancePolicy = async (id: number) => {
+    setApprovingId(id);
+    try {
+      const res = await fetch(`/api/hr/policies/attendance-policy/${id}/approve`, {
+        method: "POST",
+        headers: { Authorization: authH },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success !== false) {
+        toast.success(data.message || (ar ? "تم اعتماد السياسة" : "Policy approved"));
+        loadAll();
+      } else {
+        toast.error(data.error || data.message || (ar ? "فشل الاعتماد" : "Approval failed"));
+      }
+    } catch {
+      toast.error(ar ? "خطأ في الاتصال" : "Network error");
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  const openRuleDialog = (card: RuleCardDef, id: number | null) => {
+    if (card.kind === "penalty") {
+      setPenaltyAllowed(card.types);
+      setPenaltyId(id);
+      setPenaltyOpen(true);
+    } else {
+      setBonusAllowed(card.types);
+      setBonusId(id);
+      setBonusOpen(true);
+    }
+  };
+
+  const rulesFor = (card: RuleCardDef) => {
+    const src = card.kind === "penalty" ? penaltyPolicies : bonusPolicies;
+    const field = card.kind === "penalty" ? "penalty_type" : "bonus_type";
+    return src.filter((r: any) => isActiveRule(r) && card.types.includes(r[field]));
+  };
 
   return (
     <div className="space-y-8 pb-10">
@@ -133,7 +238,7 @@ export default function PoliciesPage() {
           <div className="space-y-4">
             <h2 className="text-lg font-bold text-brand-primary border-b pb-2 flex items-center gap-2">
               <Clock className="w-5 h-5" />
-              <span>{ar ? "سياسات الحضور والانصراف ودورة الرواتب" : "Attendance & Payroll Cycle Group"}</span>
+              <span>{ar ? "سياسات الحضور والانصراف" : "Attendance Group"}</span>
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
@@ -152,29 +257,50 @@ export default function PoliciesPage() {
                     </Button>
                   </div>
                   <div>
-                    <h3 className="font-bold text-base">{ar ? "سياسات الحضور والغياب" : "Attendance Policy"}</h3>
-                    <p className="text-xs text-muted-foreground mt-1">{ar ? "إعدادات التأخيرات والغياب المتدرج والـ Overtime" : "Late rules, progressive absence, overtime"}</p>
+                    <h3 className="font-bold text-base">{ar ? "سياسة الحضور والأذونات" : "Attendance & Permissions Policy"}</h3>
+                    <p className="text-xs text-muted-foreground mt-1">{ar ? "فترة السريان والنطاق والأذونات الشهرية — قواعد التأخير والغياب والأوفر تايم ليها كروت لوحدها" : "Effective period, scope and monthly permissions — late, absence and overtime rules have their own cards"}</p>
                   </div>
+                  <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                    {ar ? "السياسة لا تُطبَّق على الرواتب إلا بعد الاعتماد" : "A policy only applies to payroll after it is approved"}
+                  </p>
                   <div className="pt-2 border-t text-xs text-muted-foreground flex justify-between items-center">
                     <span>{ar ? "السياسات المتاحة:" : "Active:"}</span>
                     <Badge variant="secondary" className="font-bold">{attendancePolicies.length}</Badge>
                   </div>
                   {attendancePolicies.length > 0 && (
-                    <div className="space-y-1 pt-1" onClick={(e) => e.stopPropagation()}>
-                      {attendancePolicies.slice(0, 3).map((p: any) => (
-                        <div key={p.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs hover:bg-muted/60 transition">
-                          <span className="font-semibold truncate max-w-[170px]">{p.name || p.rule_name || p.allowance_name || p.title || (ar ? "بدل مسجل" : "Policy")}</span>
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setAttendanceId(p.id); setAttendanceOpen(true); }}>
-                            <Edit2 className="w-3 h-3 text-amber-600" />
-                          </Button>
-                        </div>
-                      ))}
+                    <div className="space-y-1 pt-1 max-h-56 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                      {attendancePolicies.map((p: any) => {
+                        const st = ATTENDANCE_STATUS[p.status] || ATTENDANCE_STATUS.draft;
+                        return (
+                          <div key={p.id} className="flex items-center justify-between gap-2 p-2 bg-muted/30 rounded text-xs hover:bg-muted/60 transition">
+                            <span className="font-semibold truncate max-w-[120px]">{p.name || p.rule_name || p.title || (ar ? "سياسة" : "Policy")}</span>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <span className={`px-1.5 py-0.5 rounded border text-[10px] font-semibold ${st.cls}`}>{ar ? st.ar : st.en}</span>
+                              {p.status === "draft" && (
+                                <Button
+                                  variant="outline" size="sm"
+                                  className="h-6 px-2 text-[10px] gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                                  disabled={approvingId === p.id}
+                                  onClick={() => approveAttendancePolicy(p.id)}
+                                >
+                                  {approvingId === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                                  {ar ? "اعتماد" : "Approve"}
+                                </Button>
+                              )}
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setAttendanceId(p.id); setAttendanceOpen(true); }}>
+                                <Edit2 className="w-3 h-3 text-amber-600" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>
               </Card>
 
               {/* Payroll Cycle Card */}
+              {SHOW_PAYROLL_CYCLE && (
               <Card 
                 className="border-border/60 hover:border-brand-primary/50 hover:shadow-md transition cursor-pointer"
                 onClick={() => { setPayrollCycleId(null); setPayrollCycleOpen(true); }}
@@ -210,6 +336,7 @@ export default function PoliciesPage() {
                   )}
                 </CardContent>
               </Card>
+              )}
 
               {/* Official Holidays Card */}
               <Card 
@@ -232,6 +359,63 @@ export default function PoliciesPage() {
                 </CardContent>
               </Card>
 
+            </div>
+          </div>
+
+          {/* Group 1b: Attendance & Payroll Rules — كل بند ليه مكان واحد بس */}
+          <div className="space-y-4">
+            <div className="border-b pb-2">
+              <h2 className="text-lg font-bold text-brand-primary flex items-center gap-2">
+                <Scale className="w-5 h-5" />
+                <span>{ar ? "قواعد الحضور والمرتبات" : "Attendance & Payroll Rules"}</span>
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                {ar ? "كل بند ليه مكان واحد بس — القاعدة هنا هي اللي بتتطبق على المرتب" : "Each item is defined in one place only — the rule here is what applies to payroll"}
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {RULE_CARDS.map((card) => {
+                const Icon = card.icon;
+                const rules = rulesFor(card);
+                return (
+                  <Card
+                    key={card.key}
+                    className="border-border/60 hover:border-brand-primary/50 hover:shadow-md transition cursor-pointer"
+                    onClick={() => openRuleDialog(card, null)}
+                  >
+                    <CardContent className="p-5 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${card.iconCls}`}>
+                          <Icon className="w-5 h-5" />
+                        </div>
+                        <Button size="sm" variant="outline" className="text-xs gap-1" onClick={(e) => { e.stopPropagation(); openRuleDialog(card, null); }}>
+                          <Plus className="w-3.5 h-3.5" />{ar ? "إضافة قاعدة" : "Add Rule"}
+                        </Button>
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-base">{ar ? card.title_ar : card.title_en}</h3>
+                        <p className="text-xs text-muted-foreground mt-1">{ar ? card.desc_ar : card.desc_en}</p>
+                      </div>
+                      <div className="pt-2 border-t text-xs text-muted-foreground flex justify-between items-center">
+                        <span>{ar ? "القواعد النشطة:" : "Active:"}</span>
+                        <Badge variant="secondary" className="font-bold">{rules.length}</Badge>
+                      </div>
+                      {rules.length > 0 && (
+                        <div className="space-y-1 pt-1 max-h-56 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                          {rules.map((p: any) => (
+                            <div key={p.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs hover:bg-muted/60 transition">
+                              <span className="font-semibold truncate max-w-[170px]">{p.name || p.rule_name || p.title || (ar ? "قاعدة" : "Rule")}</span>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openRuleDialog(card, p.id)}>
+                                <Edit2 className="w-3 h-3 text-amber-600" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
 
@@ -284,7 +468,7 @@ export default function PoliciesPage() {
           <div className="space-y-4">
             <h2 className="text-lg font-bold text-brand-primary border-b pb-2 flex items-center gap-2">
               <Receipt className="w-5 h-5" />
-              <span>{ar ? "سياسات البدلات والمكافآت" : "Allowances & Bonuses Group"}</span>
+              <span>{ar ? "سياسات البدلات" : "Allowances Group"}</span>
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
@@ -325,43 +509,6 @@ export default function PoliciesPage() {
                 </CardContent>
               </Card>
 
-              {/* Bonuses */}
-              <Card 
-                className="border-border/60 hover:border-brand-primary/50 hover:shadow-md transition cursor-pointer"
-                onClick={() => { setBonusId(null); setBonusOpen(true); }}
-              >
-                <CardContent className="p-5 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="w-10 h-10 rounded-lg bg-yellow-500/10 text-yellow-600 flex items-center justify-center">
-                      <Award className="w-5 h-5" />
-                    </div>
-                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={(e) => { e.stopPropagation(); setBonusId(null); setBonusOpen(true); }}>
-                      <Plus className="w-3.5 h-3.5" />{ar ? "إضافة مكافأة" : "New"}
-                    </Button>
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-base">{ar ? "سياسات المكافآت والحوافز" : "Bonuses Policy"}</h3>
-                    <p className="text-xs text-muted-foreground mt-1">{ar ? "المكافآت والمنح الدورية والانتاجية" : "Periodic and production bonuses"}</p>
-                  </div>
-                  <div className="pt-2 border-t text-xs text-muted-foreground flex justify-between items-center">
-                    <span>{ar ? "السياسات المتاحة:" : "Active:"}</span>
-                    <Badge variant="secondary" className="font-bold">{bonusPolicies.length}</Badge>
-                  </div>
-                  {bonusPolicies.length > 0 && (
-                    <div className="space-y-1 pt-1" onClick={(e) => e.stopPropagation()}>
-                      {bonusPolicies.slice(0, 3).map((p: any) => (
-                        <div key={p.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs hover:bg-muted/60 transition">
-                          <span className="font-semibold truncate max-w-[170px]">{p.name || p.rule_name || p.allowance_name || p.title || (ar ? "بدل مسجل" : "Policy")}</span>
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setBonusId(p.id); setBonusOpen(true); }}>
-                            <Edit2 className="w-3 h-3 text-amber-600" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
             </div>
           </div>
 
@@ -369,7 +516,7 @@ export default function PoliciesPage() {
           <div className="space-y-4">
             <h2 className="text-lg font-bold text-brand-primary border-b pb-2 flex items-center gap-2">
               <ShieldAlert className="w-5 h-5" />
-              <span>{ar ? "التأمينات والضرائب والجزاءات ونهاية الخدمة" : "Insurance, Tax, Penalties & EOS Group"}</span>
+              <span>{ar ? "التأمينات والضرائب ونهاية الخدمة" : "Insurance, Tax & EOS Group"}</span>
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
@@ -447,43 +594,6 @@ export default function PoliciesPage() {
                 </CardContent>
               </Card>
 
-              {/* Penalties */}
-              <Card 
-                className="border-border/60 hover:border-brand-primary/50 hover:shadow-md transition cursor-pointer"
-                onClick={() => { setPenaltyId(null); setPenaltyOpen(true); }}
-              >
-                <CardContent className="p-5 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="w-10 h-10 rounded-lg bg-red-500/10 text-red-600 flex items-center justify-center">
-                      <FileSignature className="w-5 h-5" />
-                    </div>
-                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={(e) => { e.stopPropagation(); setPenaltyId(null); setPenaltyOpen(true); }}>
-                      <Plus className="w-3.5 h-3.5" />{ar ? "إدارية" : "New"}
-                    </Button>
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-base">{ar ? "لائحة الجزاءات الإدارية" : "Disciplinary Penalties"}</h3>
-                    <p className="text-xs text-muted-foreground mt-1">{ar ? "المخالفات التأديبية والتلفيات (بدون غياب)" : "Administrative & behavioral penalties"}</p>
-                  </div>
-                  <div className="pt-2 border-t text-xs text-muted-foreground flex justify-between items-center">
-                    <span>{ar ? "السياسات المتاحة:" : "Active:"}</span>
-                    <Badge variant="secondary" className="font-bold">{penaltyPolicies.length}</Badge>
-                  </div>
-                  {penaltyPolicies.length > 0 && (
-                    <div className="space-y-1 pt-1" onClick={(e) => e.stopPropagation()}>
-                      {penaltyPolicies.slice(0, 3).map((p: any) => (
-                        <div key={p.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs hover:bg-muted/60 transition">
-                          <span className="font-semibold truncate max-w-[170px]">{p.name || p.rule_name || p.allowance_name || p.title || (ar ? "بدل مسجل" : "Policy")}</span>
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setPenaltyId(p.id); setPenaltyOpen(true); }}>
-                            <Edit2 className="w-3 h-3 text-amber-600" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
               {/* EOS */}
               <Card 
                 className="border-border/60 hover:border-brand-primary/50 hover:shadow-md transition cursor-pointer"
@@ -530,12 +640,12 @@ export default function PoliciesPage() {
       <AttendancePolicyDialog open={attendanceOpen} onClose={() => setAttendanceOpen(false)} onSaved={loadAll} policyId={attendanceId} ar={ar} />
       <LeavePolicyDialog open={leaveOpen} onClose={() => setLeaveOpen(false)} onSaved={loadAll} policyId={leaveId} ar={ar} />
       <AllowanceRuleDialog open={allowanceOpen} onClose={() => setAllowanceOpen(false)} onSaved={loadAll} ruleId={allowanceId} ar={ar} />
-      <BonusRuleDialog open={bonusOpen} onClose={() => setBonusOpen(false)} onSaved={loadAll} ruleId={bonusId} ar={ar} />
-      <PenaltyRuleDialog open={penaltyOpen} onClose={() => setPenaltyOpen(false)} onSaved={loadAll} ruleId={penaltyId} ar={ar} />
+      <BonusRuleDialog open={bonusOpen} onClose={() => setBonusOpen(false)} onSaved={loadAll} ruleId={bonusId} ar={ar} allowedTypes={bonusAllowed} />
+      <PenaltyRuleDialog open={penaltyOpen} onClose={() => setPenaltyOpen(false)} onSaved={loadAll} ruleId={penaltyId} ar={ar} allowedTypes={penaltyAllowed} />
       <InsurancePolicyDialog open={insuranceOpen} onClose={() => setInsuranceOpen(false)} onSaved={loadAll} policyId={insuranceId} ar={ar} />
       <TaxPolicyDialog open={taxOpen} onClose={() => setTaxOpen(false)} onSaved={loadAll} policyId={taxId} ar={ar} />
       <EosPolicyDialog open={eosOpen} onClose={() => setEosOpen(false)} onSaved={loadAll} policyId={eosId} ar={ar} />
-      <PayrollCyclePolicyDialog open={payrollCycleOpen} onClose={() => setPayrollCycleOpen(false)} onSaved={loadAll} policyId={payrollCycleId} ar={ar} />
+      {SHOW_PAYROLL_CYCLE && <PayrollCyclePolicyDialog open={payrollCycleOpen} onClose={() => setPayrollCycleOpen(false)} onSaved={loadAll} policyId={payrollCycleId} ar={ar} />}
       <OfficialHolidayDialog open={holidayOpen} onClose={() => setHolidayOpen(false)} onSaved={loadAll} ar={ar} />
     </div>
   );

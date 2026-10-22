@@ -121,11 +121,23 @@ export default function LeavePolicyDialog({ open, onClose, onSaved, policyId, ar
         headers: { Authorization: authH },
       });
       const data = await res.json();
-      if (data.policy) {
+      const p = data.policy || (data?.id ? data : null);
+      if (p) {
         setForm({
           ...EMPTY,
-          ...data.policy,
-          effective_to: data.policy.effective_to || "",
+          ...p,
+          effective_to: p.effective_to || "",
+          notes: p.notes || "",
+          // أرصدة الإجازات — الباك بيرجعها بنفس الأسماء؛ لو مش موجودة نرجع للقيم الافتراضية
+          annual_days:            p.annual_days            ?? EMPTY.annual_days,
+          sick_days:              p.sick_days              ?? EMPTY.sick_days,
+          casual_days:            p.casual_days            ?? EMPTY.casual_days,
+          maternity_days:         p.maternity_days         ?? EMPTY.maternity_days,
+          paternity_days:         p.paternity_days         ?? EMPTY.paternity_days,
+          unpaid_allowed:         p.unpaid_allowed         ?? EMPTY.unpaid_allowed,
+          carry_forward_enabled:  p.carry_forward_enabled  ?? EMPTY.carry_forward_enabled,
+          max_carry_forward_days: p.max_carry_forward_days ?? EMPTY.max_carry_forward_days,
+          tiers: Array.isArray(p.tiers) && p.tiers.length > 0 ? p.tiers : EMPTY.tiers,
         });
       }
     } catch {

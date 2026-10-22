@@ -217,6 +217,27 @@ export default function ManualEntriesPage() {
     }
   };
 
+  const handleCancelInstallment = async (id: number) => {
+    const sure = confirm(ar ? "متأكد إنك عايز تلغي السلفة دي؟ مش هتتخصم من المرتبات الجاية." : "Cancel this advance?");
+    if (sure === false) return;
+    try {
+      const res = await fetch(`/api/hr/manual-entries/installment/${id}/cancel`, {
+        method: "POST",
+        headers: { Authorization: authH },
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message || (ar ? "تم الإلغاء" : "Cancelled"));
+        if (data.warning) setTimeout(() => toast.warning(data.warning), 300);
+        loadInstallments();
+      } else {
+        toast.error(data.error || (ar ? "فشل الإلغاء" : "Failed"));
+      }
+    } catch {
+      toast.error(ar ? "خطأ في الاتصال" : "Network error");
+    }
+  };
+
   const filteredAllEmployees = allEmployees.filter(e => {
     if (empSearch.trim().length === 0) return true;
     const q = empSearch.toLowerCase();
@@ -399,6 +420,7 @@ export default function ManualEntriesPage() {
                     <th className="p-2 text-right">{ar ? "المتبقي" : "Remaining"}</th>
                     <th className="p-2 text-right">{ar ? "بداية الخصم" : "Starts"}</th>
                     <th className="p-2 text-right">{ar ? "الحالة" : "Status"}</th>
+                    <th className="p-2 text-right">{ar ? "إجراء" : "Action"}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -414,6 +436,15 @@ export default function ManualEntriesPage() {
                         <Badge variant={inst.status === "active" ? "default" : "secondary"}>
                           {inst.status === "active" ? (ar ? "نشط" : "Active") : inst.status === "completed" ? (ar ? "منتهي" : "Done") : (ar ? "ملغي" : "Cancelled")}
                         </Badge>
+                      </td>
+                      <td className="p-2">
+                        {inst.status === "active" && (
+                          <Button size="sm" variant="outline" className="gap-1 text-red-700 border-red-300 hover:bg-red-50"
+                            onClick={() => handleCancelInstallment(inst.id)}>
+                            <X className="w-3.5 h-3.5" />
+                            {ar ? "إلغاء" : "Cancel"}
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))}
