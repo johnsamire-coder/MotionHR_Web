@@ -6,6 +6,7 @@ import { ArrowRight, ArrowLeft, Download, FileText, Loader2 } from "lucide-react
 import { STORAGE_KEYS } from "@/lib/constants/config";
 import { useLangStore } from "@/lib/stores/language";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cairoYearMonth } from "@/lib/utils";
 
 const SLUG = "insurance";
 const TITLE_AR = "التأمينات";
@@ -20,6 +21,14 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState<"excel" | "pdf" | null>(null);
+  const [period, setPeriod] = useState(() => {
+    const { year, month } = cairoYearMonth();
+    return `${year}-${String(month).padStart(2, "0")}`;
+  });
+  const periodQs = () => {
+    const [y, m] = period.split("-");
+    return `year=${Number(y)}&month=${Number(m)}`;
+  };
 
   const getAuth = () => {
     const t = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
@@ -31,7 +40,8 @@ export default function ReportPage() {
     const auth = getAuth();
     if (!auth) return;
     setLoading(true);
-    fetch(`/api/reports/${SLUG}`, { headers: { Authorization: auth } })
+    setError("");
+    fetch(`/api/reports/${SLUG}?${periodQs()}`, { headers: { Authorization: auth } })
       .then((r) => r.json())
       .then((d) => {
         if (d.error) setError(d.error);
@@ -39,14 +49,14 @@ export default function ReportPage() {
       })
       .catch(() => setError(ar ? "فشل تحميل البيانات" : "Failed"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [period]);
 
   const handleExport = async (format: "excel" | "pdf") => {
     const auth = getAuth();
     if (!auth) return;
     setExporting(format);
     try {
-      const url = format === "pdf" ? `/api/reports/${SLUG}/export/pdf` : `/api/reports/${SLUG}/export`;
+      const url = format === "pdf" ? `/api/reports/${SLUG}/export/pdf?${periodQs()}` : `/api/reports/${SLUG}/export?${periodQs()}`;
       const res = await fetch(url, { headers: { Authorization: auth } });
       if (!res.ok) throw new Error("Failed");
       const blob = await res.blob();
@@ -71,7 +81,7 @@ export default function ReportPage() {
     department: "القسم", branch: "الفرع", bank_name: "البنك",
     account_number: "رقم الحساب", iban: "IBAN", amount: "المبلغ",
     insurance_number: "رقم التأمين", basic_salary: "الراتب الأساسي",
-    insurance_base: "الأساس التأميني", insurance_amount: "مبلغ التأمين",
+    insurance_base: "الأساس التأميني", insurance_amount: "حصة الموظف", company_share: "حصة الشركة", gross_salary: "إجمالي المرتب",
     tax_amount: "الضريبة", metric: "البند", value: "القيمة",
     branch_name: "الفرع", employees_count: "عدد الموظفين",
     total_salary: "إجمالي الرواتب", avg_salary: "متوسط الراتب",
@@ -98,7 +108,12 @@ export default function ReportPage() {
       </div>
 
       <Card>
-        <CardContent className="p-4 flex items-center justify-end gap-2">
+        <CardContent className="p-4 flex flex-wrap items-center justify-end gap-2">
+          <label className="flex items-center gap-2 text-sm me-auto">
+            <span className="text-muted-foreground">{ar ? "الشهر" : "Month"}</span>
+            <input type="month" value={period} onChange={(e) => e.target.value && setPeriod(e.target.value)}
+              className="border rounded-md px-2 h-9 bg-background" />
+          </label>
           <button
             onClick={() => handleExport("excel")}
             disabled={exporting !== null || !data}

@@ -18,6 +18,9 @@ interface Props {
 
 interface Rule {
   scope: string;
+  branch_id?: number | null;
+  department_id?: number | null;
+  employee_ids?: number[];
   treatment: string;
   bonus_calc_method: string;
   bonus_fixed_amount: number;
@@ -39,6 +42,9 @@ const BONUS_METHODS = [
 
 const emptyRule: Rule = {
   scope: "company",
+  branch_id: null,
+  department_id: null,
+  employee_ids: [],
   treatment: "paid_leave",
   bonus_calc_method: "",
   bonus_fixed_amount: 0,
@@ -56,10 +62,27 @@ export default function OfficialHolidayDialog({ open, onClose, onSaved, holidayI
   const [rules, setRules]                     = useState<Rule[]>([{ ...emptyRule }]);
   const [saving, setSaving]                   = useState(false);
   const [loading, setLoading]                 = useState(false);
+  const [branches, setBranches]               = useState<any[]>([]);
+  const [departments, setDepartments]         = useState<any[]>([]);
+  const [employees, setEmployees]             = useState<any[]>([]);
 
   const isEdit = !!holidayId;
   const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.token) : null;
   const authH = token?.startsWith("Token") ? token : `Token ${token}`;
+
+  // الفروع والأقسام والموظفين عشان قواعد "فرع/قسم/موظفين محددين" (قبل كده ماكانش فيه اختيار فالقاعدة بتتحفظ فاضية)
+  useEffect(() => {
+    if (!open) return;
+    Promise.all([
+      fetch("/api/branches", { headers: { Authorization: authH } }).then((r) => r.json()).catch(() => ({})),
+      fetch("/api/departments", { headers: { Authorization: authH } }).then((r) => r.json()).catch(() => ({})),
+      fetch("/api/employees/list", { headers: { Authorization: authH } }).then((r) => r.json()).catch(() => ({})),
+    ]).then(([b, d, e]) => {
+      setBranches(Array.isArray(b) ? b : b.results || b.branches || []);
+      setDepartments(Array.isArray(d) ? d : d.results || d.departments || []);
+      setEmployees(Array.isArray(e) ? e : e.results || e.employees || []);
+    });
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -81,6 +104,9 @@ export default function OfficialHolidayDialog({ open, onClose, onSaved, holidayI
             h.rules?.length
               ? h.rules.map((r: any) => ({
                   scope: r.scope,
+                  branch_id: r.branch_id ?? null,
+                  department_id: r.department_id ?? null,
+                  employee_ids: r.employee_ids || [],
                   treatment: r.treatment,
                   bonus_calc_method: r.bonus_calc_method || "",
                   bonus_fixed_amount: r.bonus_fixed_amount || 0,
@@ -121,6 +147,13 @@ export default function OfficialHolidayDialog({ open, onClose, onSaved, holidayI
     if (!name.trim()) { toast.error(ar ? "الاسم مطلوب" : "Name required"); return; }
     if (!startDate)   { toast.error(ar ? "تاريخ البدء مطلوب" : "Start date required"); return; }
     if (!endDate)     { toast.error(ar ? "تاريخ الانتهاء مطلوب" : "End date required"); return; }
+    for (const r of rules) {
+      if ((r.scope === "branch" && !r.branch_id) || (r.scope === "department" && !r.department_id)
+          || (r.scope === "employees" && !(r.employee_ids || []).length)) {
+        toast.error(ar ? "اختار الفرع أو القسم أو الموظفين للقاعدة" : "Pick the branch, department or employees for each rule");
+        return;
+      }
+    }
 
     setSaving(true);
     try {
@@ -291,6 +324,35 @@ export default function OfficialHolidayDialog({ open, onClose, onSaved, holidayI
                           <option value="department">{ar ? "قسم محدد" : "Specific Department"}</option>
                           <option value="employees">{ar ? "موظفين محددين" : "Specific Employees"}</option>
                         </select>
+                        {rule.scope === "branch" && (
+                          <select className="w-full mt-2 px-3 py-2 border rounded-md bg-white text-sm"
+                            value={rule.branch_id ?? ""} onChange={(e) => updateRule(idx, "branch_id", e.target.value ? Number(e.target.value) : null)}>
+                            <option value="">{ar ? "اختار الفرع" : "Select branch"}</option>
+                            {branches.map((b: any) => <option key={b.id} value={b.id}>{b.name_ar || b.name}</option>)}
+                          </select>
+                        )}
+                        {rule.scope === "department" && (
+                          <select className="w-full mt-2 px-3 py-2 border rounded-md bg-white text-sm"
+                            value={rule.department_id ?? ""} onChange={(e) => updateRule(idx, "department_id", e.target.value ? Number(e.target.value) : null)}>
+                            <option value="">{ar ? "اختار القسم" : "Select department"}</option>
+                            {departments.map((d: any) => <option key={d.id} value={d.id}>{d.name_ar || d.name}</option>)}
+                          </select>
+                        )}
+                        {rule.scope === "employees" && (
+                          <div className="mt-2 max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
+                            <p className="text-xs text-muted-foreground">{ar ? `المختارين: ${(rule.employee_ids || []).length}` : `Selected: ${(rule.employee_ids || []).length}`}</p>
+                            {employees.map((emp: any) => {
+                              const ids = rule.employee_ids || [];
+                              return (
+                                <label key={emp.id} className="flex items-center gap-2 text-sm">
+                                  <input type="checkbox" checked={ids.includes(emp.id)}
+                                    onChange={() => updateRule(idx, "employee_ids", ids.includes(emp.id) ? ids.filter((x) => x !== emp.id) : [...ids, emp.id])} />
+                                  {emp.full_name || emp.name || `${emp.first_name_ar || ""} ${emp.last_name_ar || ""}`}
+                                </label>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
 
                       <div>
