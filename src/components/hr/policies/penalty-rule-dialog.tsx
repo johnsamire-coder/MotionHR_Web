@@ -47,6 +47,7 @@ const DEDUCTION_TYPES = [
   { value: "fixed_per_unit",    label_ar: "مبلغ ثابت لكل وحدة",   needs_value: true,  suffix: "EGP" },
   { value: "fixed_total",       label_ar: "مبلغ ثابت إجمالي",     needs_value: true,  suffix: "EGP" },
   { value: "percent_basic",     label_ar: "% من الراتب الأساسي",  needs_value: true,  suffix: "%" },
+  { value: "hours",             label_ar: "خصم عدد ساعات",        needs_value: true,  suffix: "ساعة" },
   { value: "day_fraction",      label_ar: "نسبة من أجر اليوم",    needs_value: true,  suffix: "يوم" },
   { value: "quarter_day",       label_ar: "ربع يوم",               needs_value: false, suffix: "" },
   { value: "half_day",          label_ar: "نصف يوم",               needs_value: false, suffix: "" },
