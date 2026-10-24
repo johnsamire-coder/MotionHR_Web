@@ -324,6 +324,7 @@ export default function EmployeeDetailPage() {
       gender: emp.gender || "male",
       marital_status: emp.marital_status || "single",
       hire_date: emp.hire_date || "",
+      employee_code: emp.employee_code || "",
       branch_id: String(emp.branch_id || ""),
       department_id: String(emp.department_id || ""),
       job_title_id: String(emp.job_title_id || ""),
@@ -761,7 +762,7 @@ export default function EmployeeDetailPage() {
 
               {editMode ? (
                 <div className="grid grid-cols-2 gap-4">
-                  <Field label={ar ? "كود الموظف" : "Employee Code"} value={employee.employee_code} />
+                  <FField label={ar ? "كود الموظف" : "Employee Code"} value={form.employee_code} onChange={v => set("employee_code", v)} />
                   <FField label={ar ? "تاريخ التعيين *" : "Hire Date *"} value={form.hire_date} onChange={v => set("hire_date", v)} type="date" />
                   <FSel label={ar ? "الفرع" : "Branch"} value={form.branch_id} onChange={v => set("branch_id", v)}>
                     <option value="">{ar ? "اختر..." : "Select..."}</option>
