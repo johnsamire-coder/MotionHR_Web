@@ -53,6 +53,7 @@ interface EmployeeData {
   direct_manager_id?: number | null;
   direct_manager_name?: string;
   worker_type: string;
+  track_attendance?: boolean;
   contract_type: string;
   contract_start_date?: string;
   contract_end_date?: string;
@@ -330,6 +331,7 @@ export default function EmployeeDetailPage() {
       job_title_id: String(emp.job_title_id || ""),
       direct_manager_id: String(emp.direct_manager_id || ""),
       worker_type: emp.worker_type || "office",
+      track_attendance: emp.track_attendance ? "true" : "false",
       contract_type: emp.contract_type || "permanent",
       contract_end_date: emp.contract_end_date || "",
       basic_salary: String(emp.basic_salary ?? ""),
@@ -395,6 +397,7 @@ export default function EmployeeDetailPage() {
         basic_salary: form.basic_salary ? Number(form.basic_salary) : 0,
         insurance_base_salary: form.insurance_base_salary ? Number(form.insurance_base_salary) : null,
         has_insurance: form.has_insurance === "true",
+        track_attendance: form.track_attendance === "true",
       };
 
       const res = await fetch(`/api/employees/${params.id}`, {
@@ -785,6 +788,10 @@ export default function EmployeeDetailPage() {
                     <option value="field_free">{ar ? "ميداني حر" : "Field Free"}</option>
                     <option value="field_assigned">{ar ? "ميداني محدد" : "Field Assigned"}</option>
                   </FSel>
+                  <FSel label={ar ? "الحضور والانصراف (للمديرين والـ HR)" : "Attendance tracking (managers & HR)"} value={form.track_attendance} onChange={v => set("track_attendance", v)}>
+                    <option value="false">{ar ? "معفي من الحضور والانصراف" : "Exempt from attendance"}</option>
+                    <option value="true">{ar ? "يتحسب له حضور وانصراف زي أي موظف" : "Tracked like any employee"}</option>
+                  </FSel>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-6">
@@ -796,6 +803,10 @@ export default function EmployeeDetailPage() {
                   <Field label={ar ? "المدير المباشر" : "Direct Manager"} value={employee.direct_manager_name} />
                   <Field label={ar ? "نوع الموظف" : "Worker Type"} value={workerTypeLabel(employee.worker_type, ar)} />
                   <Field label={ar ? "الحالة" : "Status"} value={employee.status} />
+                  {employee.track_attendance && (
+                    <Field label={ar ? "الحضور والانصراف (للمديرين والـ HR)" : "Attendance tracking (managers & HR)"}
+                      value={ar ? "يتحسب له حضور وانصراف زي أي موظف" : "Tracked like any employee"} />
+                  )}
                   <Field
                     label={ar ? "الشيفت ومواعيد العمل" : "Work Shift & Hours"}
                     value={employee.shift_name ? `${employee.shift_name} ${employee.shift_timing ? '(' + employee.shift_timing + ')' : ''}` : (ar ? "غير معين" : "Unassigned")}
