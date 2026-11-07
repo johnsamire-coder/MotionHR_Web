@@ -94,6 +94,7 @@ const STATUS_CONFIG: Record<string, {
   late:     { label_ar: "متأخر", label_en: "Late",    color: "bg-amber-500/10 text-amber-700",    icon: AlertTriangle },
   absent:   { label_ar: "غائب",  label_en: "Absent",  color: "bg-red-500/10 text-red-700",        icon: XCircle },
   on_leave: { label_ar: "إجازة", label_en: "Leave",   color: "bg-blue-500/10 text-blue-700",      icon: Calendar },
+  early_leave: { label_ar: "انصراف مبكر", label_en: "Early Leave", color: "bg-orange-500/10 text-orange-700", icon: AlertTriangle },
 };
 
 function fmtMins(m?: number | null, ar = true) {
