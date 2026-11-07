@@ -248,6 +248,16 @@ export default function ReportsHubPage() {
       status: "ready",
     },
     {
+      key: "overtime",
+      title: lang === "ar" ? "تقرير الأوفر تايم" : "Overtime Report",
+      description: lang === "ar" ? "الساعات الإضافية لكل موظف ومبلغها في المرتب، يوم بيوم" : "Overtime hours and pay per employee, day by day",
+      icon: Clock,
+      color: "text-indigo-600",
+      bgColor: "bg-indigo-500/10",
+      href: "/hr/reports/overtime",
+      status: "ready",
+    },
+    {
       key: "work-hours",
       title: d.reportWorkHours,
       description: d.reportWorkHoursDesc,
