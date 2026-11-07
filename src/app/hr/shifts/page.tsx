@@ -34,6 +34,8 @@ interface Shift {
   late_checkout_minutes?: number;
   late_checkout_allowed?: boolean;
   break_duration?: number;
+  break_paid?: boolean;
+  break_punched?: boolean;
   crosses_midnight?: boolean;
 }
 
@@ -97,7 +99,9 @@ export default function ShiftsPage() {
     early_checkin_minutes: 30,
     late_checkout_minutes: 60,
     late_checkout_allowed: true,
-    break_duration: 60,
+    break_duration: 0,
+    break_paid: true,
+    break_punched: false,
     crosses_midnight: false,
   });
 
@@ -319,7 +323,9 @@ export default function ShiftsPage() {
       early_checkin_minutes: 30,
       late_checkout_minutes: 60,
       late_checkout_allowed: true,
-      break_duration: 60,
+      break_duration: 0,
+      break_paid: true,
+      break_punched: false,
       crosses_midnight: false,
     });
     setEditingShift(null);
@@ -343,7 +349,9 @@ export default function ShiftsPage() {
       early_checkin_minutes: shift.early_checkin_minutes ?? 30,
       late_checkout_minutes: shift.late_checkout_minutes ?? 0,
       late_checkout_allowed: shift.late_checkout_allowed ?? false,
-      break_duration: shift.break_duration || 60,
+      break_duration: shift.break_duration ?? 0,
+      break_paid: shift.break_paid ?? true,
+      break_punched: shift.break_punched ?? false,
       crosses_midnight: shift.crosses_midnight || false,
     });
     setDialogOpen(true);
@@ -819,6 +827,59 @@ export default function ShiftsPage() {
                   onChange={(e) => setFormData({ ...formData, late_checkout_minutes: Number(e.target.value) })}
                 />
               </div>
+            </div>
+
+            {/* البريك */}
+            <div className="p-3 border rounded-xl space-y-3">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="has_break"
+                  checked={(formData.break_duration || 0) > 0}
+                  onChange={(e) => setFormData({ ...formData, break_duration: e.target.checked ? 60 : 0, break_punched: e.target.checked ? formData.break_punched : false })}
+                  className="w-4 h-4 rounded cursor-pointer"
+                />
+                <label htmlFor="has_break" className="text-sm font-medium cursor-pointer">
+                  {ar ? "فيه بريك (راحة) في الشيفت ده" : "This shift has a break"}
+                </label>
+              </div>
+              {(formData.break_duration || 0) > 0 && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="mb-1 block text-xs">{ar ? "مدة البريك (دقيقة)" : "Break (minutes)"}</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={formData.break_duration}
+                      onChange={(e) => setFormData({ ...formData, break_duration: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-1 block text-xs">{ar ? "البريك مدفوع؟" : "Paid break?"}</Label>
+                    <select
+                      className="w-full h-9 rounded-md border bg-background px-2 text-sm"
+                      value={formData.break_paid === false ? "false" : "true"}
+                      onChange={(e) => setFormData({ ...formData, break_paid: e.target.value === "true" })}
+                    >
+                      <option value="true">{ar ? "مدفوع (من ضمن ساعات الشغل)" : "Paid (part of work hours)"}</option>
+                      <option value="false">{ar ? "مش مدفوع (بيتطرح من ساعات الشغل)" : "Unpaid (taken out of work hours)"}</option>
+                    </select>
+                  </div>
+                  <div className="col-span-2 flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="break_punched"
+                      checked={!!formData.break_punched}
+                      onChange={(e) => setFormData({ ...formData, break_punched: e.target.checked })}
+                      className="w-4 h-4 rounded cursor-pointer"
+                    />
+                    <label htmlFor="break_punched" className="text-sm cursor-pointer">
+                      {ar ? "الموظف بيبصم خروج ورجوع للبريك (الزيادة عن مدته بتتخصم بالوقت الفعلي)"
+                          : "Employees punch out and back for the break (extra time is deducted)"}
+                    </label>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Checkbox الافتراضي الأساسي */}
