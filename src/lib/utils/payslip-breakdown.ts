@@ -61,7 +61,7 @@ export function buildPayslipBreakdown(d: PayslipData, ar: boolean): PayslipBreak
     addEarn("night_allowance", t("بدل الوردية الليلية", "Night Allowance"));
     addEarn("weekend_allowance", t("بدل العمل في يوم الراحة", "Weekend Allowance"));
     addEarn("rule_allowances_total", t("بدلات السياسات", "Policy Allowances"), items(d.rule_allowance_items, ar));
-    addEarn("kpi_bonus", t("مكافأة الأداء", "KPI Bonus"));
+    addEarn("kpi_bonus", t("مكافأة الانضباط (KPI)", "Discipline Bonus (KPI)"));
   }
   const gross = n("gross_salary");
   const otherEarn = round2(gross - earnings.reduce((s, l) => s + l.amount, 0));
