@@ -169,7 +169,7 @@ export default function BiometricPage() {
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2"><Fingerprint className="w-6 h-6" />{ar ? "أجهزة البصمة" : "Biometric Devices"}</h1>
         <p className="text-sm text-muted-foreground">
-          {ar ? "أجهزة ZKTeco: البصمات بتتسجل هنا وبتتقارن بالحضور. (لسه مابتدخلش الحضور ولا المرتبات)" : "ZKTeco devices: punches are recorded and compared with attendance (not applied yet)."}
+          {ar ? "أجهزة ZKTeco: البصمات بتتسجل هنا وبتتحول حضور وانصراف في البرنامج أوتوماتيك." : "ZKTeco devices: punches are recorded and turned into attendance automatically."}
         </p>
       </div>
 
