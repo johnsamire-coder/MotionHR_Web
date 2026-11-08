@@ -61,7 +61,7 @@ export default function AnnouncementsPage() {
   const [editItem, setEditItem]       = useState<Announcement | null>(null);
   const [deleteId, setDeleteId]       = useState<number | null>(null);
   const [statsItem, setStatsItem]     = useState<Announcement | null>(null);
-  const [statsData, setStatsData]     = useState<{ read_count: number; total: number } | null>(null);
+  const [statsData, setStatsData]     = useState<{ read_count: number; total: number; percent: number; readers: { employee_name: string; read_at: string }[] } | null>(null);
 
   const [form, setForm]         = useState({ ...EMPTY_FORM });
   const [saving, setSaving]     = useState(false);
@@ -169,9 +169,12 @@ export default function AnnouncementsPage() {
         headers: { Authorization: authHeader },
       });
       const data = await res.json();
+      // السيرفر بيرجّع total_read و total_sent (الأسماء القديمة كانت بتطلع صفر دايمًا)
       setStatsData({
-        read_count: data.read_count || 0,
-        total: data.total_recipients || 0,
+        read_count: data.total_read ?? data.read_count ?? 0,
+        total: data.total_sent ?? data.total_recipients ?? 0,
+        percent: data.read_percentage ?? 0,
+        readers: Array.isArray(data.readers) ? data.readers : [],
       });
     } catch {
       toast.error(ar ? "فشل تحميل الإحصائيات" : "Failed to load stats");
@@ -524,6 +527,19 @@ export default function AnnouncementsPage() {
                     <p className="text-xs text-muted-foreground">{ar ? "الكل" : "Total"}</p>
                   </CardContent>
                 </Card>
+                <p className="col-span-2 text-center text-sm text-muted-foreground">
+                  {ar ? "نسبة القراءة" : "Read rate"}: {statsData.percent}%
+                </p>
+                {statsData.readers.length > 0 && (
+                  <div className="col-span-2 max-h-56 overflow-y-auto divide-y rounded-md border text-sm">
+                    {statsData.readers.map((r, i) => (
+                      <div key={i} className="flex justify-between px-3 py-2">
+                        <span>{r.employee_name}</span>
+                        <span className="font-mono text-xs text-muted-foreground">{r.read_at}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
