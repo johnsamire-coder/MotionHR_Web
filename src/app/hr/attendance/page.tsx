@@ -98,6 +98,23 @@ function StatCard({
   );
 }
 
+/** "09:09 AM" / "2026-11-09T09:09:00" / "09:09" -> "09:09" for a time input */
+function toTimeInput(value?: string | null): string {
+  if (!value) return "";
+  const v = String(value).trim();
+  const ampm = v.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])$/);
+  if (ampm) {
+    let h = Number(ampm[1]) % 12;
+    if (ampm[3].toUpperCase() === "PM") h += 12;
+    return `${String(h).padStart(2, "0")}:${ampm[2]}`;
+  }
+  const iso = v.match(/T(\d{2}):(\d{2})/);
+  if (iso) return `${iso[1]}:${iso[2]}`;
+  const hm = v.match(/^(\d{1,2}):(\d{2})/);
+  if (hm) return `${hm[1].padStart(2, "0")}:${hm[2]}`;
+  return "";
+}
+
 export default function AttendancePage() {
   const handleExportAttendance = async () => {
     const rows = (filtered || []).map((r: any) => ({  // نفس الصفوف الظاهرة في الجدول بعد الفلترة
@@ -196,6 +213,7 @@ export default function AttendancePage() {
     reason: "",
   });
   const [submittingAdjust, setSubmittingAdjust] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const handleOpenAdjust = (emp: AttendanceEmployee) => {
     setEditingAtt({
@@ -204,8 +222,8 @@ export default function AttendancePage() {
       attendance_id: emp.attendance_id || 0,
       employee_name: emp.employee_name,
       date: selectedDate,
-      check_in: emp.check_in ? emp.check_in.substring(11, 16) : (emp.check_in || ""),
-      check_out: emp.check_out ? emp.check_out.substring(11, 16) : (emp.check_out || ""),
+      check_in: toTimeInput(emp.check_in),
+      check_out: toTimeInput(emp.check_out),
       status: emp.status === "no_data" ? "present" : emp.status,
       reason: "",
     });
@@ -229,6 +247,9 @@ export default function AttendancePage() {
           Authorization: authHeader,
         },
         body: JSON.stringify({
+          // a day with no record yet (the device missed it): the server needs the employee and the date
+          employee_id: editingAtt.employee_id,
+          date: editingAtt.date,
           check_in_time: editingAtt.check_in || null,
           check_out_time: editingAtt.check_out || null,
           status: editingAtt.status,
@@ -237,11 +258,11 @@ export default function AttendancePage() {
       });
 
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         toast.success(lang === "ar" ? "تم تعديل سجل الحضور بنجاح" : "Attendance record adjusted successfully");
         setEditingAtt(prev => ({ ...prev, open: false }));
-        // إعادة تحميل البيانات
-        fetchAttendanceData();
+        // إعادة تحميل البيانات (الدالة القديمة ماكانتش موجودة، فالجدول كان بيفضل بالأرقام القديمة)
+        setReloadKey(k => k + 1);
       } else {
         toast.error(data.message || (lang === "ar" ? "فشل التعديل" : "Failed to adjust"));
       }
@@ -278,7 +299,7 @@ export default function AttendancePage() {
     })
       .catch(() => toast.error(d.failedLoad))
       .finally(() => setLoading(false));
-  }, [selectedDate]);
+  }, [selectedDate, reloadKey]);
 
   const getDeptName = (name: string) => {
     const item = deptMap[name];
