@@ -158,6 +158,7 @@ function FField({
       <label className="text-xs text-muted-foreground mb-1 block">{label}</label>
       <Input
         type={type}
+        dir={type === "tel" ? "ltr" : undefined}
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
@@ -735,8 +736,8 @@ export default function EmployeeDetailPage() {
                     <option value="divorced">{ar ? "مطلق" : "Divorced"}</option>
                     <option value="widowed">{ar ? "أرمل" : "Widowed"}</option>
                   </FSel>
-                  <FField label={ar ? "رقم الموبايل *" : "Phone *"} value={form.phone} onChange={v => set("phone", v)} />
-                  <FField label={ar ? "رقم موبايل 2" : "Phone 2"} value={form.phone2} onChange={v => set("phone2", v)} />
+                  <FField label={ar ? "رقم الموبايل *" : "Phone *"} value={form.phone} onChange={v => set("phone", v)} type="tel" />
+                  <FField label={ar ? "رقم موبايل 2" : "Phone 2"} value={form.phone2} onChange={v => set("phone2", v)} type="tel" />
                   <FField label={ar ? "البريد الإلكتروني" : "Email"} value={form.email} onChange={v => set("email", v)} type="email" />
                   <FField label={ar ? "العنوان" : "Address"} value={form.address} onChange={v => set("address", v)} />
                   <FField label={ar ? "المدينة" : "City"} value={form.city} onChange={v => set("city", v)} />
@@ -837,11 +838,11 @@ export default function EmployeeDetailPage() {
                   </>}
 
                   {showInstapay && (
-                    <FField label={ar ? "رقم انستاباي" : "InstaPay Phone"} value={form.instapay_phone} onChange={v => set("instapay_phone", v)} />
+                    <FField label={ar ? "رقم انستاباي" : "InstaPay Phone"} value={form.instapay_phone} onChange={v => set("instapay_phone", v)} type="tel" />
                   )}
 
                   {showWallet && <>
-                    <FField label={ar ? "رقم المحفظة" : "Wallet Phone"} value={form.wallet_phone} onChange={v => set("wallet_phone", v)} />
+                    <FField label={ar ? "رقم المحفظة" : "Wallet Phone"} value={form.wallet_phone} onChange={v => set("wallet_phone", v)} type="tel" />
                     <FField label={ar ? "مزود المحفظة" : "Wallet Provider"} value={form.wallet_provider} onChange={v => set("wallet_provider", v)} />
                   </>}
                 </div>

@@ -47,7 +47,7 @@ function Field({ label, value, onChange, type = "text", placeholder = "" }: {
   return (
     <div>
       <label className="text-sm font-medium mb-1 block">{label}</label>
-      <Input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
+      <Input type={type} dir={type === "tel" ? "ltr" : undefined} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
     </div>
   );
 }
@@ -305,7 +305,7 @@ export function CreateEmployeeDialog({ open, onClose, onSuccess, departments, br
           {/* البيانات الأساسية */}
           <Section title={ar ? "البيانات الأساسية" : "Basic Info"} />
           <div className="grid grid-cols-2 gap-3">
-            <Field label={ar ? "رقم الموبايل / واتساب *" : "Phone / WhatsApp *"} value={form.phone} onChange={v => set("phone", v)} placeholder="01012345678" />
+            <Field label={ar ? "رقم الموبايل / واتساب *" : "Phone / WhatsApp *"} value={form.phone} onChange={v => set("phone", v)} type="tel" placeholder="01012345678" />
             <Field label={ar ? "البريد الإلكتروني" : "Email"} value={form.email} onChange={v => set("email", v)} type="email" placeholder="emp@co.com" />
             <Field label={ar ? "الرقم القومي *" : "National ID *"} value={form.national_id} onChange={v => set("national_id", v)} placeholder="29501011234567" />
             <Field label={ar ? "تاريخ الميلاد *" : "Birth Date *"} value={form.birth_date} onChange={v => set("birth_date", v)} type="date" />
@@ -377,10 +377,10 @@ export function CreateEmployeeDialog({ open, onClose, onSuccess, departments, br
               <Field label={ar ? "رقم الحساب" : "Account Number"} value={form.bank_account} onChange={v => set("bank_account", v)} placeholder="1234567890" />
             </>}
             {showInstapay && (
-              <Field label={ar ? "رقم انستاباي" : "InstaPay Phone"} value={form.instapay_phone} onChange={v => set("instapay_phone", v)} placeholder="01012345678" />
+              <Field label={ar ? "رقم انستاباي" : "InstaPay Phone"} value={form.instapay_phone} onChange={v => set("instapay_phone", v)} type="tel" placeholder="01012345678" />
             )}
             {showWallet && <>
-              <Field label={ar ? "رقم المحفظة" : "Wallet Phone"} value={form.wallet_phone} onChange={v => set("wallet_phone", v)} placeholder="01012345678" />
+              <Field label={ar ? "رقم المحفظة" : "Wallet Phone"} value={form.wallet_phone} onChange={v => set("wallet_phone", v)} type="tel" placeholder="01012345678" />
               <Field label={ar ? "مزود المحفظة" : "Wallet Provider"} value={form.wallet_provider} onChange={v => set("wallet_provider", v)} placeholder="Vodafone Cash" />
             </>}
           </div>
