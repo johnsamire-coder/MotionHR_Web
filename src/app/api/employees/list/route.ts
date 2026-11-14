@@ -4,6 +4,9 @@ export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
     const url = new URL(request.url);
+    // The backend returns 25 employees a page for every role except company admin / HR manager.
+    // Screens that ask for the list without a page size (pickers, dialogs) need everyone, so ask for all of them.
+    if (!url.searchParams.has("page_size")) url.searchParams.set("page_size", "2000");
     const queryString = url.search;
 
     const response = await fetch(

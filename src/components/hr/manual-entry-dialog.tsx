@@ -10,6 +10,17 @@ import { STORAGE_KEYS } from "@/lib/constants/config";
 
 export type EntryType = "penalty" | "bonus" | "allowance";
 
+// بحث عربي مايفرّقش بين ي/ى، أ/إ/آ/ا، ة/ه، والتشكيل والمسافات الزيادة
+const normAr = (s: string) =>
+  (s || "")
+    .toLowerCase()
+    .replace(/[\u064B-\u0652\u0640]/g, "")
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه")
+    .replace(/\s+/g, " ")
+    .trim();
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -182,9 +193,9 @@ export default function ManualEntryDialog({ open, onClose, onSaved, entryType, e
 
   const filteredEmployees = employees.filter(e => {
     if (!empSearch.trim()) return true;
-    const q = empSearch.toLowerCase();
-    const name = (e.full_name || `${e.first_name_ar || ""} ${e.last_name_ar || ""}`).toLowerCase();
-    return name.includes(q) || (e.employee_code || "").toLowerCase().includes(q);
+    const q = normAr(empSearch);
+    const name = normAr(`${e.full_name || ""} ${e.first_name_ar || ""} ${e.last_name_ar || ""}`);
+    return name.includes(q) || normAr(e.employee_code || "").includes(q);
   });
 
   const selectedEmp = employees.find(e => e.id === form.employee_id);

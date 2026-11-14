@@ -16,6 +16,17 @@ import ManualEntryDialog, { EntryType } from "@/components/hr/manual-entry-dialo
 import { useLangStore } from "@/lib/stores/language";
 import { STORAGE_KEYS } from "@/lib/constants/config";
 
+// بحث عربي مايفرّقش بين ي/ى، أ/إ/آ/ا، ة/ه، والتشكيل والمسافات الزيادة
+const normAr = (s: string) =>
+  (s || "")
+    .toLowerCase()
+    .replace(/[\u064B-\u0652\u0640]/g, "")
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه")
+    .replace(/\s+/g, " ")
+    .trim();
+
 interface Entry {
   id: number;
   entry_type: string;
@@ -176,7 +187,13 @@ export default function ManualEntriesPage() {
     const missingTotal = instForm.total_amount.trim().length === 0;
     const missingMonthly = instForm.monthly_amount.trim().length === 0;
     if (missingEmployee || missingDescription || missingTotal || missingMonthly) {
-      toast.error(ar ? "من فضلك املأ كل الحقول المطلوبة" : "Please fill all required fields");
+      const missing = [
+        missingEmployee && (ar ? "اختار الموظف من القايمة" : "pick the employee"),
+        missingDescription && (ar ? "وصف السلفة" : "description"),
+        missingTotal && (ar ? "إجمالي المبلغ" : "total amount"),
+        missingMonthly && (ar ? "القسط الشهري" : "monthly installment"),
+      ].filter(Boolean).join(ar ? "، " : ", ");
+      toast.error(ar ? `ناقص: ${missing}` : `Missing: ${missing}`);
       return;
     }
     const total = Number(instForm.total_amount);
@@ -250,9 +267,9 @@ export default function ManualEntriesPage() {
 
   const filteredAllEmployees = allEmployees.filter(e => {
     if (empSearch.trim().length === 0) return true;
-    const q = empSearch.toLowerCase();
-    const name = (e.full_name || `${e.first_name_ar || ""} ${e.last_name_ar || ""}`).toLowerCase();
-    return name.includes(q) || (e.employee_code || "").toLowerCase().includes(q);
+    const q = normAr(empSearch);
+    const name = normAr(`${e.full_name || ""} ${e.first_name_ar || ""} ${e.last_name_ar || ""}`);
+    return name.includes(q) || normAr(e.employee_code || "").includes(q);
   });
 
   const selectedInstEmp = allEmployees.find(e => e.id === instForm.employee_id);
