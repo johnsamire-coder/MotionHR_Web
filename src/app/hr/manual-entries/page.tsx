@@ -162,7 +162,7 @@ export default function ManualEntriesPage() {
 
   const loadAllEmployees = useCallback(async () => {
     try {
-      const res = await fetch("/api/employees/list", { headers: { Authorization: authH } });
+      const res = await fetch("/api/employees/list?include_self=1", { headers: { Authorization: authH } });
       const data = await res.json();
       setAllEmployees(data.results || data.employees || []);
     } catch {}
@@ -248,11 +248,13 @@ export default function ManualEntriesPage() {
     }
   };
 
+  // Arabic letters typed in different shapes match: ى/ي، ة/ه، أ/إ/آ/ا
+  const norm = (x: string) => (x || "").toLowerCase().replace(/[ى]/g, "ي").replace(/[ة]/g, "ه").replace(/[أإآ]/g, "ا").trim();
   const filteredAllEmployees = allEmployees.filter(e => {
     if (empSearch.trim().length === 0) return true;
-    const q = empSearch.toLowerCase();
-    const name = (e.full_name || `${e.first_name_ar || ""} ${e.last_name_ar || ""}`).toLowerCase();
-    return name.includes(q) || (e.employee_code || "").toLowerCase().includes(q);
+    const q = norm(empSearch);
+    const name = norm(e.full_name || `${e.first_name_ar || ""} ${e.last_name_ar || ""}`);
+    return name.includes(q) || norm(e.employee_code || "").includes(q);
   });
 
   const selectedInstEmp = allEmployees.find(e => e.id === instForm.employee_id);
