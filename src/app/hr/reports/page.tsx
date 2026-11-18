@@ -248,6 +248,16 @@ export default function ReportsHubPage() {
       status: "ready",
     },
     {
+      key: "period-statement",
+      title: lang === "ar" ? "كشف حضور ومستحقات لفترة" : "Period Statement",
+      description: lang === "ar" ? "موظف واحد من تاريخ لتاريخ: يوم بيوم بالتأخير والأوفر تايم والخصومات والصافي" : "One employee, any date range: day by day with deductions and net",
+      icon: Clock,
+      color: "text-rose-600",
+      bgColor: "bg-rose-500/10",
+      href: "/hr/reports/period-statement",
+      status: "ready",
+    },
+    {
       key: "overtime",
       title: lang === "ar" ? "تقرير الأوفر تايم" : "Overtime Report",
       description: lang === "ar" ? "الساعات الإضافية لكل موظف ومبلغها في المرتب، يوم بيوم" : "Overtime hours and pay per employee, day by day",
