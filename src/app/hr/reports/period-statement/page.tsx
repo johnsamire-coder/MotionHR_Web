@@ -149,18 +149,20 @@ export default function PeriodStatementPage() {
     if (!data) return;
     const many = data.statements.length > 1;
     const sumRow = (st: Statement) => { const s = st.summary;
-      return `<tr><td>${st.employee.code}</td><td>${st.employee.name}</td><td>${st.employee.department || ""}</td><td>${m(s.pay_for_days)}</td><td>${m(s.overtime)}</td><td>${m(s.late)}</td><td>${m(s.early_leave)}</td><td>${m(s.absence)}</td><td>${m(s.missing_checkout)}</td><td><b>${m(s.net)}</b></td></tr>`; };
+      return `<tr><td>${st.employee.code}</td><td>${st.employee.name}</td><td>${st.employee.department || ""}</td><td>${m(s.pay_for_days)}</td><td>${m(s.overtime)}</td><td>${m(s.allowances + s.bonuses)}</td><td>${m(s.attendance_deductions + s.other_attendance)}</td><td>${m(s.penalties + s.installments + s.other_deductions)}</td><td>${m(s.insurance + s.tax)}</td><td><b>${m(s.net)}</b></td></tr>`; };
     const g = data.grand;
-    const summary = many ? `<h3>الملخص — ${data.statements.length} موظف</h3><table><tr><th>الكود</th><th>الموظف</th><th>القسم</th><th>أجر الأيام</th><th>+ أوفر تايم</th><th>− تأخير</th><th>− مبكر</th><th>− غياب</th><th>− نسيان انصراف</th><th>الصافي</th></tr>${data.statements.map(sumRow).join("")}
-      <tr class="tot"><td></td><td>الإجمالي</td><td></td><td>${m(g.pay_for_days)}</td><td>${m(g.overtime)}</td><td>${m(g.late)}</td><td>${m(g.early_leave)}</td><td>${m(g.absence)}</td><td>${m(g.missing_checkout)}</td><td>${m(g.net)}</td></tr></table>` : "";
+    const summary = many ? `<h3>الملخص — ${data.statements.length} موظف</h3><table><tr><th>الكود</th><th>الموظف</th><th>القسم</th><th>أجر الأيام</th><th>+ أوفر تايم</th><th>+ بدلات وحوافز</th><th>− حضور</th><th>− جزاءات وسلف</th><th>− تأمينات وضرائب</th><th>الصافي</th></tr>${data.statements.map(sumRow).join("")}
+      <tr class="tot"><td></td><td>الإجمالي</td><td></td><td>${m(g.pay_for_days)}</td><td>${m(g.overtime)}</td><td>${m(g.allowances + g.bonuses)}</td><td>${m(g.late + g.early_leave + g.absence + g.missing_checkout + g.other_attendance)}</td><td>${m(g.penalties + g.installments + g.other_deductions)}</td><td>${m(g.insurance + g.tax)}</td><td>${m(g.net)}</td></tr></table>` : "";
     const one = (st: Statement) => {
       const s = st.summary;
       const rows = st.days.map(d => `<tr class="${d.status === "absent" ? "abs" : ""}"><td>${d.date}</td><td>${d.weekday}</td><td>${d.check_in || "—"}</td><td>${d.check_out || "—"}</td><td>${n(d.work_hours)}</td><td>${d.status_ar}</td><td>${n(d.late_minutes)}</td><td>${n(d.late_deducted_minutes)}</td><td>${m(d.late_amount)}</td><td>${n(d.early_minutes)}</td><td>${n(d.early_deducted_minutes)}</td><td>${m(d.early_amount)}</td><td>${n(d.overtime_counted_hours)}</td><td>${m(d.overtime_amount)}</td><td>${m(d.absence_amount)}</td><td class="nt">${d.notes}</td></tr>`).join("");
       const rates = st.months.map(x => `${x.month}/${x.year}: أجر اليوم ${x.daily_salary} • أجر الساعة ${x.hourly_rate}`).join(" — ");
       return `<div class="emp"><h2>${st.employee.code} ${st.employee.name}</h2><div>${st.employee.job} • من ${st.date_from} إلى ${st.date_to} • الراتب الأساسي ${st.employee.basic_salary.toLocaleString()} • ${rates}</div>
         <table><tr><th>التاريخ</th><th>اليوم</th><th>الحضور</th><th>الانصراف</th><th>ساعات</th><th>الحالة</th><th>تأخير د</th><th>مخصوم د</th><th>خصم التأخير</th><th>مبكر د</th><th>مخصوم د</th><th>خصم المبكر</th><th>أوفر محسوب س</th><th>قيمة الأوفر</th><th>خصم الغياب</th><th>ملاحظات</th></tr>${rows}</table>
-        <table class="sum"><tr><td>أجر الأيام (${s.calendar_days} يوم)</td><td>${m(s.pay_for_days)}</td></tr><tr><td>+ الأوفر تايم</td><td>${m(s.overtime)}</td></tr><tr><td>− خصم التأخير</td><td>${m(s.late)}</td></tr>
-        <tr><td>− خصم الانصراف المبكر</td><td>${m(s.early_leave)}</td></tr><tr><td>− خصم الغياب</td><td>${m(s.absence)}</td></tr><tr><td>− خصم نسيان الانصراف</td><td>${m(s.missing_checkout)}</td></tr><tr class="tot"><td>الصافي المستحق</td><td>${m(s.net)}</td></tr></table></div>`;
+        <table class="sum"><tr><td>أجر الأيام (${s.calendar_days} يوم)</td><td>${m(s.pay_for_days)}</td></tr><tr><td>+ الأوفر تايم</td><td>${m(s.overtime)}</td></tr><tr><td>+ البدلات</td><td>${m(s.allowances)}</td></tr><tr><td>+ الحوافز والبونص</td><td>${m(s.bonuses)}</td></tr>
+        <tr><td>− خصم التأخير</td><td>${m(s.late)}</td></tr><tr><td>− خصم الانصراف المبكر</td><td>${m(s.early_leave)}</td></tr><tr><td>− خصم الغياب</td><td>${m(s.absence)}</td></tr><tr><td>− نسيان الانصراف وخصومات حضور أخرى</td><td>${m(s.missing_checkout + s.other_attendance)}</td></tr>
+        <tr><td>− الجزاءات</td><td>${m(s.penalties)}</td></tr><tr><td>− أقساط السلف</td><td>${m(s.installments)}</td></tr><tr><td>− خصومات أخرى</td><td>${m(s.other_deductions)}</td></tr><tr><td>− التأمينات</td><td>${m(s.insurance)}</td></tr><tr><td>− الضرائب</td><td>${m(s.tax)}</td></tr>
+        <tr class="tot"><td>الصافي المستحق</td><td>${m(s.net)}</td></tr></table></div>`;
     };
     const w = window.open("", "_blank");
     if (!w) return;
@@ -170,7 +172,7 @@ export default function PeriodStatementPage() {
       td{border:1px solid #ccc;padding:2px 3px;text-align:center} td.nt{text-align:right;font-size:8.5px} tr.abs td{background:#fff1f2}
       .sum{width:45%} .sum td{font-size:11px} tr.tot td{font-weight:bold;background:#ddf7ec} .emp{page-break-before:always} .emp:first-child{page-break-before:auto}</style></head><body>
       <h2>كشف حضور ومستحقات — من ${data.date_from} إلى ${data.date_to}</h2>${summary}${data.statements.map(one).join("")}
-      <p>الأجر بالأيام التقويمية (الراتب ÷ أيام الشهر). البدلات والحوافز والتأمينات والسلف غير محسوبة هنا.</p>
+      <p>الأجر بالأيام التقويمية (الراتب ÷ أيام الشهر). البدلات والحوافز والتأمينات والضرائب بنسبة أيام الفترة من الشهر، والجزاءات والسلف والخصومات الأخرى المسجلة في الشهر بالكامل.</p>
       <script>window.onload=()=>window.print()</script></body></html>`);
     w.document.close();
   };
@@ -232,13 +234,28 @@ export default function PeriodStatementPage() {
       </CardContent></Card>
 
       {single && (<>
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
-          {[[t("أجر الأيام", "Pay"), single.summary.pay_for_days], [t("+ الأوفر تايم", "+ Overtime"), single.summary.overtime],
-            [t("− التأخير", "− Late"), single.summary.late], [t("− الانصراف المبكر", "− Early"), single.summary.early_leave],
-            [t("− الغياب", "− Absence"), single.summary.absence], [t("− نسيان الانصراف", "− Missing out"), single.summary.missing_checkout],
-            [t("الصافي", "Net"), single.summary.net]].map(([l, v], i) => (
-            <Card key={i} className={i === 6 ? "bg-emerald-50 border-emerald-300" : ""}><CardContent className="p-3">
-              <p className="text-xs text-muted-foreground">{l}</p><p className="text-lg font-bold">{m(Number(v))}</p></CardContent></Card>))}
+        <div className="grid gap-3 md:grid-cols-3">
+          <Card><CardContent className="p-3 space-y-1 text-sm">
+            <p className="font-bold text-emerald-700">{t("المستحقات", "Earnings")}</p>
+            {[[t("أجر الأيام", "Pay for days"), single.summary.pay_for_days], [t("الأوفر تايم", "Overtime"), single.summary.overtime],
+              [t("البدلات", "Allowances"), single.summary.allowances], [t("الحوافز والبونص", "Bonuses"), single.summary.bonuses],
+              [t("الإجمالي", "Gross"), single.summary.gross]].map(([l, v], i) => (
+              <div key={i} className={`flex justify-between ${i === 4 ? "border-t pt-1 font-bold" : ""}`}><span>{l}</span><span>{m(Number(v))}</span></div>))}
+          </CardContent></Card>
+          <Card><CardContent className="p-3 space-y-1 text-sm">
+            <p className="font-bold text-rose-700">{t("الخصومات", "Deductions")}</p>
+            {[[t("التأخير", "Late"), single.summary.late], [t("الانصراف المبكر", "Early leave"), single.summary.early_leave],
+              [t("الغياب", "Absence"), single.summary.absence], [t("نسيان الانصراف وخصومات حضور أخرى", "Missing out & other"), single.summary.missing_checkout + single.summary.other_attendance],
+              [t("الجزاءات", "Penalties"), single.summary.penalties], [t("أقساط السلف", "Advances"), single.summary.installments],
+              [t("خصومات أخرى", "Other"), single.summary.other_deductions], [t("التأمينات", "Insurance"), single.summary.insurance],
+              [t("الضرائب", "Tax"), single.summary.tax], [t("الإجمالي", "Total"), single.summary.total_deductions]].map(([l, v], i) => (
+              <div key={i} className={`flex justify-between ${i === 9 ? "border-t pt-1 font-bold" : ""}`}><span>{l}</span><span>{m(Number(v))}</span></div>))}
+          </CardContent></Card>
+          <Card className="bg-emerald-50 border-emerald-300"><CardContent className="p-4 flex flex-col justify-center h-full">
+            <p className="text-sm text-muted-foreground">{t("الصافي المستحق", "Net")}</p>
+            <p className="text-3xl font-bold">{m(single.summary.net)}</p>
+            <p className="text-xs text-muted-foreground">{single.summary.calendar_days} {t("يوم", "days")}</p>
+          </CardContent></Card>
         </div>
         <p className="text-xs text-muted-foreground">
           {single.employee.code} {single.employee.name} • {single.months.map(x => `${x.month}/${x.year}: ${t("أجر اليوم", "day")} ${x.daily_salary} • ${t("أجر الساعة", "hour")} ${x.hourly_rate}`).join(" — ")}
@@ -251,7 +268,7 @@ export default function PeriodStatementPage() {
           <Table className="text-sm">
             <TableHeader><TableRow>
               {[t("الكود", "Code"), t("الموظف", "Employee"), t("القسم", "Dept"), t("حضور", "Present"), t("تأخير", "Late"), t("غياب", "Absent"),
-                t("أجر الأيام", "Pay"), t("+ أوفر تايم", "+ OT"), t("− تأخير", "− Late"), t("− مبكر", "− Early"), t("− غياب", "− Absence"), t("− نسيان انصراف", "− Missing"), t("الصافي", "Net"), ""]
+                t("أجر الأيام", "Pay"), t("+ أوفر تايم", "+ OT"), t("+ بدلات وحوافز", "+ Allow. & bonus"), t("− حضور", "− Attendance"), t("− جزاءات وسلف", "− Penalties & adv."), t("− تأمينات وضرائب", "− Ins. & tax"), t("الصافي", "Net"), ""]
                 .map((h, i) => <TableHead key={i} className="whitespace-nowrap">{h}</TableHead>)}
             </TableRow></TableHeader>
             <TableBody>
@@ -260,8 +277,8 @@ export default function PeriodStatementPage() {
                   <TableRow>
                     <TableCell>{st.employee.code}</TableCell><TableCell className="whitespace-nowrap font-medium">{st.employee.name}</TableCell><TableCell>{st.employee.department}</TableCell>
                     <TableCell>{st.summary.present_days}</TableCell><TableCell>{st.summary.late_days}</TableCell><TableCell>{st.summary.absent_days}</TableCell>
-                    <TableCell>{m(st.summary.pay_for_days)}</TableCell><TableCell>{m(st.summary.overtime)}</TableCell><TableCell>{m(st.summary.late)}</TableCell>
-                    <TableCell>{m(st.summary.early_leave)}</TableCell><TableCell>{m(st.summary.absence)}</TableCell><TableCell>{m(st.summary.missing_checkout)}</TableCell>
+                    <TableCell>{m(st.summary.pay_for_days)}</TableCell><TableCell>{m(st.summary.overtime)}</TableCell><TableCell>{m(st.summary.allowances + st.summary.bonuses)}</TableCell>
+                    <TableCell>{m(st.summary.attendance_deductions + st.summary.other_attendance)}</TableCell><TableCell>{m(st.summary.penalties + st.summary.installments + st.summary.other_deductions)}</TableCell><TableCell>{m(st.summary.insurance + st.summary.tax)}</TableCell>
                     <TableCell className="font-bold">{m(st.summary.net)}</TableCell>
                     <TableCell><Button variant="ghost" size="sm" onClick={() => setOpen(open === st.employee.id ? null : st.employee.id)}>
                       {t("الأيام", "Days")} {open === st.employee.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}</Button></TableCell>
@@ -270,15 +287,16 @@ export default function PeriodStatementPage() {
                 </React.Fragment>))}
               <TableRow className="bg-emerald-50 font-bold">
                 <TableCell colSpan={6}>{t("الإجمالي", "Total")} — {data.grand.employees} {t("موظف", "employees")}</TableCell>
-                <TableCell>{m(data.grand.pay_for_days)}</TableCell><TableCell>{m(data.grand.overtime)}</TableCell><TableCell>{m(data.grand.late)}</TableCell>
-                <TableCell>{m(data.grand.early_leave)}</TableCell><TableCell>{m(data.grand.absence)}</TableCell><TableCell>{m(data.grand.missing_checkout)}</TableCell>
+                <TableCell>{m(data.grand.pay_for_days)}</TableCell><TableCell>{m(data.grand.overtime)}</TableCell><TableCell>{m(data.grand.allowances + data.grand.bonuses)}</TableCell>
+                <TableCell>{m(data.grand.late + data.grand.early_leave + data.grand.absence + data.grand.missing_checkout + data.grand.other_attendance)}</TableCell>
+                <TableCell>{m(data.grand.penalties + data.grand.installments + data.grand.other_deductions)}</TableCell><TableCell>{m(data.grand.insurance + data.grand.tax)}</TableCell>
                 <TableCell>{m(data.grand.net)}</TableCell><TableCell />
               </TableRow>
             </TableBody>
           </Table>
         </CardContent></Card>
       )}
-      {data && <p className="text-xs text-muted-foreground">{t("الأجر بالأيام التقويمية (الراتب ÷ أيام الشهر). البدلات والحوافز والتأمينات والسلف غير محسوبة هنا.", "Pay by calendar days. Allowances, bonuses, insurance and advances are not included.")}</p>}
+      {data && <p className="text-xs text-muted-foreground">{t("الأجر بالأيام التقويمية (الراتب ÷ أيام الشهر). البدلات والحوافز والتأمينات والضرائب بنسبة أيام الفترة من الشهر، والجزاءات والسلف والخصومات الأخرى المسجلة في الشهر بالكامل.", "Pay by calendar days; monthly items by the share of the month, penalties and advances in full.")}</p>}
     </div>
   );
 }
