@@ -52,6 +52,7 @@ interface Summary {
     approved_allowances: number;
   };
   is_ceo: boolean;
+  can_approve?: boolean;
   is_hr: boolean;
   user_role: string;
 }
@@ -270,7 +271,7 @@ export default function ManualEntriesPage() {
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(ar ? "تم الاعتماد. HR تم إبلاغهم" : "Approved. HR notified");
+        toast.success(ar ? "تم الاعتماد" : "Approved");
         setApproveDialog(null);
         setApproveNotes("");
         loadEntries();
@@ -285,7 +286,7 @@ export default function ManualEntriesPage() {
 
   const handleReject = async () => {
     if (!rejectDialog || !rejectReason.trim()) {
-      toast.error(ar ? "سبب الرفض مطلوب" : "Rejection reason required");
+      toast.error(ar ? "اكتب السبب" : "Reason required");
       return;
     }
     setActionLoading(rejectDialog.id);
@@ -297,7 +298,7 @@ export default function ManualEntriesPage() {
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(ar ? "تم الرفض" : "Rejected");
+        toast.success(data.message || (ar ? "تم" : "Done"));
         setRejectDialog(null);
         setRejectReason("");
         loadEntries();
@@ -340,7 +341,7 @@ export default function ManualEntriesPage() {
         <h1 className="text-3xl font-bold tracking-tight">{ar ? "الإدخالات اليدوية" : "Manual Entries"}</h1>
         <p className="text-muted-foreground mt-1">
           {ar
-            ? "الجزاءات والمكافآت والبدلات اليدوية من المدراء (بموافقة مدير الشركة)"
+            ? "الجزاءات والمكافآت والبدلات اليدوية — طلبات المدراء بتستنى موافقة الـ HR، واللي يضيفه الـ HR بيتعتمد على طول"
             : "Manual penalties, bonuses & allowances from managers (with CEO approval)"}
         </p>
       </div>
@@ -593,7 +594,7 @@ export default function ManualEntriesPage() {
                         {ar ? "عرض" : "View"}
                       </Button>
 
-                      {entry.status === "pending" && summary?.is_ceo && (
+                      {entry.status === "pending" && (summary?.can_approve ?? summary?.is_ceo) && (
                         <>
                           <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 gap-1.5"
                             onClick={() => { setApproveDialog(entry); setApproveNotes(""); }}>
@@ -606,6 +607,14 @@ export default function ManualEntriesPage() {
                             {ar ? "رفض" : "Reject"}
                           </Button>
                         </>
+                      )}
+
+                      {entry.status === "approved" && !entry.applied_in_payroll && (summary?.can_approve ?? summary?.is_ceo) && (
+                        <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 gap-1.5"
+                          onClick={() => { setRejectDialog(entry); setRejectReason(""); }}>
+                          <X className="w-3.5 h-3.5" />
+                          {ar ? "إلغاء" : "Cancel"}
+                        </Button>
                       )}
 
                       {entry.status === "pending" && (
@@ -682,7 +691,7 @@ export default function ManualEntriesPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-700">
               <XCircle className="w-5 h-5" />
-              {ar ? "رفض الطلب" : "Reject Request"}
+              {rejectDialog?.status === "approved" ? (ar ? "إلغاء البند" : "Cancel Entry") : (ar ? "رفض الطلب" : "Reject Request")}
             </DialogTitle>
           </DialogHeader>
           {rejectDialog && (
@@ -691,7 +700,7 @@ export default function ManualEntriesPage() {
                 <p className="font-semibold">{rejectDialog.employee_name}</p>
               </div>
               <div>
-                <label className="text-sm font-semibold block mb-1">{ar ? "سبب الرفض *" : "Rejection reason *"}</label>
+                <label className="text-sm font-semibold block mb-1">{rejectDialog?.status === "approved" ? (ar ? "سبب الإلغاء *" : "Cancel reason *") : (ar ? "سبب الرفض *" : "Rejection reason *")}</label>
                 <textarea className="w-full px-3 py-2 border rounded-md text-sm min-h-[100px]"
                   value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} />
               </div>
@@ -700,7 +709,7 @@ export default function ManualEntriesPage() {
                 <Button className="bg-red-600 hover:bg-red-700 gap-2"
                   disabled={actionLoading === rejectDialog.id} onClick={handleReject}>
                   {actionLoading === rejectDialog.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-                  {ar ? "رفض" : "Reject"}
+                  {rejectDialog.status === "approved" ? (ar ? "إلغاء البند" : "Cancel entry") : (ar ? "رفض" : "Reject")}
                 </Button>
               </div>
             </div>
