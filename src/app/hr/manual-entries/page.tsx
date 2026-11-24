@@ -610,11 +610,18 @@ export default function ManualEntriesPage() {
                       )}
 
                       {entry.status === "approved" && !entry.applied_in_payroll && (summary?.can_approve ?? summary?.is_ceo) && (
-                        <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 gap-1.5"
-                          onClick={() => { setRejectDialog(entry); setRejectReason(""); }}>
-                          <X className="w-3.5 h-3.5" />
-                          {ar ? "إلغاء" : "Cancel"}
-                        </Button>
+                        <>
+                          <Button variant="outline" size="sm" className="gap-1.5"
+                            onClick={() => { setEditingEntryId(entry.id); setShowCreateDialog(true); }}>
+                            <Edit2 className="w-3.5 h-3.5" />
+                            {ar ? "تعديل" : "Edit"}
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 gap-1.5"
+                            onClick={() => { setRejectDialog(entry); setRejectReason(""); }}>
+                            <X className="w-3.5 h-3.5" />
+                            {ar ? "إلغاء" : "Cancel"}
+                          </Button>
+                        </>
                       )}
 
                       {entry.status === "pending" && (
