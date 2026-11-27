@@ -23,7 +23,7 @@ interface Day {
   missing_checkout_amount: number; notes: string;
 }
 interface Statement {
-  employee: { id: number; code: string; name: string; job: string; basic_salary: number; department?: string; branch?: string };
+  employee: { id: number; code: string; name: string; job: string; basic_salary: number; monthly_allowances?: number; monthly_bonuses?: number; monthly_total_salary?: number; department?: string; branch?: string };
   date_from: string; date_to: string;
   months: { year: number; month: number; days: number; daily_salary: number; hourly_rate: number }[];
   days: Day[];
@@ -149,15 +149,15 @@ export default function PeriodStatementPage() {
     if (!data) return;
     const many = data.statements.length > 1;
     const sumRow = (st: Statement) => { const s = st.summary;
-      return `<tr><td>${st.employee.code}</td><td>${st.employee.name}</td><td>${st.employee.department || ""}</td><td>${m(s.pay_for_days)}</td><td>${m(s.overtime)}</td><td>${m(s.allowances + s.bonuses)}</td><td>${m(s.attendance_deductions + s.other_attendance)}</td><td>${m(s.penalties + s.installments + s.other_deductions)}</td><td>${m(s.insurance + s.tax)}</td><td><b>${m(s.net)}</b></td></tr>`; };
+      return `<tr><td>${st.employee.code}</td><td>${st.employee.name}</td><td>${st.employee.department || ""}</td><td>${m(st.employee.monthly_total_salary ?? st.employee.basic_salary)}</td><td>${m(s.pay_for_days)}</td><td>${m(s.overtime)}</td><td>${m(s.allowances + s.bonuses)}</td><td>${m(s.attendance_deductions + s.other_attendance)}</td><td>${m(s.penalties + s.installments + s.other_deductions)}</td><td>${m(s.insurance + s.tax)}</td><td><b>${m(s.net)}</b></td></tr>`; };
     const g = data.grand;
-    const summary = many ? `<h3>الملخص — ${data.statements.length} موظف</h3><table><tr><th>الكود</th><th>الموظف</th><th>القسم</th><th>أجر الأيام</th><th>+ أوفر تايم</th><th>+ بدلات وحوافز</th><th>− حضور</th><th>− جزاءات وسلف</th><th>− تأمينات وضرائب</th><th>الصافي</th></tr>${data.statements.map(sumRow).join("")}
-      <tr class="tot"><td></td><td>الإجمالي</td><td></td><td>${m(g.pay_for_days)}</td><td>${m(g.overtime)}</td><td>${m(g.allowances + g.bonuses)}</td><td>${m(g.late + g.early_leave + g.absence + g.missing_checkout + g.other_attendance)}</td><td>${m(g.penalties + g.installments + g.other_deductions)}</td><td>${m(g.insurance + g.tax)}</td><td>${m(g.net)}</td></tr></table>` : "";
+    const summary = many ? `<h3>الملخص — ${data.statements.length} موظف</h3><table><tr><th>الكود</th><th>الموظف</th><th>القسم</th><th>إجمالي الراتب</th><th>أجر الأيام</th><th>+ أوفر تايم</th><th>+ بدلات وحوافز</th><th>− حضور</th><th>− جزاءات وسلف</th><th>− تأمينات وضرائب</th><th>الصافي</th></tr>${data.statements.map(sumRow).join("")}
+      <tr class="tot"><td></td><td>الإجمالي</td><td></td><td></td><td>${m(g.pay_for_days)}</td><td>${m(g.overtime)}</td><td>${m(g.allowances + g.bonuses)}</td><td>${m(g.late + g.early_leave + g.absence + g.missing_checkout + g.other_attendance)}</td><td>${m(g.penalties + g.installments + g.other_deductions)}</td><td>${m(g.insurance + g.tax)}</td><td>${m(g.net)}</td></tr></table>` : "";
     const one = (st: Statement) => {
       const s = st.summary;
       const rows = st.days.map(d => `<tr class="${d.status === "absent" ? "abs" : ""}"><td>${d.date}</td><td>${d.weekday}</td><td>${d.check_in || "—"}</td><td>${d.check_out || "—"}</td><td>${n(d.work_hours)}</td><td>${d.status_ar}</td><td>${n(d.late_minutes)}</td><td>${n(d.late_deducted_minutes)}</td><td>${m(d.late_amount)}</td><td>${n(d.early_minutes)}</td><td>${n(d.early_deducted_minutes)}</td><td>${m(d.early_amount)}</td><td>${n(d.overtime_counted_hours)}</td><td>${m(d.overtime_amount)}</td><td>${m(d.absence_amount)}</td><td class="nt">${d.notes}</td></tr>`).join("");
       const rates = st.months.map(x => `${x.month}/${x.year}: أجر اليوم ${x.daily_salary} • أجر الساعة ${x.hourly_rate}`).join(" — ");
-      return `<div class="emp"><h2>${st.employee.code} ${st.employee.name}</h2><div>${st.employee.job} • من ${st.date_from} إلى ${st.date_to} • الراتب الأساسي ${st.employee.basic_salary.toLocaleString()} • ${rates}</div>
+      return `<div class="emp"><h2>${st.employee.code} ${st.employee.name}</h2><div>${st.employee.job} • من ${st.date_from} إلى ${st.date_to} • الراتب الأساسي ${st.employee.basic_salary.toLocaleString()} • إجمالي الراتب الشهري ${(st.employee.monthly_total_salary ?? st.employee.basic_salary).toLocaleString()} • ${rates}</div>
         <table><tr><th>التاريخ</th><th>اليوم</th><th>الحضور</th><th>الانصراف</th><th>ساعات</th><th>الحالة</th><th>تأخير د</th><th>مخصوم د</th><th>خصم التأخير</th><th>مبكر د</th><th>مخصوم د</th><th>خصم المبكر</th><th>أوفر محسوب س</th><th>قيمة الأوفر</th><th>خصم الغياب</th><th>ملاحظات</th></tr>${rows}</table>
         <table class="sum"><tr><td>أجر الأيام (${s.calendar_days} يوم)</td><td>${m(s.pay_for_days)}</td></tr><tr><td>+ الأوفر تايم</td><td>${m(s.overtime)}</td></tr><tr><td>+ البدلات</td><td>${m(s.allowances)}</td></tr><tr><td>+ الحوافز والبونص</td><td>${m(s.bonuses)}</td></tr>
         <tr><td>− خصم التأخير</td><td>${m(s.late)}</td></tr><tr><td>− خصم الانصراف المبكر</td><td>${m(s.early_leave)}</td></tr><tr><td>− خصم الغياب</td><td>${m(s.absence)}</td></tr><tr><td>− نسيان الانصراف وخصومات حضور أخرى</td><td>${m(s.missing_checkout + s.other_attendance)}</td></tr>
@@ -234,6 +234,13 @@ export default function PeriodStatementPage() {
       </CardContent></Card>
 
       {single && (<>
+        <Card><CardContent className="p-3 grid gap-2 sm:grid-cols-3 text-sm">
+          <div><p className="text-muted-foreground">{t("الراتب الأساسي", "Basic salary")}</p><p className="text-lg font-bold">{m(single.employee.basic_salary)}</p></div>
+          <div><p className="text-muted-foreground">{t("البدلات والحوافز الشهرية", "Monthly allowances & bonuses")}</p>
+            <p className="text-lg font-bold">{m((single.employee.monthly_allowances || 0) + (single.employee.monthly_bonuses || 0))}</p></div>
+          <div><p className="text-muted-foreground">{t("إجمالي الراتب الشهري", "Total monthly salary")}</p>
+            <p className="text-lg font-bold text-primary">{m(single.employee.monthly_total_salary ?? single.employee.basic_salary)}</p></div>
+        </CardContent></Card>
         <div className="grid gap-3 md:grid-cols-3">
           <Card><CardContent className="p-3 space-y-1 text-sm">
             <p className="font-bold text-emerald-700">{t("المستحقات", "Earnings")}</p>
@@ -267,7 +274,7 @@ export default function PeriodStatementPage() {
         <Card><CardContent className="p-0 overflow-x-auto">
           <Table className="text-sm">
             <TableHeader><TableRow>
-              {[t("الكود", "Code"), t("الموظف", "Employee"), t("القسم", "Dept"), t("حضور", "Present"), t("تأخير", "Late"), t("غياب", "Absent"),
+              {[t("الكود", "Code"), t("الموظف", "Employee"), t("القسم", "Dept"), t("إجمالي الراتب", "Monthly salary"), t("حضور", "Present"), t("تأخير", "Late"), t("غياب", "Absent"),
                 t("أجر الأيام", "Pay"), t("+ أوفر تايم", "+ OT"), t("+ بدلات وحوافز", "+ Allow. & bonus"), t("− حضور", "− Attendance"), t("− جزاءات وسلف", "− Penalties & adv."), t("− تأمينات وضرائب", "− Ins. & tax"), t("الصافي", "Net"), ""]
                 .map((h, i) => <TableHead key={i} className="whitespace-nowrap">{h}</TableHead>)}
             </TableRow></TableHeader>
@@ -276,6 +283,7 @@ export default function PeriodStatementPage() {
                 <React.Fragment key={st.employee.id}>
                   <TableRow>
                     <TableCell>{st.employee.code}</TableCell><TableCell className="whitespace-nowrap font-medium">{st.employee.name}</TableCell><TableCell>{st.employee.department}</TableCell>
+                    <TableCell>{m(st.employee.monthly_total_salary ?? st.employee.basic_salary)}</TableCell>
                     <TableCell>{st.summary.present_days}</TableCell><TableCell>{st.summary.late_days}</TableCell><TableCell>{st.summary.absent_days}</TableCell>
                     <TableCell>{m(st.summary.pay_for_days)}</TableCell><TableCell>{m(st.summary.overtime)}</TableCell><TableCell>{m(st.summary.allowances + st.summary.bonuses)}</TableCell>
                     <TableCell>{m(st.summary.attendance_deductions + st.summary.other_attendance)}</TableCell><TableCell>{m(st.summary.penalties + st.summary.installments + st.summary.other_deductions)}</TableCell><TableCell>{m(st.summary.insurance + st.summary.tax)}</TableCell>
@@ -283,10 +291,10 @@ export default function PeriodStatementPage() {
                     <TableCell><Button variant="ghost" size="sm" onClick={() => setOpen(open === st.employee.id ? null : st.employee.id)}>
                       {t("الأيام", "Days")} {open === st.employee.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}</Button></TableCell>
                   </TableRow>
-                  {open === st.employee.id && <TableRow><TableCell colSpan={14} className="p-0 bg-muted/30"><DaysTable st={st} t={t} /></TableCell></TableRow>}
+                  {open === st.employee.id && <TableRow><TableCell colSpan={15} className="p-0 bg-muted/30"><DaysTable st={st} t={t} /></TableCell></TableRow>}
                 </React.Fragment>))}
               <TableRow className="bg-emerald-50 font-bold">
-                <TableCell colSpan={6}>{t("الإجمالي", "Total")} — {data.grand.employees} {t("موظف", "employees")}</TableCell>
+                <TableCell colSpan={7}>{t("الإجمالي", "Total")} — {data.grand.employees} {t("موظف", "employees")}</TableCell>
                 <TableCell>{m(data.grand.pay_for_days)}</TableCell><TableCell>{m(data.grand.overtime)}</TableCell><TableCell>{m(data.grand.allowances + data.grand.bonuses)}</TableCell>
                 <TableCell>{m(data.grand.late + data.grand.early_leave + data.grand.absence + data.grand.missing_checkout + data.grand.other_attendance)}</TableCell>
                 <TableCell>{m(data.grand.penalties + data.grand.installments + data.grand.other_deductions)}</TableCell><TableCell>{m(data.grand.insurance + data.grand.tax)}</TableCell>
